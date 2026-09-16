@@ -345,3 +345,48 @@ function removeDebt(index) {
 }
 
 updateUI();
+
+// Exportar respaldo a un archivo .json
+document.getElementById('btn-export').addEventListener('click', () => {
+  const data = {
+    transactions: JSON.parse(localStorage.getItem('finances_v9_trans')) || [],
+    debts: JSON.parse(localStorage.getItem('finances_v9_debts')) || []
+  };
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `respaldo_finanzas_${getTodayStr()}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+});
+
+// Importar respaldo desde un archivo .json
+const importFile = document.getElementById('import-file');
+document.getElementById('btn-import-trigger').addEventListener('click', () => importFile.click());
+
+importFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      if (importedData.transactions && importedData.debts) {
+        localStorage.setItem('finances_v9_trans', JSON.stringify(importedData.transactions));
+        localStorage.setItem('finances_v9_debts', JSON.stringify(importedData.debts));
+        transactions = importedData.transactions;
+        debts = importedData.debts;
+        updateUI();
+        alert("¡Copia de seguridad restaurada con éxito!");
+      } else {
+        alert("El archivo no tiene el formato correcto.");
+      }
+    } catch (err) {
+      alert("Error al leer el archivo de respaldo.");
+    }
+  };
+  reader.readAsText(file);
+});

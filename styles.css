@@ -152,7 +152,7 @@ body {
   padding: 0 24px;
 }
 
-/* KPI Cards en Alineación Horizontal */
+/* KPI Cards en 4 Columnas Horizontales Estrictas */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -218,6 +218,8 @@ body {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+
+.panel-card.border-primary { border-top: 3px solid var(--primary-color); }
 
 .panel-header {
   padding: 16px 20px;

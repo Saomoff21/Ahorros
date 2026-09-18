@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ahorros SA - Plataforma de Gestión Financiera</title>
+  <title>AHORROS SA - SISTEMA DE GESTION FINANCIERA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,60 +14,60 @@
   <header class="app-header">
     <div class="header-container">
       <div class="brand">
-        <h1>Ahorros</h1>
-        <span class="badge">SA</span>
+        <h1>AHORROS SA</h1>
+        <span class="badge">SISTEMA INTEGRAL</span>
       </div>
-      <button id="theme-toggle" class="btn-theme" title="Cambiar tema">
-        <span id="theme-icon">🌙</span> <span id="theme-text">Modo Oscuro</span>
+      <button id="theme-toggle" class="btn-theme" title="CAMBIAR TEMA">
+        <span id="theme-text">MODO OSCURO</span>
       </button>
     </div>
   </header>
 
   <main class="main-container">
 
-    <!-- Navegación por Pestañas -->
+    <!-- NAVEGACION DE PESTAÑAS -->
     <nav class="tabs-nav">
-      <button class="tab-btn active" data-tab="tab-dashboard">📊 Dashboard</button>
-      <button class="tab-btn" data-tab="tab-movements">💸 Ingresos y Gastos</button>
-      <button class="tab-btn" data-tab="tab-debts">📌 Control de Deudas</button>
+      <button class="tab-btn active" data-tab="tab-dashboard">DASHBOARD</button>
+      <button class="tab-btn" data-tab="tab-movements">INGRESOS Y GASTOS</button>
+      <button class="tab-btn" data-tab="tab-debts">CONTROL DE DEUDAS</button>
     </nav>
 
     <!-- PESTAÑA 1: DASHBOARD -->
     <section id="tab-dashboard" class="tab-content active">
       <div class="dashboard-grid">
         <div class="kpi-card">
-          <span class="kpi-label">Ingresos Totales</span>
+          <span class="kpi-label">INGRESOS TOTALES</span>
           <div id="total-income" class="kpi-value text-success">$ 0</div>
         </div>
         <div class="kpi-card">
-          <span class="kpi-label">Gastos Totales</span>
+          <span class="kpi-label">GASTOS TOTALES</span>
           <div id="total-expense" class="kpi-value text-danger">$ 0</div>
         </div>
         <div class="kpi-card">
-          <span class="kpi-label">Balance Disponible</span>
+          <span class="kpi-label">BALANCE DISPONIBLE</span>
           <div id="total-balance" class="kpi-value text-primary">$ 0</div>
         </div>
         <div class="kpi-card">
-          <span class="kpi-label">Deuda Pendiente</span>
+          <span class="kpi-label">DEUDA PENDIENTE</span>
           <div id="total-debt-pending" class="kpi-value text-purple">$ 0</div>
         </div>
       </div>
 
       <div id="alerts-container" class="alerts-container"></div>
 
-      <!-- Resumen Integrado del Dashboard -->
-      <div class="panel-card border-primary" style="margin-top: 20px;">
+      <div class="panel-card border-primary">
         <div class="panel-header">
-          <h2>Resumen General de la Cuenta</h2>
+          <h2>RESUMEN GENERAL DE CUENTAS</h2>
         </div>
         <div class="table-wrapper">
           <table>
             <thead>
               <tr>
-                <th>Tipo</th>
-                <th>Concepto / Obligación</th>
-                <th>Categoría / Estado</th>
-                <th>Monto / Saldo</th>
+                <th>FECHA</th>
+                <th>TIPO</th>
+                <th>CONCEPTO / OBLIGACION</th>
+                <th>CATEGORIA</th>
+                <th>MONTO / SALDO</th>
               </tr>
             </thead>
             <tbody id="dashboard-summary-list"></tbody>
@@ -78,62 +78,61 @@
 
     <!-- PESTAÑA 2: INGRESOS Y GASTOS -->
     <section id="tab-movements" class="tab-content">
-      <div class="workspace-grid">
+      <div class="movements-split-grid">
         
-        <div class="forms-column">
-          <div class="panel-card">
+        <!-- SECCION INGRESOS -->
+        <div class="movement-column">
+          <div class="panel-card border-success">
             <div class="panel-header">
-              <h2>Registrar Movimiento</h2>
+              <h2>REGISTRAR INGRESO</h2>
             </div>
-            <form id="transaction-form" class="app-form">
+            <form id="income-form" class="app-form">
               <div class="form-group">
-                <label for="type">Tipo</label>
-                <select id="type" required>
-                  <option value="income">Ingreso (+)</option>
-                  <option value="expense">Gasto (-)</option>
+                <label for="income-date">FECHA DE TRANSACCION</label>
+                <input type="date" id="income-date">
+              </div>
+
+              <div class="form-group">
+                <label for="income-description">CONCEPTO</label>
+                <input type="text" id="income-description" class="uppercase-input" placeholder="EJ: HONORARIOS PROFESIONALES" required>
+              </div>
+
+              <div class="form-group">
+                <label for="income-amount">MONTO ($ COP)</label>
+                <input type="text" id="income-amount" class="currency-input" placeholder="EJ: 250.000" required>
+              </div>
+
+              <div class="form-group">
+                <label for="income-category">CATEGORIA</label>
+                <select id="income-category" class="category-select" data-other="income-other-group" required>
+                  <option value="SALARIO / TRABAJO">SALARIO / TRABAJO</option>
+                  <option value="INVERSIONES">INVERSIONES</option>
+                  <option value="VENTAS">VENTAS</option>
+                  <option value="OTROS">OTROS</option>
                 </select>
               </div>
 
-              <div class="form-group">
-                <label for="description">Concepto</label>
-                <input type="text" id="description" placeholder="Ej: Honorarios, Mercado" required>
+              <div class="form-group hidden" id="income-other-group">
+                <label for="income-other-detail">ESPECIFIQUE OTRA CATEGORIA</label>
+                <input type="text" id="income-other-detail" class="uppercase-input" placeholder="DETALLE DE CATEGORIA">
               </div>
 
-              <div class="form-group">
-                <label for="amount">Monto ($ COP)</label>
-                <input type="text" id="amount" class="currency-input" placeholder="Ej: 250.000" required>
-              </div>
-
-              <div class="form-group">
-                <label for="category">Categoría</label>
-                <select id="category" required>
-                  <option value="Salario / Trabajo">Salario / Trabajo</option>
-                  <option value="Vivienda y Servicios">Vivienda y Servicios</option>
-                  <option value="Alimentación">Alimentación</option>
-                  <option value="Transporte">Transporte</option>
-                  <option value="Entretenimiento / Ocio">Entretenimiento / Ocio</option>
-                  <option value="Pago de Deudas">Pago de Deudas</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-
-              <button type="submit" class="btn btn-primary">Guardar Transacción</button>
+              <button type="submit" class="btn btn-success">GUARDAR INGRESO</button>
             </form>
           </div>
-        </div>
 
-        <div class="tables-column">
           <div class="panel-card table-panel border-success">
             <div class="panel-header">
-              <h2>Historial de Ingresos</h2>
+              <h2>HISTORIAL DE INGRESOS</h2>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>Concepto</th>
-                    <th>Categoría</th>
-                    <th>Monto</th>
+                    <th>FECHA</th>
+                    <th>CONCEPTO</th>
+                    <th>CATEGORIA</th>
+                    <th>MONTO</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -141,18 +140,63 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <!-- SECCION GASTOS -->
+        <div class="movement-column">
+          <div class="panel-card border-danger">
+            <div class="panel-header">
+              <h2>REGISTRAR GASTO</h2>
+            </div>
+            <form id="expense-form" class="app-form">
+              <div class="form-group">
+                <label for="expense-date">FECHA DE TRANSACCION</label>
+                <input type="date" id="expense-date">
+              </div>
+
+              <div class="form-group">
+                <label for="expense-description">CONCEPTO</label>
+                <input type="text" id="expense-description" class="uppercase-input" placeholder="EJ: SUMINISTROS Y MERCADO" required>
+              </div>
+
+              <div class="form-group">
+                <label for="expense-amount">MONTO ($ COP)</label>
+                <input type="text" id="expense-amount" class="currency-input" placeholder="EJ: 150.000" required>
+              </div>
+
+              <div class="form-group">
+                <label for="expense-category">CATEGORIA</label>
+                <select id="expense-category" class="category-select" data-other="expense-other-group" required>
+                  <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
+                  <option value="ALIMENTACION">ALIMENTACION</option>
+                  <option value="TRANSPORTE">TRANSPORTE</option>
+                  <option value="ENTRETENIMIENTO">ENTRETENIMIENTO</option>
+                  <option value="PAGO DE DEUDAS">PAGO DE DEUDAS</option>
+                  <option value="OTROS">OTROS</option>
+                </select>
+              </div>
+
+              <div class="form-group hidden" id="expense-other-group">
+                <label for="expense-other-detail">ESPECIFIQUE OTRA CATEGORIA</label>
+                <input type="text" id="expense-other-detail" class="uppercase-input" placeholder="DETALLE DE CATEGORIA">
+              </div>
+
+              <button type="submit" class="btn btn-danger">GUARDAR GASTO</button>
+            </form>
+          </div>
 
           <div class="panel-card table-panel border-danger">
             <div class="panel-header">
-              <h2>Historial de Egresos</h2>
+              <h2>HISTORIAL DE GASTOS</h2>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>Concepto</th>
-                    <th>Categoría</th>
-                    <th>Monto</th>
+                    <th>FECHA</th>
+                    <th>CONCEPTO</th>
+                    <th>CATEGORIA</th>
+                    <th>MONTO</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -170,37 +214,37 @@
       <div class="workspace-grid">
         
         <div class="forms-column">
-          <div class="panel-card">
+          <div class="panel-card border-purple">
             <div class="panel-header">
-              <h2>Registrar Deuda</h2>
+              <h2>REGISTRAR OBLIGACION</h2>
             </div>
             <form id="debt-form" class="app-form">
               <div class="form-group">
-                <label for="debt-name">Acreedor / Obligación</label>
-                <input type="text" id="debt-name" placeholder="Ej: Entidad Bancaria" required>
+                <label for="debt-name">ACREEDOR / OBLIGACION</label>
+                <input type="text" id="debt-name" class="uppercase-input" placeholder="EJ: ENTIDAD BANCARIA" required>
               </div>
 
               <div class="form-group">
-                <label for="debt-total">Monto Capital ($ COP)</label>
-                <input type="text" id="debt-total" class="currency-input" placeholder="Ej: 1.500.000" required>
+                <label for="debt-total">MONTO CAPITAL ($ COP)</label>
+                <input type="text" id="debt-total" class="currency-input" placeholder="EJ: 1.500.000" required>
               </div>
 
               <div class="form-group">
-                <label for="debt-interest">Tasa de Interés % (Opcional)</label>
-                <input type="number" id="debt-interest" placeholder="Ej: 2.5" min="0" step="0.1">
+                <label for="debt-interest">TASA DE INTERES % (OPCIONAL)</label>
+                <input type="number" id="debt-interest" placeholder="EJ: 2.5" min="0" step="0.1">
               </div>
 
               <div class="form-group">
-                <label for="debt-installments">Número de Cuotas</label>
-                <input type="number" id="debt-installments" placeholder="Ej: 12" min="1" value="1" required>
+                <label for="debt-installments">NUMERO DE CUOTAS</label>
+                <input type="number" id="debt-installments" placeholder="EJ: 12" min="1" value="1" required>
               </div>
 
               <div class="form-group">
-                <label for="debt-start-date">Fecha Primer Cobro</label>
+                <label for="debt-start-date">FECHA PRIMER COBRO</label>
                 <input type="date" id="debt-start-date" required>
               </div>
 
-              <button type="submit" class="btn btn-purple">Crear Obligación</button>
+              <button type="submit" class="btn btn-purple">CREAR OBLIGACION</button>
             </form>
           </div>
         </div>
@@ -208,16 +252,16 @@
         <div class="tables-column">
           <div class="panel-card table-panel border-purple">
             <div class="panel-header">
-              <h2>Obligaciones y Planes de Pago</h2>
+              <h2>OBLIGACIONES Y PLANES DE PAGO</h2>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>Obligación</th>
-                    <th>Progreso / Plan</th>
-                    <th>Saldo Pendiente</th>
-                    <th>Gestión de Cuota</th>
+                    <th>OBLIGACION</th>
+                    <th>PROGRESO / PLAN</th>
+                    <th>SALDO PENDIENTE</th>
+                    <th>GESTION DE CUOTA</th>
                     <th></th>
                   </tr>
                 </thead>

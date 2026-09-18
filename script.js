@@ -48,6 +48,7 @@ const debtForm = document.getElementById('debt-form');
 const incomeList = document.getElementById('income-list');
 const expenseList = document.getElementById('expense-list');
 const debtList = document.getElementById('debt-list');
+const dashboardSummaryList = document.getElementById('dashboard-summary-list');
 
 const totalIncomeEl = document.getElementById('total-income');
 const totalExpenseEl = document.getElementById('total-expense');
@@ -138,6 +139,7 @@ function updateUI() {
   incomeList.innerHTML = '';
   expenseList.innerHTML = '';
   debtList.innerHTML = '';
+  dashboardSummaryList.innerHTML = '';
   alertsContainer.innerHTML = '';
 
   let incomeSum = 0;
@@ -163,6 +165,16 @@ function updateUI() {
       expenseSum += t.amount;
       expenseList.appendChild(row);
     }
+
+    // Agregar a la tabla de resumen del Dashboard
+    const summaryRow = document.createElement('tr');
+    summaryRow.innerHTML = `
+      <td><span class="tag-badge ${t.type === 'income' ? 'text-success' : 'text-danger'}">${t.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+      <td><strong>${t.description}</strong></td>
+      <td><small style="color: var(--text-muted);">${t.category}</small></td>
+      <td style="font-weight: 600;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">${formatCurrency(t.amount)}</td>
+    `;
+    dashboardSummaryList.appendChild(summaryRow);
   });
 
   // 2. Deudas
@@ -238,7 +250,23 @@ function updateUI() {
         if (val) e.target.value = new Intl.NumberFormat('es-CO').format(parseInt(val));
       });
     }
+
+    // Agregar deudas activas al Resumen del Dashboard
+    if (pending > 0) {
+      const summaryRow = document.createElement('tr');
+      summaryRow.innerHTML = `
+        <td><span class="tag-badge text-purple">Deuda</span></td>
+        <td><strong>${d.name}</strong></td>
+        <td><small style="color: var(--text-muted);">${historyCount}/${totalInstallments} Cuotas</small></td>
+        <td style="font-weight: 700;" class="text-purple">${formatCurrency(pending)}</td>
+      `;
+      dashboardSummaryList.appendChild(summaryRow);
+    }
   });
+
+  if (transactions.length === 0 && debts.length === 0) {
+    dashboardSummaryList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No hay registros ingresados aún.</td></tr>';
+  }
 
   const balance = incomeSum - expenseSum;
 

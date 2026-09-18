@@ -153,13 +153,20 @@ body {
 }
 
 /* KPI Cards */
+/* Dashboard en disposición puramente horizontal */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, 1fr); /* Fuerza exactamente 4 columnas paralelas */
   gap: 16px;
   margin-bottom: 24px;
 }
 
+/* Ajuste responsivo para celulares (para que no se aplaste el texto en pantallas pequeñas) */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2x2 en pantallas móviles */
+  }
+}
 .kpi-card {
   background: var(--surface-color);
   border: 1px solid var(--border-color);

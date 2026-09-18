@@ -1,0 +1,5 @@
+Hay que agregar que en la parte de los historiales,
+sin importar cuando se agrego se almacene por orden de fecha, 
+además de que tanto en ingresos como en gastos se puedan ver por meses y que cada mes sea por separado y cargue el historial del mes 
+buscado y no queden todos juntos asi mismo luego se pueda cargar por años.
+

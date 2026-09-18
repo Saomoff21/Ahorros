@@ -1,4 +1,4 @@
-// --- Lógica de Pestañas (Tabs) ---
+// CONTROL DE PESTAÑAS
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 
@@ -12,9 +12,8 @@ tabButtons.forEach(btn => {
   });
 });
 
-// --- Lógica de Tema Oscuro / Claro ---
+// CONTROL DE TEMA OSCURO / CLARO
 const themeToggleBtn = document.getElementById('theme-toggle');
-const themeIcon = document.getElementById('theme-icon');
 const themeText = document.getElementById('theme-text');
 
 let currentTheme = localStorage.getItem('app_theme') || 'light';
@@ -29,20 +28,28 @@ themeToggleBtn.addEventListener('click', () => {
 });
 
 function updateThemeUI() {
-  if (currentTheme === 'dark') {
-    themeIcon.textContent = '☀️';
-    themeText.textContent = 'Modo Claro';
-  } else {
-    themeIcon.textContent = '🌙';
-    themeText.textContent = 'Modo Oscuro';
-  }
+  themeText.textContent = currentTheme === 'dark' ? 'MODO CLARO' : 'MODO OSCURO';
 }
 
-// --- Lógica Financiera ---
-let transactions = JSON.parse(localStorage.getItem('finances_v9_trans')) || [];
-let debts = JSON.parse(localStorage.getItem('finances_v9_debts')) || [];
+// MANEJO DE CATEGORIA "OTROS" DESPLEGABLE
+document.querySelectorAll('.category-select').forEach(select => {
+  select.addEventListener('change', (e) => {
+    const otherGroupId = e.target.dataset.other;
+    const otherGroup = document.getElementById(otherGroupId);
+    if (e.target.value === 'OTROS') {
+      otherGroup.classList.remove('hidden');
+    } else {
+      otherGroup.classList.add('hidden');
+    }
+  });
+});
 
-const transForm = document.getElementById('transaction-form');
+// LOGICA DE FINANZAS
+let transactions = JSON.parse(localStorage.getItem('finances_v10_trans')) || [];
+let debts = JSON.parse(localStorage.getItem('finances_v10_debts')) || [];
+
+const incomeForm = document.getElementById('income-form');
+const expenseForm = document.getElementById('expense-form');
 const debtForm = document.getElementById('debt-form');
 
 const incomeList = document.getElementById('income-list');
@@ -56,7 +63,7 @@ const totalBalanceEl = document.getElementById('total-balance');
 const totalDebtPendingEl = document.getElementById('total-debt-pending');
 const alertsContainer = document.getElementById('alerts-container');
 
-// Máscara de moneda
+// MASCARA DE MONEDA
 document.querySelectorAll('.currency-input').forEach(input => {
   input.addEventListener('input', (e) => {
     let value = e.target.value.replace(/\D/g, '');
@@ -74,22 +81,21 @@ function parseAmount(val) {
   return parseFloat(String(val).replace(/\./g, '')) || 0;
 }
 
-function formatDateDisplay(dateObj) {
-  if (!dateObj) return '';
-  let d = new Date(dateObj);
-  if (isNaN(d.getTime())) return dateObj;
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const year = d.getUTCFullYear();
-  return `${day}/${month}/${year}`;
-}
-
 function getTodayStr() {
   const d = new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
 }
 
 function getNextDueDate(startDateStr, paymentsCount) {
@@ -119,15 +125,15 @@ function renderAccelerationSuggestions(pending) {
     const suggestedMonthly = Math.ceil(pending / m);
     cardsHtml += `
       <div class="acceleration-card">
-        <small>En <strong>${m} meses</strong>:</small>
-        <span>${formatCurrency(suggestedMonthly)}/mes</span>
+        <small>EN <strong>${m} MESES</strong>:</small>
+        <span>${formatCurrency(suggestedMonthly)}/MES</span>
       </div>
     `;
   });
 
   return `
     <details class="acceleration-details">
-      <summary>Plan de Pago Adelantado (2, 6, 8 o 10 meses)</summary>
+      <summary>PLAN DE ACELERACION (2, 6, 8 O 10 MESES)</summary>
       <div class="acceleration-grid">
         ${cardsHtml}
       </div>
@@ -146,16 +152,17 @@ function updateUI() {
   let expenseSum = 0;
   const today = getTodayStr();
 
-  // 1. Transacciones
+  // RENDER TRANSACCIONES
   transactions.forEach((t, index) => {
     const row = document.createElement('tr');
     row.innerHTML = `
+      <td><small style="color: var(--text-muted);">${formatDateDisplay(t.date)}</small></td>
       <td><strong>${t.description}</strong></td>
       <td><small style="color: var(--text-muted);">${t.category}</small></td>
-      <td style="font-weight: 600;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">
+      <td style="font-weight: 700;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">
         ${formatCurrency(t.amount)}
       </td>
-      <td><button class="btn-delete" onclick="removeTransaction(${index})">&times;</button></td>
+      <td><button class="btn-delete" onclick="removeTransaction(${index})">X</button></td>
     `;
 
     if (t.type === 'income') {
@@ -166,18 +173,18 @@ function updateUI() {
       expenseList.appendChild(row);
     }
 
-    // Agregar a la tabla de resumen del Dashboard
     const summaryRow = document.createElement('tr');
     summaryRow.innerHTML = `
-      <td><span class="tag-badge ${t.type === 'income' ? 'text-success' : 'text-danger'}">${t.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+      <td><small style="color: var(--text-muted);">${formatDateDisplay(t.date)}</small></td>
+      <td><span class="tag-badge ${t.type === 'income' ? 'text-success' : 'text-danger'}">${t.type === 'income' ? 'INGRESO' : 'GASTO'}</span></td>
       <td><strong>${t.description}</strong></td>
       <td><small style="color: var(--text-muted);">${t.category}</small></td>
-      <td style="font-weight: 600;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">${formatCurrency(t.amount)}</td>
+      <td style="font-weight: 700;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">${formatCurrency(t.amount)}</td>
     `;
     dashboardSummaryList.appendChild(summaryRow);
   });
 
-  // 2. Deudas
+  // RENDER DEUDAS
   let totalDebtPendingSum = 0;
   debts.forEach((d, index) => {
     const interestRate = d.interest || 0;
@@ -195,28 +202,28 @@ function updateUI() {
     let dueDateStatus = '';
     if (pending > 0) {
       if (nextDueDateStr < today) {
-        dueDateStatus = `<span class="tag-badge text-danger">⏰ Cuota ${currentQuotaNumber}/${totalInstallments}: Vencida (${formatDateDisplay(nextDueDateStr)})</span>`;
-        showAlert(`Alerta: La cuota ${currentQuotaNumber} de ${d.name} venció el ${formatDateDisplay(nextDueDateStr)}.`, 'danger');
+        dueDateStatus = `<span class="tag-badge text-danger">CUOTA ${currentQuotaNumber}/${totalInstallments}: VENCIDA (${formatDateDisplay(nextDueDateStr)})</span>`;
+        showAlert(`ALERTA: LA CUOTA ${currentQuotaNumber} DE ${d.name} VENCIO EL ${formatDateDisplay(nextDueDateStr)}.`, 'danger');
       } else if (nextDueDateStr === today) {
-        dueDateStatus = `<span class="tag-badge text-warning">⏰ Cuota ${currentQuotaNumber}/${totalInstallments}: Vence hoy</span>`;
-        showAlert(`Recordatorio: Hoy vence la cuota ${currentQuotaNumber} de ${d.name}.`, 'warning');
+        dueDateStatus = `<span class="tag-badge text-warning">CUOTA ${currentQuotaNumber}/${totalInstallments}: VENCE HOY</span>`;
+        showAlert(`RECORDATORIO: HOY VENCE LA CUOTA ${currentQuotaNumber} DE ${d.name}.`, 'warning');
       } else {
-        dueDateStatus = `<span class="tag-badge">📅 Próximo cobro (${currentQuotaNumber}/${totalInstallments}): ${formatDateDisplay(nextDueDateStr)}</span>`;
+        dueDateStatus = `<span class="tag-badge">PROXIMO COBRO (${currentQuotaNumber}/${totalInstallments}): ${formatDateDisplay(nextDueDateStr)}</span>`;
       }
     }
 
     let historyHtml = '';
     if (d.history && d.history.length > 0) {
-      historyHtml = '<div style="font-size: 0.75rem; margin-top: 6px; color: var(--text-muted);"><strong>Abonos:</strong> ';
+      historyHtml = '<div style="font-size: 0.72rem; margin-top: 6px; color: var(--text-muted);"><strong>ABONOS:</strong> ';
       d.history.forEach((h, hIdx) => {
-        historyHtml += `<span class="tag-badge">Cuota ${hIdx + 1}: ${formatCurrency(h.amount)}</span> `;
+        historyHtml += `<span class="tag-badge">CUOTA ${hIdx + 1} (${formatDateDisplay(h.date)}): ${formatCurrency(h.amount)}</span> `;
       });
       historyHtml += '</div>';
     }
 
     const suggestedQuotaAmount = Math.round(totalWithInterest / totalInstallments);
     const accelerationHtml = renderAccelerationSuggestions(pending);
-    const interestBadge = interestRate > 0 ? `<span class="tag-badge text-warning">+${interestRate}% int.</span>` : '';
+    const interestBadge = interestRate > 0 ? `<span class="tag-badge text-warning">+${interestRate}% INT.</span>` : '';
 
     const row = document.createElement('tr');
     row.innerHTML = `
@@ -225,7 +232,7 @@ function updateUI() {
         ${dueDateStatus}
       </td>
       <td>
-        <small style="color: var(--text-muted);">${formatCurrency(d.paid)} de ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
+        <small style="color: var(--text-muted);">${formatCurrency(d.paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%;"></div></div>
         ${accelerationHtml}
         ${historyHtml}
@@ -235,11 +242,11 @@ function updateUI() {
         ${pending > 0 ? `
           <div style="display: flex; gap: 4px;">
             <input type="text" class="currency-input" id="pay-input-${index}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 100px; padding: 4px; font-size: 0.8rem;">
-            <button class="btn-pay" onclick="payDebt(${index})">Abonar</button>
+            <button class="btn-pay" onclick="payDebt(${index})">ABONAR</button>
           </div>
-        ` : '<span class="text-success" style="font-weight: 600;">Liquidada</span>'}
+        ` : '<span class="text-success" style="font-weight: 700;">LIQUIDADA</span>'}
       </td>
-      <td><button class="btn-delete" onclick="removeDebt(${index})">&times;</button></td>
+      <td><button class="btn-delete" onclick="removeDebt(${index})">X</button></td>
     `;
 
     debtList.appendChild(row);
@@ -251,13 +258,13 @@ function updateUI() {
       });
     }
 
-    // Agregar deudas activas al Resumen del Dashboard
     if (pending > 0) {
       const summaryRow = document.createElement('tr');
       summaryRow.innerHTML = `
-        <td><span class="tag-badge text-purple">Deuda</span></td>
+        <td><small style="color: var(--text-muted);">${formatDateDisplay(nextDueDateStr)}</small></td>
+        <td><span class="tag-badge text-purple">DEUDA</span></td>
         <td><strong>${d.name}</strong></td>
-        <td><small style="color: var(--text-muted);">${historyCount}/${totalInstallments} Cuotas</small></td>
+        <td><small style="color: var(--text-muted);">${historyCount}/${totalInstallments} CUOTAS</small></td>
         <td style="font-weight: 700;" class="text-purple">${formatCurrency(pending)}</td>
       `;
       dashboardSummaryList.appendChild(summaryRow);
@@ -265,7 +272,7 @@ function updateUI() {
   });
 
   if (transactions.length === 0 && debts.length === 0) {
-    dashboardSummaryList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No hay registros ingresados aún.</td></tr>';
+    dashboardSummaryList.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">NO HAY REGISTROS INGRESADOS AUN.</td></tr>';
   }
 
   const balance = incomeSum - expenseSum;
@@ -275,8 +282,8 @@ function updateUI() {
   totalBalanceEl.textContent = formatCurrency(balance);
   totalDebtPendingEl.textContent = formatCurrency(totalDebtPendingSum);
 
-  localStorage.setItem('finances_v9_trans', JSON.stringify(transactions));
-  localStorage.setItem('finances_v9_debts', JSON.stringify(debts));
+  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
 }
 
 function showAlert(message, type) {
@@ -286,29 +293,58 @@ function showAlert(message, type) {
   alertsContainer.appendChild(alert);
 }
 
-transForm.addEventListener('submit', (e) => {
+// FORMULARIO INGRESOS
+incomeForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const type = document.getElementById('type').value;
-  const description = document.getElementById('description').value;
-  const amountInput = document.getElementById('amount');
-  const amount = parseAmount(amountInput.value);
-  const category = document.getElementById('category').value;
+  const dateInput = document.getElementById('income-date').value;
+  const date = dateInput ? dateInput : getTodayStr();
+  const description = document.getElementById('income-description').value.toUpperCase();
+  const amount = parseAmount(document.getElementById('income-amount').value);
+  
+  let category = document.getElementById('income-category').value;
+  if (category === 'OTROS') {
+    const otherDetail = document.getElementById('income-other-detail').value.toUpperCase();
+    category = otherDetail ? `OTROS (${otherDetail})` : 'OTROS';
+  }
 
   if (amount <= 0) return;
 
-  transactions.push({ id: Date.now(), type, description, amount, category });
-  transForm.reset();
+  transactions.push({ id: Date.now(), type: 'income', date, description, amount, category });
+  incomeForm.reset();
+  document.getElementById('income-other-group').classList.add('hidden');
   updateUI();
 });
 
+// FORMULARIO GASTOS
+expenseForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const dateInput = document.getElementById('expense-date').value;
+  const date = dateInput ? dateInput : getTodayStr();
+  const description = document.getElementById('expense-description').value.toUpperCase();
+  const amount = parseAmount(document.getElementById('expense-amount').value);
+  
+  let category = document.getElementById('expense-category').value;
+  if (category === 'OTROS') {
+    const otherDetail = document.getElementById('expense-other-detail').value.toUpperCase();
+    category = otherDetail ? `OTROS (${otherDetail})` : 'OTROS';
+  }
+
+  if (amount <= 0) return;
+
+  transactions.push({ id: Date.now(), type: 'expense', date, description, amount, category });
+  expenseForm.reset();
+  document.getElementById('expense-other-group').classList.add('hidden');
+  updateUI();
+});
+
+// FORMULARIO DEUDAS
 debtForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const name = document.getElementById('debt-name').value;
-  const totalInput = document.getElementById('debt-total');
-  const total = parseAmount(totalInput.value);
+  const name = document.getElementById('debt-name').value.toUpperCase();
+  const total = parseAmount(document.getElementById('debt-total').value);
   const interest = parseFloat(document.getElementById('debt-interest').value) || 0;
   const installments = parseInt(document.getElementById('debt-installments').value) || 1;
-  const startDate = document.getElementById('debt-start-date').value;
+  const startDate = document.getElementById('debt-start-date').value || getTodayStr();
 
   if (total <= 0) return;
 
@@ -323,7 +359,7 @@ function payDebt(index) {
   const payAmount = parseAmount(payInput.value);
 
   if (payAmount <= 0) {
-    alert("Ingresa un monto válido.");
+    alert("INGRESA UN MONTO VALIDO.");
     return;
   }
 
@@ -332,7 +368,7 @@ function payDebt(index) {
   const pending = totalWithInterest - debt.paid;
 
   if (payAmount > pending) {
-    alert(`El abono supera el saldo pendiente (${formatCurrency(pending)}).`);
+    alert(`EL ABONO SUPERA EL SALDO PENDIENTE (${formatCurrency(pending)}).`);
     return;
   }
 
@@ -347,9 +383,10 @@ function payDebt(index) {
     id: Date.now(),
     debtId: debt.id,
     type: 'expense',
-    description: `Pago Cuota ${currentQuotaNum}/${debt.installments}: ${debt.name}`,
+    date: todayStr,
+    description: `PAGO CUOTA ${currentQuotaNum}/${debt.installments}: ${debt.name}`,
     amount: payAmount,
-    category: 'Pago de Deudas'
+    category: 'PAGO DE DEUDAS'
   });
 
   updateUI();
@@ -362,7 +399,7 @@ function removeTransaction(index) {
 
 function removeDebt(index) {
   const debt = debts[index];
-  const revertExpenses = confirm(`¿Deseas cancelar la deuda "${debt.name}"?\n\n- Presiona ACEPTAR si la borraste por error/motivo externo y quieres REVERTIR y BORRAR los pagos de la tabla de egresos.\n- Presiona CANCELAR para conservar los egresos ya registrados.`);
+  const revertExpenses = confirm(`¿DESEAS CANCELAR LA DEUDA "${debt.name}"?\n\n- PRESIONA ACEPTAR PARA REVERTIR Y BORRAR LOS PAGOS DE LA TABLA DE EGRESOS.\n- PRESIONA CANCELAR PARA CONSERVAR LOS EGRESOS.`);
 
   if (revertExpenses) {
     transactions = transactions.filter(t => t.debtId !== debt.id && !t.description.includes(debt.name));

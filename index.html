@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plataforma de Gestión Financiera</title>
+  <title>Ahorros SA - Plataforma de Gestión Financiera</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
     <div class="header-container">
       <div class="brand">
         <h1>Ahorros</h1>
-        <span class="badge"></span>SA</span>
+        <span class="badge">SA</span>
       </div>
       <button id="theme-toggle" class="btn-theme" title="Cambiar tema">
         <span id="theme-icon">🌙</span> <span id="theme-text">Modo Oscuro</span>
@@ -54,6 +54,26 @@
       </div>
 
       <div id="alerts-container" class="alerts-container"></div>
+
+      <!-- Resumen Integrado del Dashboard -->
+      <div class="panel-card border-primary" style="margin-top: 20px;">
+        <div class="panel-header">
+          <h2>Resumen General de la Cuenta</h2>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Concepto / Obligación</th>
+                <th>Categoría / Estado</th>
+                <th>Monto / Saldo</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-summary-list"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- PESTAÑA 2: INGRESOS Y GASTOS -->

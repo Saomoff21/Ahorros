@@ -1,0 +1,14 @@
+{
+  "name": "ahorros-sa",
+  "version": "1.0.0",
+  "description": "AHORROS SA - SISTEMA DE GESTION FINANCIERA",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node -e \"console.log('Build complete')\""
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

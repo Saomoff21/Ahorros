@@ -80,14 +80,14 @@ async function testConnection() {
 }
 testConnection();
 
-// GESTION DE BOVEDAS Y CODIGOS MULTI-DISPOSITIVO
+// GESTION DE BOVEDAS Y CODIGOS MULTI-DISPOSITIVO (CORTO Y MEMORABLE)
 function generateVaultCode() {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   let rand = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 4; i++) {
     rand += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `AHORRO-${rand}`;
+  return `AHO-${rand}`;
 }
 
 // Comprobar parámetros de URL (?boveda=... o ?code=... o ?vault=...)
@@ -120,6 +120,7 @@ let activeYear = '2026';
 let activeMonth = 'ALL';
 let activeMedium = 'ALL'; // 'ALL', 'FISICO', 'DIGITAL'
 let activeMethod = 'ALL'; // 'ALL', 'EFECTIVO', 'NEQUI', 'DAVIPLATA', 'BANCO', 'TARJETA_DEBITO', 'TARJETA_CREDITO', 'OTRO'
+let activeRecurringFilter = 'ALL'; // 'ALL', 'income', 'expense'
 let calendarCurrentDate = new Date();
 
 // INSTANCIAS DE GRAFICOS CHART.JS
@@ -136,7 +137,12 @@ let unsubscribeGoals = null;
 let unsubscribeRecurring = null;
 
 function generateApiKey() {
-  const key = 'ahorros_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let rand = '';
+  for (let i = 0; i < 6; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const key = `AHO-SC-${rand}`;
   localStorage.setItem('ahorros_shortcut_key', key);
   return key;
 }
@@ -337,6 +343,20 @@ const vaultLinkFeedback = document.getElementById('vault-link-feedback');
 const vaultGoogleEmail = document.getElementById('vault-google-email');
 const vaultGoogleNote = document.getElementById('vault-google-note');
 const btnVaultGoogleLogin = document.getElementById('btn-vault-google-login');
+const btnTestCloudVault = document.getElementById('btn-test-cloud-vault');
+const vaultTestResult = document.getElementById('vault-test-result');
+const vaultQrImg = document.getElementById('vault-qr-img');
+const vaultDirectUrlText = document.getElementById('vault-direct-url-text');
+
+function updateVaultModalDirectUrl() {
+  const origin = window.location.origin;
+  const path = window.location.pathname;
+  const directUrl = `${origin}${path}?boveda=${activeVaultId}`;
+  if (vaultDirectUrlText) vaultDirectUrlText.textContent = directUrl;
+  if (vaultQrImg) {
+    vaultQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(directUrl)}`;
+  }
+}
 
 // URL COMPARTIDA LIMPIA
 const appOrigin = window.location.origin || 'https://ahorros-sa.netlify.app';
@@ -429,6 +449,7 @@ if ('serviceWorker' in navigator) {
 
 // MANEJO DEL MODAL DE BÓVEDA
 authBtn.addEventListener('click', () => {
+  updateVaultModalDirectUrl();
   if (vaultModal) vaultModal.classList.remove('hidden');
 });
 
@@ -460,9 +481,56 @@ if (btnShareVaultLink) {
     const directUrl = `${origin}${path}?boveda=${activeVaultId}`;
     navigator.clipboard.writeText(directUrl).then(() => {
       btnShareVaultLink.textContent = '¡Enlace Copiado!';
-      setTimeout(() => { btnShareVaultLink.textContent = '🔗 Enlace Directo'; }, 2000);
+      setTimeout(() => { btnShareVaultLink.textContent = '🔗 Copiar Enlace Directo'; }, 2000);
       alert(`¡Enlace directo copiado al portapapeles!\n\n${directUrl}\n\nÁbrelo en tu celular o envíatelo por WhatsApp para ingresar a tu bóveda sin tener que escribir el código.`);
     });
+  });
+}
+
+if (btnTestCloudVault) {
+  btnTestCloudVault.addEventListener('click', async () => {
+    if (!vaultTestResult) return;
+    vaultTestResult.style.display = 'block';
+    vaultTestResult.style.background = 'rgba(6, 182, 212, 0.15)';
+    vaultTestResult.style.border = '1px solid var(--primary-color)';
+    vaultTestResult.style.color = 'var(--text-main)';
+    vaultTestResult.innerHTML = '⏳ Realizando prueba de lectura y escritura en Firebase Firestore...';
+
+    const t0 = performance.now();
+    try {
+      const pingRef = doc(db, 'vaults', activeVaultId, '_diagnostics', 'test_ping');
+      await setDoc(pingRef, {
+        timestamp: new Date().toISOString(),
+        testBy: 'user_diagnostic',
+        vaultId: activeVaultId
+      });
+      const snap = await getDoc(pingRef);
+      const latency = Math.round(performance.now() - t0);
+
+      if (snap.exists()) {
+        vaultTestResult.style.background = 'rgba(16, 185, 129, 0.15)';
+        vaultTestResult.style.border = '1px solid var(--success-color)';
+        vaultTestResult.style.color = 'var(--success-color)';
+        vaultTestResult.innerHTML = `
+          <strong>✅ ¡BASE DE DATOS Y BÓVEDA OPERATIVAS!</strong><br>
+          • <strong>Servidor Nube:</strong> Conexión Firestore verificada (${latency} ms).<br>
+          • <strong>Código de Bóveda:</strong> <code>${activeVaultId}</code><br>
+          • <strong>Sincronización Celular:</strong> Todo lo que agregues aquí se reflejará en tiempo real en tu teléfono con este código.
+        `;
+      } else {
+        throw new Error('No se pudo verificar el documento de prueba en Firestore.');
+      }
+    } catch (err) {
+      const latency = Math.round(performance.now() - t0);
+      vaultTestResult.style.background = 'rgba(239, 68, 68, 0.15)';
+      vaultTestResult.style.border = '1px solid var(--danger-color)';
+      vaultTestResult.style.color = 'var(--danger-color)';
+      vaultTestResult.innerHTML = `
+        <strong>⚠️ Resultado de la prueba (${latency} ms):</strong><br>
+        ${err.message || String(err)}<br>
+        <small style="color: var(--text-muted);">Tus datos continúan guardándose localmente en tu dispositivo.</small>
+      `;
+    }
   });
 }
 
@@ -624,6 +692,152 @@ btnRegenKey.addEventListener('click', async () => {
   }
 });
 
+// SELECTOR DE MODO DE DISPOSITIVO (AUTO / MOVIL / PC)
+const deviceViewSelect = document.getElementById('device-view-select');
+function applyDeviceMode(mode) {
+  if (mode === 'mobile') {
+    document.body.dataset.device = 'mobile';
+  } else if (mode === 'desktop') {
+    document.body.dataset.device = 'desktop';
+  } else {
+    delete document.body.dataset.device;
+  }
+}
+
+if (deviceViewSelect) {
+  const savedDeviceMode = localStorage.getItem('ahorros_device_mode') || 'auto';
+  deviceViewSelect.value = savedDeviceMode;
+  applyDeviceMode(savedDeviceMode);
+  deviceViewSelect.addEventListener('change', (e) => {
+    const val = e.target.value;
+    localStorage.setItem('ahorros_device_mode', val);
+    applyDeviceMode(val);
+  });
+}
+
+// BOTON COPIAR JSON DE EJEMPLO DE ATAJO
+const btnCopySampleJson = document.getElementById('btn-copy-sample-json');
+if (btnCopySampleJson) {
+  btnCopySampleJson.addEventListener('click', () => {
+    const sampleObj = {
+      type: "expense",
+      amount: 25000,
+      description: "Almuerzo",
+      category: "ALIMENTACION",
+      paymentMethod: "NEQUI"
+    };
+    navigator.clipboard.writeText(JSON.stringify(sampleObj, null, 2)).then(() => {
+      btnCopySampleJson.textContent = '¡JSON Copiado!';
+      setTimeout(() => { btnCopySampleJson.textContent = '📋 Copiar JSON de Ejemplo'; }, 2000);
+    });
+  });
+}
+
+// EXPLORADOR Y NAVEGADOR DE MES PARA INGRESOS Y GASTOS
+const movementsMonthSelect = document.getElementById('movements-month-select');
+const movementsYearSelect = document.getElementById('movements-year-select');
+const btnMovementsPrevMonth = document.getElementById('btn-movements-prev-month');
+const btnMovementsNextMonth = document.getElementById('btn-movements-next-month');
+
+function syncGlobalAndMovementsFilters() {
+  if (movementsMonthSelect) movementsMonthSelect.value = activeMonth;
+  if (movementsYearSelect) movementsYearSelect.value = activeYear;
+  const gm = document.getElementById('global-filter-month');
+  if (gm) gm.value = activeMonth;
+  const gy = document.getElementById('global-filter-year');
+  if (gy) gy.value = activeYear;
+}
+
+if (movementsMonthSelect) {
+  movementsMonthSelect.value = activeMonth;
+  movementsMonthSelect.addEventListener('change', (e) => {
+    activeMonth = e.target.value;
+    syncGlobalAndMovementsFilters();
+    updateUI();
+  });
+}
+
+if (movementsYearSelect) {
+  movementsYearSelect.value = activeYear;
+  movementsYearSelect.addEventListener('change', (e) => {
+    activeYear = e.target.value;
+    syncGlobalAndMovementsFilters();
+    updateUI();
+  });
+}
+
+function navigateMovementsMonth(dir) {
+  let curM = activeMonth === 'ALL' ? (new Date().getMonth() + 1) : parseInt(activeMonth, 10);
+  curM += dir;
+  let curY = parseInt(activeYear === 'ALL' ? '2026' : activeYear, 10);
+  if (curM < 1) {
+    curM = 12;
+    curY -= 1;
+  } else if (curM > 12) {
+    curM = 1;
+    curY += 1;
+  }
+  activeMonth = String(curM).padStart(2, '0');
+  activeYear = String(curY);
+  syncGlobalAndMovementsFilters();
+  updateUI();
+}
+
+if (btnMovementsPrevMonth) {
+  btnMovementsPrevMonth.addEventListener('click', () => navigateMovementsMonth(-1));
+}
+if (btnMovementsNextMonth) {
+  btnMovementsNextMonth.addEventListener('click', () => navigateMovementsMonth(1));
+}
+
+// SELECTOR SEGMENTADO EN FORMULARIO DE FINANZAS FIJAS (GASTO VS INGRESO)
+const btnTypeExpense = document.getElementById('btn-type-expense');
+const btnTypeIncome = document.getElementById('btn-type-income');
+const recTypeInput = document.getElementById('rec-type');
+const recNameLabel = document.getElementById('rec-name-label');
+const recNameInput = document.getElementById('rec-name');
+const btnSubmitRecurring = document.getElementById('btn-submit-recurring');
+const recurringFormTitle = document.getElementById('recurring-form-title');
+
+function setRecurringType(type) {
+  if (!recTypeInput) return;
+  recTypeInput.value = type;
+  if (type === 'income') {
+    btnTypeIncome?.classList.add('active', 'income');
+    btnTypeExpense?.classList.remove('active', 'expense');
+    if (recNameLabel) recNameLabel.textContent = 'Nombre del Ingreso Fijo o Sueldo';
+    if (recNameInput) recNameInput.placeholder = 'Ej: Sueldo empresa, Honorarios fijos, Renta cobrada';
+    if (btnSubmitRecurring) {
+      btnSubmitRecurring.textContent = 'Guardar Ingreso Fijo';
+      btnSubmitRecurring.className = 'btn btn-success';
+    }
+    if (recurringFormTitle) recurringFormTitle.textContent = 'Registrar Ingreso Fijo (Sueldo / Entrada)';
+  } else {
+    btnTypeExpense?.classList.add('active', 'expense');
+    btnTypeIncome?.classList.remove('active', 'income');
+    if (recNameLabel) recNameLabel.textContent = 'Nombre del Servicio o Pago Fijo';
+    if (recNameInput) recNameInput.placeholder = 'Ej: Arriendo, Netflix, Internet, Servicios';
+    if (btnSubmitRecurring) {
+      btnSubmitRecurring.textContent = 'Guardar Gasto Fijo';
+      btnSubmitRecurring.className = 'btn btn-danger';
+    }
+    if (recurringFormTitle) recurringFormTitle.textContent = 'Registrar Gasto Fijo o Suscripción';
+  }
+}
+
+if (btnTypeExpense) btnTypeExpense.addEventListener('click', () => setRecurringType('expense'));
+if (btnTypeIncome) btnTypeIncome.addEventListener('click', () => setRecurringType('income'));
+
+// FILTROS DE LISTA DE RECURRENTES (TODOS / INGRESOS / GASTOS)
+document.querySelectorAll('.recurring-pill-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.recurring-pill-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeRecurringFilter = btn.dataset.filter || 'ALL';
+    renderRecurringPayments();
+  });
+});
+
 // SIMULADOR DE ATAJO
 if (shortcutTesterForm) {
   shortcutTesterForm.addEventListener('submit', async (e) => {
@@ -768,8 +982,13 @@ if (btnVaultGoogleLogin) {
 
 // CAMBIO O CONEXION A OTRA BOVEDA
 async function switchVault(newCode, isNew = false) {
-  const cleanCode = String(newCode || '').trim().toUpperCase();
+  let cleanCode = String(newCode || '').trim().toUpperCase();
   if (!cleanCode) return;
+
+  // Si el usuario escribió sólo los 4 caracteres sin prefijo (ej: 8K3P -> AHO-8K3P)
+  if (!cleanCode.startsWith('AHO-') && !cleanCode.startsWith('AHORRO-') && cleanCode.length === 4) {
+    cleanCode = `AHO-${cleanCode}`;
+  }
 
   if (vaultLinkFeedback) {
     vaultLinkFeedback.style.display = 'block';
@@ -795,22 +1014,23 @@ async function switchVault(newCode, isNew = false) {
     console.warn('Nota de metadatos de bóveda:', err);
   }
 
-  if (isNew) {
-    transactions = [];
-    debts = [];
-    savingsGoals = [];
-    recurringPayments = [];
-    localStorage.setItem('finances_v10_trans', JSON.stringify([]));
-    localStorage.setItem('finances_v10_debts', JSON.stringify([]));
-    localStorage.setItem('finances_v10_goals', JSON.stringify([]));
-    localStorage.setItem('finances_v10_recurring', JSON.stringify([]));
-    updateUI();
-    renderSavingsGoals();
-    renderRecurringPayments();
-  }
+  // Limpiar memoria para cargar datos frescos de la nueva bóveda
+  transactions = [];
+  debts = [];
+  savingsGoals = [];
+  recurringPayments = [];
+  localStorage.setItem('finances_v10_trans', JSON.stringify([]));
+  localStorage.setItem('finances_v10_debts', JSON.stringify([]));
+  localStorage.setItem('finances_v10_goals', JSON.stringify([]));
+  localStorage.setItem('finances_v10_recurring', JSON.stringify([]));
+  updateUI();
+  renderSavingsGoals();
+  renderRecurringPayments();
 
   setupVaultCloudListeners(cleanCode);
-  await syncLocalDataToVault(cleanCode);
+  if (isNew) {
+    await syncLocalDataToVault(cleanCode);
+  }
 
   if (vaultLinkFeedback) {
     vaultLinkFeedback.style.color = 'var(--success-color)';
@@ -1715,22 +1935,46 @@ window.deleteSavingsGoal = async function(idOrIndex) {
   }
 };
 
-// RENDER PAGOS FIJOS Y SUSCRIPCIONES
+// RENDER FINANZAS FIJAS & RECURRENTES (INGRESOS Y GASTOS FIJOS)
 function renderRecurringPayments() {
   if (!recurringContainer) return;
 
   const currentYM = getCurrentYearMonth();
   let totalFixedExpenses = 0;
+  let totalFixedIncomes = 0;
 
-  if (recurringPayments.length === 0) {
-    recurringContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.82rem; grid-column: 1/-1;">No tienes pagos fijos registrados aún.</p>';
-    if (recurringSummaryBadge) recurringSummaryBadge.textContent = 'Total Fijo: $ 0/mes';
+  recurringPayments.forEach(r => {
+    if (r.type === 'income') totalFixedIncomes += (r.amount || 0);
+    else totalFixedExpenses += (r.amount || 0);
+  });
+
+  const netFixedFlow = totalFixedIncomes - totalFixedExpenses;
+  const recTotalIncomeEl = document.getElementById('recurring-total-income');
+  const recTotalExpenseEl = document.getElementById('recurring-total-expense');
+  const recNetBalanceEl = document.getElementById('recurring-net-balance');
+
+  if (recTotalIncomeEl) recTotalIncomeEl.textContent = `${formatCurrency(totalFixedIncomes)}/mes`;
+  if (recTotalExpenseEl) recTotalExpenseEl.textContent = `${formatCurrency(totalFixedExpenses)}/mes`;
+  if (recNetBalanceEl) {
+    recNetBalanceEl.textContent = `${formatCurrency(netFixedFlow)}/mes`;
+    recNetBalanceEl.className = `kpi-value ${netFixedFlow >= 0 ? 'text-primary' : 'text-danger'}`;
+  }
+
+  const filteredItems = recurringPayments.filter(r => {
+    if (activeRecurringFilter === 'income') return r.type === 'income';
+    if (activeRecurringFilter === 'expense') return r.type !== 'income';
+    return true;
+  });
+
+  if (filteredItems.length === 0) {
+    recurringContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.82rem; grid-column: 1/-1;">No tienes finanzas fijas en esta categoría aún.</p>';
+    if (recurringSummaryBadge) recurringSummaryBadge.textContent = `${recurringPayments.length} Registros`;
     return;
   }
 
   recurringContainer.innerHTML = '';
-  recurringPayments.forEach((r, idx) => {
-    if (r.type === 'expense') totalFixedExpenses += r.amount;
+  filteredItems.forEach((r, idx) => {
+    const isIncome = r.type === 'income';
     const isPaidThisMonth = r.lastPaidMonth === currentYM;
     const rIdentifier = currentUser ? `'${r.id}'` : idx;
 
@@ -1739,6 +1983,11 @@ function renderRecurringPayments() {
     card.innerHTML = `
       <div class="recurring-top">
         <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span class="tag-badge ${isIncome ? 'text-success' : 'text-danger'}">
+              ${isIncome ? '🟢 INGRESO FIJO (Sueldo/Entrada)' : '🔴 GASTO FIJO / SUSCRIPCIÓN'}
+            </span>
+          </div>
           <div class="recurring-name">${r.name}</div>
           <div class="recurring-meta">
             <span>Día ${r.dueDay} de cada mes</span> &bull;
@@ -1749,20 +1998,20 @@ function renderRecurringPayments() {
         <button class="btn-delete" onclick="deleteRecurringPayment(${rIdentifier})" title="Eliminar">&times;</button>
       </div>
 
-      <div class="recurring-amount ${r.type === 'income' ? 'text-success' : 'text-danger'}">
-        ${formatCurrency(r.amount)} <small style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">/ ${r.frequency.toLowerCase()}</small>
+      <div class="recurring-amount ${isIncome ? 'text-success' : 'text-danger'}">
+        ${formatCurrency(r.amount)} <small style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">/ ${(r.frequency || 'mensual').toLowerCase()}</small>
       </div>
 
       <div class="recurring-footer">
         <div>
           ${isPaidThisMonth
-            ? '<span class="tag-badge text-success">✓ Pagado este mes</span>'
-            : '<span class="tag-badge text-warning">⏳ Pendiente este mes</span>'
+            ? `<span class="tag-badge text-success">✓ ${isIncome ? 'Cobrado este mes' : 'Pagado este mes'}</span>`
+            : `<span class="tag-badge text-warning">⏳ ${isIncome ? 'Pendiente por cobrar' : 'Pendiente este mes'}</span>`
           }
         </div>
         ${!isPaidThisMonth ? `
-          <button class="btn-quick-pay" onclick="quickPayRecurring(${rIdentifier})">
-            ⚡ Pagar / Registrar
+          <button class="btn-quick-pay" style="${isIncome ? 'background: var(--success-color);' : ''}" onclick="quickPayRecurring(${rIdentifier})">
+            ${isIncome ? '⚡ Cobrar / Registrar Ingreso' : '⚡ Pagar / Registrar Gasto'}
           </button>
         ` : `
           <small style="color: var(--text-muted); font-size: 0.7rem;">Registrado en movimientos</small>
@@ -1773,7 +2022,7 @@ function renderRecurringPayments() {
   });
 
   if (recurringSummaryBadge) {
-    recurringSummaryBadge.textContent = `Total Fijo: ${formatCurrency(totalFixedExpenses)}/mes`;
+    recurringSummaryBadge.textContent = `${recurringPayments.length} Registros Activos`;
   }
 }
 
@@ -1785,25 +2034,26 @@ window.quickPayRecurring = async function(idOrIndex) {
   if (!targetR) return;
 
   const currentYM = getCurrentYearMonth();
+  const isIncome = targetR.type === 'income';
 
   // Registrar en movimientos
   await addTransactionLocallyOrCloud({
-    type: targetR.type,
-    description: `PAGO FIJO: ${targetR.name}`,
+    type: isIncome ? 'income' : 'expense',
+    description: `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${targetR.name}`,
     amount: targetR.amount,
     category: targetR.category,
     paymentMethod: targetR.paymentMethod || 'NEQUI',
     date: getTodayStr()
   });
 
-  // Marcar como pagado este mes
+  // Marcar como pagado / cobrado este mes
   if (targetR.id && !String(targetR.id).startsWith('rec_')) {
     try {
       await updateDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.id), {
         lastPaidMonth: currentYM
       });
     } catch (e) {
-      console.warn('Error actualizando pago recurrente:', e);
+      console.warn('Error actualizando compromiso recurrente:', e);
       targetR.lastPaidMonth = currentYM;
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
       renderRecurringPayments();
@@ -1814,7 +2064,7 @@ window.quickPayRecurring = async function(idOrIndex) {
     renderRecurringPayments();
   }
 
-  alert(`¡Pago de "${targetR.name}" registrado en tus movimientos exitosamente!`);
+  alert(`¡${isIncome ? 'Ingreso de' : 'Pago de'} "${targetR.name}" registrado en tus movimientos exitosamente!`);
 };
 
 window.deleteRecurringPayment = async function(idOrIndex) {
@@ -2059,6 +2309,15 @@ function updateUI() {
   const accGoalsTotalEl = document.getElementById('acc-goals-total');
   if (accGoalsTotalEl) accGoalsTotalEl.textContent = formatCurrency(accGoalsTotal);
 
+  const monthNames = {
+    '01': 'ENERO', '02': 'FEBRERO', '03': 'MARZO', '04': 'ABRIL',
+    '05': 'MAYO', '06': 'JUNIO', '07': 'JULIO', '08': 'AGOSTO',
+    '09': 'SEPTIEMBRE', '10': 'OCTUBRE', '11': 'NOVIEMBRE', '12': 'DICIEMBRE'
+  };
+
+  let lastIncomeMonthKey = null;
+  let lastExpenseMonthKey = null;
+
   sortedTransactions.forEach((t, idx) => {
     const tYear = (t.date || '').substring(0, 4);
     const tMonth = (t.date || '').substring(5, 7);
@@ -2102,8 +2361,26 @@ function updateUI() {
         <td><button class="btn-delete" onclick="removeTransaction(${deleteIdentifier})">X</button></td>
       `;
 
-      if (t.type === 'income') incomeList.appendChild(row);
-      else expenseList.appendChild(row);
+      const monthKey = `${tYear}-${tMonth}`;
+      if (t.type === 'income') {
+        if (activeMonth === 'ALL' && lastIncomeMonthKey !== monthKey) {
+          lastIncomeMonthKey = monthKey;
+          const divRow = document.createElement('tr');
+          divRow.className = 'month-divider-row';
+          divRow.innerHTML = `<td colspan="7">📅 ${monthNames[tMonth] || tMonth} ${tYear}</td>`;
+          incomeList.appendChild(divRow);
+        }
+        incomeList.appendChild(row);
+      } else {
+        if (activeMonth === 'ALL' && lastExpenseMonthKey !== monthKey) {
+          lastExpenseMonthKey = monthKey;
+          const divRow = document.createElement('tr');
+          divRow.className = 'month-divider-row';
+          divRow.innerHTML = `<td colspan="7">📅 ${monthNames[tMonth] || tMonth} ${tYear}</td>`;
+          expenseList.appendChild(divRow);
+        }
+        expenseList.appendChild(row);
+      }
 
       // Fila para resumen del dashboard
       const summaryRow = document.createElement('tr');
@@ -2130,6 +2407,9 @@ function updateUI() {
   incomePeriodTotal.textContent = formatCurrency(totalIncomePeriod);
   expensePeriodTotal.textContent = formatCurrency(totalExpensePeriod);
   summaryCountBadge.textContent = `${periodItemCount} MOVIMIENTOS`;
+
+  if (movementsMonthSelect && movementsMonthSelect.value !== activeMonth) movementsMonthSelect.value = activeMonth;
+  if (movementsYearSelect && movementsYearSelect.value !== activeYear) movementsYearSelect.value = activeYear;
 
   // RENDER DEUDAS
   let totalDebtPendingSum = 0;

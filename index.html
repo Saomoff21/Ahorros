@@ -52,6 +52,16 @@
           </select>
         </div>
 
+        <!-- Selector de Modo de Dispositivo (Auto / Móvil / PC) -->
+        <div class="device-picker-wrapper" title="ADAPTAR VISTA SEGÚN TU DISPOSITIVO (MÓVIL O PC)">
+          <span class="device-picker-label">VISTA:</span>
+          <select id="device-view-select" class="theme-select">
+            <option value="auto" selected>⚡ AUTO</option>
+            <option value="mobile">📱 MÓVIL</option>
+            <option value="desktop">💻 PC</option>
+          </select>
+        </div>
+
         <!-- Botón para instalar como App PWA en móvil o PC -->
         <button id="btn-pwa-install" class="btn-pwa-install" title="INSTALAR COMO APLICACIÓN">
           <span>📲</span> <span id="btn-pwa-install-text">INSTALAR APP</span>
@@ -78,7 +88,7 @@
       <button class="tab-btn active" data-tab="tab-dashboard">📊 Dashboard</button>
       <button class="tab-btn" data-tab="tab-movements">💰 Ingresos y Gastos</button>
       <button class="tab-btn" data-tab="tab-savings">🎯 Metas de Ahorro</button>
-      <button class="tab-btn" data-tab="tab-recurring">🔄 Pagos Fijos y Suscripciones</button>
+      <button class="tab-btn" data-tab="tab-recurring">🔄 Finanzas Fijas & Recurrentes</button>
       <button class="tab-btn" data-tab="tab-charts">📈 Gráficos y Análisis</button>
       <button class="tab-btn" data-tab="tab-debts">🗓️ Control de Deudas y Calendario</button>
       <button class="tab-btn" data-tab="tab-shortcuts">📱 Atajos de iPhone</button>
@@ -275,6 +285,43 @@
 
     <!-- PESTAÑA 2: INGRESOS Y GASTOS -->
     <section id="tab-movements" class="tab-content">
+      <!-- BARRA DE SELECCION Y NAVEGACION DE MES PARA INGRESOS Y GASTOS -->
+      <div class="movements-month-nav">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.2rem;">📅</span>
+          <div>
+            <h3 style="font-size: 0.88rem; font-weight: 800; margin: 0;">Explorador de Movimientos por Mes y Año</h3>
+            <small style="font-size: 0.7rem; color: var(--text-muted);">Carga y revisa tus ingresos y gastos separados mes a mes o consulta el año completo</small>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-movements-prev-month" class="calendar-nav-btn" title="Mes Anterior">◀ Anterior</button>
+          <select id="movements-month-select" class="filter-select">
+            <option value="ALL">Todos los Meses (Agrupados)</option>
+            <option value="01">01 - Enero</option>
+            <option value="02">02 - Febrero</option>
+            <option value="03">03 - Marzo</option>
+            <option value="04">04 - Abril</option>
+            <option value="05">05 - Mayo</option>
+            <option value="06">06 - Junio</option>
+            <option value="07">07 - Julio</option>
+            <option value="08">08 - Agosto</option>
+            <option value="09">09 - Septiembre</option>
+            <option value="10">10 - Octubre</option>
+            <option value="11">11 - Noviembre</option>
+            <option value="12">12 - Diciembre</option>
+          </select>
+          <select id="movements-year-select" class="filter-select">
+            <option value="ALL">Todos los Años</option>
+            <option value="2027">2027</option>
+            <option value="2026" selected>2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+          <button id="btn-movements-next-month" class="calendar-nav-btn" title="Mes Siguiente">Siguiente ▶</button>
+        </div>
+      </div>
+
       <div class="movements-split-grid">
         
         <!-- SECCION INGRESOS -->
@@ -551,37 +598,62 @@
       </div>
     </section>
 
-    <!-- PESTAÑA 4: PAGOS FIJOS Y SUSCRIPCIONES -->
+    <!-- PESTAÑA 4: FINANZAS FIJAS & RECURRENTES -->
     <section id="tab-recurring" class="tab-content">
+      <!-- BARRA RESUMEN DE COMPROMISOS FIJOS MENSUALES -->
+      <div class="recurring-kpi-bar">
+        <div class="kpi-card border-success">
+          <span class="kpi-label">🟢 TOTAL INGRESOS FIJOS (SUELDOS / ENTRADAS)</span>
+          <div id="recurring-total-income" class="kpi-value text-success">$ 0/mes</div>
+          <small style="font-size: 0.7rem; color: var(--text-muted);">Sueldos, rentas o entradas periódicas</small>
+        </div>
+        <div class="kpi-card border-danger">
+          <span class="kpi-label">🔴 TOTAL GASTOS FIJOS & SUSCRIPCIONES</span>
+          <div id="recurring-total-expense" class="kpi-value text-danger">$ 0/mes</div>
+          <small style="font-size: 0.7rem; color: var(--text-muted);">Alquiler, servicios, streaming, cuotas</small>
+        </div>
+        <div class="kpi-card border-primary">
+          <span class="kpi-label">⚖️ FLUJO FIJO NETO ESTIMADO</span>
+          <div id="recurring-net-balance" class="kpi-value text-primary">$ 0/mes</div>
+          <small style="font-size: 0.7rem; color: var(--text-muted);">Dinero libre tras cubrir costos fijos</small>
+        </div>
+      </div>
+
       <div class="recurring-layout-grid">
-        <!-- FORMULARIO CREAR PAGO FIJO -->
+        <!-- FORMULARIO CREAR COMPROMISO FIJO -->
         <div class="panel-card border-warning">
           <div class="panel-header">
-            <h2>Registrar Pago Fijo o Suscripción</h2>
+            <h2 id="recurring-form-title">Registrar Gasto Fijo o Suscripción</h2>
             <span class="tag-badge text-warning">🔄 Recurrente</span>
           </div>
           <form id="recurring-form" class="app-form">
+            <!-- SELECTOR SEGMENTADO DE TIPO: GASTO VS INGRESO -->
+            <div>
+              <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">
+                TIPO DE COMPROMISO FINANCIERO:
+              </label>
+              <div class="recurring-type-switch">
+                <button type="button" id="btn-type-expense" class="type-switch-btn active expense">
+                  <span>🔴 GASTO FIJO (Salida)</span>
+                </button>
+                <button type="button" id="btn-type-income" class="type-switch-btn income">
+                  <span>🟢 INGRESO FIJO (Sueldo/Entrada)</span>
+                </button>
+              </div>
+              <input type="hidden" id="rec-type" value="expense">
+            </div>
+
             <div class="form-group">
-              <label for="rec-name">Nombre del Compromiso o Servicio</label>
-              <input type="text" id="rec-name" placeholder="Ej: Arriendo, Netflix, Internet, Spotify" required>
+              <label for="rec-name" id="rec-name-label">Nombre del Servicio o Pago Fijo</label>
+              <input type="text" id="rec-name" placeholder="Ej: Arriendo, Netflix, Internet, Servicios" required>
             </div>
 
             <div class="form-row">
-              <div class="form-group">
-                <label for="rec-type">Tipo</label>
-                <select id="rec-type">
-                  <option value="expense">Gasto Fijo (Salida)</option>
-                  <option value="income">Ingreso Fijo (Entrada/Sueldo)</option>
-                </select>
-              </div>
-
               <div class="form-group">
                 <label for="rec-amount">Monto ($ COP)</label>
                 <input type="text" id="rec-amount" class="currency-input" placeholder="Ej: 80.000" required>
               </div>
-            </div>
 
-            <div class="form-row">
               <div class="form-group">
                 <label for="rec-frequency">Frecuencia</label>
                 <select id="rec-frequency">
@@ -591,14 +663,14 @@
                   <option value="ANUAL">Anual</option>
                 </select>
               </div>
-
-              <div class="form-group">
-                <label for="rec-day">Día de Cobro del Mes</label>
-                <input type="number" id="rec-day" min="1" max="31" value="5" required>
-              </div>
             </div>
 
             <div class="form-row">
+              <div class="form-group">
+                <label for="rec-day">Día del Mes (Cobro / Pago)</label>
+                <input type="number" id="rec-day" min="1" max="31" value="5" required>
+              </div>
+
               <div class="form-group">
                 <label for="rec-category">Categoría</label>
                 <select id="rec-category">
@@ -610,33 +682,40 @@
                   <option value="OTROS">OTROS</option>
                 </select>
               </div>
-
-              <div class="form-group">
-                <label for="rec-method">Método de Pago Habitual</label>
-                <select id="rec-method">
-                  <option value="NEQUI">📱 NEQUI</option>
-                  <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                  <option value="BANCO">🏦 DÉBITO AUTOMÁTICO / BANCO</option>
-                  <option value="TARJETA_CREDITO">💳 TARJETA DE CRÉDITO</option>
-                  <option value="EFECTIVO">💵 EFECTIVO</option>
-                </select>
-              </div>
             </div>
 
-            <button type="submit" class="btn btn-primary">Guardar Pago Recurrente</button>
+            <div class="form-group">
+              <label for="rec-method">Cuenta o Medio Habitual</label>
+              <select id="rec-method">
+                <option value="NEQUI">📱 NEQUI</option>
+                <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                <option value="BANCO">🏦 BANCO / DÉBITO AUTOMÁTICO</option>
+                <option value="TARJETA_CREDITO">💳 TARJETA DE CRÉDITO</option>
+                <option value="EFECTIVO">💵 EFECTIVO</option>
+              </select>
+            </div>
+
+            <button type="submit" id="btn-submit-recurring" class="btn btn-danger">Guardar Gasto Fijo</button>
           </form>
         </div>
 
-        <!-- LISTA DE PAGOS FIJOS Y SUSCRIPCIONES -->
+        <!-- LISTA DE COMPROMISOS FIJOS -->
         <div>
           <div class="panel-card border-purple">
             <div class="panel-header">
-              <h2>Compromisos Fijos del Mes</h2>
-              <span id="recurring-summary-badge" class="tag-badge text-danger">Total Fijo: $ 0/mes</span>
+              <h2>Lista de Finanzas Fijas</h2>
+              <span id="recurring-summary-badge" class="tag-badge">0 Registros</span>
             </div>
             <div style="padding: 20px;">
+              <!-- FILTROS RAPIDOS -->
+              <div class="recurring-filter-pills">
+                <button type="button" class="recurring-pill-btn active" data-filter="ALL">Todos</button>
+                <button type="button" class="recurring-pill-btn" data-filter="income">🟢 Ingresos Fijos</button>
+                <button type="button" class="recurring-pill-btn" data-filter="expense">🔴 Gastos Fijos</button>
+              </div>
+
               <div id="recurring-container" class="recurring-grid">
-                <p style="color: var(--text-muted); font-size: 0.82rem;">No tienes pagos fijos registrados aún.</p>
+                <p style="color: var(--text-muted); font-size: 0.82rem;">No tienes finanzas fijas registradas aún.</p>
               </div>
             </div>
           </div>
@@ -921,9 +1000,10 @@
                       - Encabezados: <code>Content-Type: application/json</code> y <code>x-api-key: TU_CLAVE</code><br>
                       - Cuerpo: <strong>JSON</strong> con claves: <code>type</code> ("expense"), <code>amount</code> (Número), <code>description</code> (Texto), <code>category</code> (Elemento elegido), <code>paymentMethod</code> ("NEQUI" o "EFECTIVO").
                     </p>
-                    <div class="step-code">
-                      {"type": "expense", "amount": 25000, "description": "Almuerzo", "category": "ALIMENTACION", "paymentMethod": "NEQUI"}
+                    <div class="step-code" id="shortcut-sample-json">
+{"type": "expense", "amount": 25000, "description": "Almuerzo", "category": "ALIMENTACION", "paymentMethod": "NEQUI"}
                     </div>
+                    <button type="button" id="btn-copy-sample-json" class="btn-copy" style="margin-top: 8px;">📋 Copiar JSON de Ejemplo</button>
                   </div>
                 </div>
 
@@ -1228,15 +1308,33 @@
               📋 Copiar Código
             </button>
             <button id="btn-share-vault-link" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px;">
-              🔗 Enlace Directo
+              🔗 Copiar Enlace Directo
+            </button>
+            <button id="btn-test-cloud-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; border-color: var(--success-color); color: var(--success-color);" title="Verificar lectura y escritura directa en Firebase Firestore">
+              🧪 Probar Nube en Vivo
             </button>
             <button id="btn-new-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; color: var(--text-muted);" title="Iniciar una nueva bóveda en blanco con código nuevo">
               ➕ Nueva Bóveda
             </button>
           </div>
+          <div id="vault-test-result" style="display: none; margin-top: 10px; padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; text-align: left;"></div>
           <small style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-top: 8px;">
-            💡 El enlace directo abre la web en tu celular y conecta tu bóveda automáticamente sin escribir nada.
+            💡 El enlace directo abre la app en tu celular y conecta tu bóveda automáticamente sin escribir nada.
           </small>
+        </div>
+
+        <!-- CODIGO QR PARA ESCANEAR CON CELULAR Y CONECTARSE DIRECTO -->
+        <div class="vault-section-box" style="margin-bottom: 14px; text-align: center;">
+          <h3 style="font-size: 0.85rem; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>📷</span> Escanea con la Cámara de tu Celular
+          </h3>
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">
+            Apunta la cámara de tu celular a este código QR para abrir tus finanzas y sincronizar esta misma bóveda al instante:
+          </p>
+          <div style="margin: 0 auto 8px; width: 140px; height: 140px; background: #ffffff; padding: 6px; border-radius: 10px;">
+            <img id="vault-qr-img" src="" alt="QR Bóveda" style="width: 100%; height: 100%; display: block;">
+          </div>
+          <span id="vault-direct-url-text" style="font-size: 0.68rem; font-family: monospace; color: var(--primary-color); word-break: break-all; display: block;"></span>
         </div>
 
         <!-- INGRESAR / VINCULAR A OTRA BOVEDA EXISTENTE -->

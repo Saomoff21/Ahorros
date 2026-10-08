@@ -283,8 +283,9 @@ body {
   box-shadow: 0 0 8px var(--warning-color);
 }
 
-/* SELECTOR DE ESTILOS / TEMAS */
-.theme-picker-wrapper {
+/* SELECTOR DE ESTILOS / TEMAS Y DISPOSITIVO */
+.theme-picker-wrapper,
+.device-picker-wrapper {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -294,7 +295,8 @@ body {
   border-radius: var(--btn-radius);
 }
 
-.theme-picker-label {
+.theme-picker-label,
+.device-picker-label {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-muted);
@@ -1688,104 +1690,244 @@ tbody tr:hover {
   padding: 16px;
 }
 
-/* BOTON Y MODAL FIREBASE HOSTING Y PUBLICACION INDEPENDIENTE */
-.btn-firebase-deploy {
-  background: linear-gradient(135deg, #06b6d4, #0891b2);
-  color: #fff;
-  border: none;
-  padding: 7px 14px;
-  border-radius: var(--btn-radius);
-  font-size: 0.75rem;
+/* SELECTOR DE TIPO EN FINANZAS RECURRENTES */
+.recurring-type-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--surface-secondary);
+  padding: 6px;
+  border-radius: var(--inner-radius);
+  margin-bottom: 14px;
+}
+
+.type-switch-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.type-switch-btn.active.expense {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--danger-color);
+  border-color: var(--danger-color);
+  box-shadow: 0 2px 10px var(--danger-glow);
+}
+
+.type-switch-btn.active.income {
+  background: rgba(34, 197, 94, 0.18);
+  color: var(--success-color);
+  border-color: var(--success-color);
+  box-shadow: 0 2px 10px var(--success-glow);
+}
+
+/* RESUMEN DE FLUJO FIJO NETO */
+.recurring-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.recurring-filter-pills {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.recurring-pill-btn {
+  background: var(--surface-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 10px rgba(6, 182, 212, 0.35);
   transition: all 0.2s ease;
 }
 
-.btn-firebase-deploy:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.5);
+.recurring-pill-btn:hover {
+  color: var(--text-main);
+  border-color: var(--primary-color);
 }
 
-.btn-download-project-zip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  background: linear-gradient(135deg, #06b6d4, #0891b2);
-  color: #ffffff !important;
-  text-decoration: none;
-  font-weight: 800;
-  font-size: 0.9rem;
-  padding: 12px 16px;
-  border-radius: var(--inner-radius);
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
-  transition: all 0.2s ease;
-  margin: 10px 0;
-  text-align: center;
-}
-
-.btn-download-project-zip:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
-}
-
-.step-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--inner-radius);
-  padding: 12px;
-  margin-bottom: 8px;
-}
-
-.step-badge {
+.recurring-pill-btn.active {
   background: var(--primary-color);
-  color: #000;
-  font-weight: 800;
-  font-size: 0.75rem;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  color: #fff;
+  border-color: var(--primary-color);
 }
 
-.firebase-domain-badge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+/* BARRA DE NAVEGACION DE MES PARA HISTORIAL */
+.movements-month-nav {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
-  padding: 10px 14px;
-  border-radius: var(--inner-radius);
-  margin: 10px 0;
-}
-
-.firebase-code-snippet {
-  background: #09090b;
-  color: #22d3ee;
-  padding: 10px 14px;
-  border-radius: var(--inner-radius);
-  font-family: monospace;
-  font-size: 0.78rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  margin: 6px 0;
+  border-radius: var(--card-radius);
+  padding: 14px 20px;
+  margin-bottom: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  word-break: break-all;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--shadow);
+}
+
+.month-divider-row td {
+  background: var(--surface-secondary) !important;
+  color: var(--primary-color) !important;
+  font-weight: 800 !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.04em !important;
+  padding: 10px 18px !important;
+  border-top: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* MODO DE DISPOSITIVO FORZADO: MÓVIL */
+body[data-device="mobile"] .main-container {
+  max-width: 580px !important;
+  padding: 0 12px !important;
+}
+
+body[data-device="mobile"] .dashboard-grid,
+body[data-device="mobile"] .insights-grid,
+body[data-device="mobile"] .recurring-kpi-bar {
+  grid-template-columns: 1fr !important;
+}
+
+body[data-device="mobile"] .movements-split-grid,
+body[data-device="mobile"] .debts-layout-grid,
+body[data-device="mobile"] .recurring-layout-grid,
+body[data-device="mobile"] .goals-layout-grid,
+body[data-device="mobile"] .charts-grid,
+body[data-device="mobile"] .shortcuts-grid {
+  grid-template-columns: 1fr !important;
+}
+
+body[data-device="mobile"] .form-row {
+  grid-template-columns: 1fr !important;
+}
+
+body[data-device="mobile"] .header-actions {
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+
+body[data-device="mobile"] .tab-btn {
+  padding: 8px 12px !important;
+  font-size: 0.75rem !important;
+}
+
+body[data-device="mobile"] .modal-card {
+  padding: 18px !important;
+  max-width: 95vw !important;
+}
+
+/* MODO DE DISPOSITIVO FORZADO: ESCRITORIO / PC */
+body[data-device="desktop"] .main-container {
+  max-width: 1540px !important;
+  padding: 0 24px !important;
+}
+
+body[data-device="desktop"] .dashboard-grid,
+body[data-device="desktop"] .insights-grid {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+
+body[data-device="desktop"] .movements-split-grid {
+  grid-template-columns: 1fr 1fr !important;
+}
+
+body[data-device="desktop"] .debts-layout-grid {
+  grid-template-columns: 380px 1fr !important;
+}
+
+body[data-device="desktop"] .recurring-layout-grid,
+body[data-device="desktop"] .goals-layout-grid {
+  grid-template-columns: 380px 1fr !important;
+}
+
+/* MEDIA QUERIES GENERALES ANTI-CORTE (RESPONSIVE FLUIDO) */
+@media (max-width: 1024px) {
+  .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+  .insights-grid { grid-template-columns: repeat(2, 1fr); }
+  .movements-split-grid { grid-template-columns: 1fr; }
+  .debts-layout-grid { grid-template-columns: 1fr; }
+  .goals-layout-grid { grid-template-columns: 1fr; }
+  .recurring-layout-grid { grid-template-columns: 1fr; }
+  .shortcuts-grid { grid-template-columns: 1fr; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .recurring-kpi-bar { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .main-container {
+    padding: 0 12px;
+  }
+  .app-header {
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+  .header-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .insights-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; gap: 10px; }
+  .modal-card {
+    padding: 16px;
+    max-width: 95vw;
+    margin: 8px;
+    border-radius: 18px;
+  }
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 520px;
+  }
+  th, td {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+  }
+  .calendar-day-head {
+    font-size: 0.65rem;
+    padding: 6px 2px;
+  }
+  .calendar-cell {
+    min-height: 52px;
+    padding: 4px;
+  }
+  .due-badge {
+    font-size: 0.58rem;
+    padding: 2px 4px;
+  }
+  .api-box-value {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .hidden { display: none !important; }

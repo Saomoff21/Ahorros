@@ -59,22 +59,10 @@ const OperationType = {
 function handleFirestoreError(error, operationType, path) {
   const errInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid || null,
-      email: auth.currentUser?.email || null,
-      emailVerified: auth.currentUser?.emailVerified || null,
-      isAnonymous: auth.currentUser?.isAnonymous || null,
-      tenantId: auth.currentUser?.tenantId || null,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Notice:', errInfo);
 }
 
 // VALIDACION DE CONEXION INICIAL A FIRESTORE
@@ -91,6 +79,33 @@ async function testConnection() {
   }
 }
 testConnection();
+
+// GESTION DE BOVEDAS Y CODIGOS MULTI-DISPOSITIVO
+function generateVaultCode() {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let rand = '';
+  for (let i = 0; i < 6; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `AHORRO-${rand}`;
+}
+
+// Comprobar parámetros de URL (?boveda=... o ?code=... o ?vault=...)
+const urlSearch = new URLSearchParams(window.location.search);
+const paramCode = urlSearch.get('boveda') || urlSearch.get('code') || urlSearch.get('vault');
+if (paramCode && paramCode.trim().length >= 3) {
+  localStorage.setItem('ahorros_active_vault', paramCode.trim().toUpperCase());
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+let activeVaultId = localStorage.getItem('ahorros_active_vault') ||
+                    localStorage.getItem('ahorros_boveda_code') ||
+                    generateVaultCode();
+activeVaultId = activeVaultId.trim().toUpperCase();
+localStorage.setItem('ahorros_active_vault', activeVaultId);
+localStorage.setItem('ahorros_boveda_code', activeVaultId);
 
 // ESTADO GLOBAL DE LA APLICACION
 let currentUser = null;
@@ -314,52 +329,21 @@ const vaultModal = document.getElementById('vault-modal');
 const btnCloseVaultModal = document.getElementById('btn-close-vault-modal');
 const vaultCodeText = document.getElementById('vault-code-text');
 const btnCopyVaultCode = document.getElementById('btn-copy-vault-code');
+const btnShareVaultLink = document.getElementById('btn-share-vault-link');
+const btnNewVault = document.getElementById('btn-new-vault');
 const vaultLinkCodeInput = document.getElementById('vault-link-code-input');
 const btnLinkVault = document.getElementById('btn-link-vault');
+const vaultLinkFeedback = document.getElementById('vault-link-feedback');
 const vaultGoogleEmail = document.getElementById('vault-google-email');
 const vaultGoogleNote = document.getElementById('vault-google-note');
 const btnVaultGoogleLogin = document.getElementById('btn-vault-google-login');
 
 // URL COMPARTIDA LIMPIA
-const appOrigin = window.location.origin || 'https://gen-lang-client-0791489226.web.app';
+const appOrigin = window.location.origin || 'https://ahorros-sa.netlify.app';
 const publicSharedOrigin = appOrigin;
 if (pwaShareUrlInput) pwaShareUrlInput.value = appOrigin;
 if (pwaQrImg) {
   pwaQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(appOrigin)}`;
-}
-
-// MODAL DE FIREBASE HOSTING (SITIO INDEPENDIENTE)
-const btnFirebaseHosting = document.getElementById('btn-firebase-hosting');
-const firebaseHostingModal = document.getElementById('firebase-hosting-modal');
-const btnCloseFirebaseModal = document.getElementById('btn-close-firebase-modal');
-const btnCopyFirebaseDomain = document.getElementById('btn-copy-firebase-domain');
-const firebaseDomainUrlEl = document.getElementById('firebase-domain-url');
-
-if (btnFirebaseHosting && firebaseHostingModal) {
-  btnFirebaseHosting.addEventListener('click', () => {
-    firebaseHostingModal.classList.remove('hidden');
-  });
-}
-
-if (btnCloseFirebaseModal && firebaseHostingModal) {
-  btnCloseFirebaseModal.addEventListener('click', () => {
-    firebaseHostingModal.classList.add('hidden');
-  });
-}
-
-if (firebaseHostingModal) {
-  firebaseHostingModal.addEventListener('click', (e) => {
-    if (e.target === firebaseHostingModal) firebaseHostingModal.classList.add('hidden');
-  });
-}
-
-if (btnCopyFirebaseDomain && firebaseDomainUrlEl) {
-  btnCopyFirebaseDomain.addEventListener('click', () => {
-    navigator.clipboard.writeText(firebaseDomainUrlEl.textContent.trim()).then(() => {
-      btnCopyFirebaseDomain.textContent = '¡Copiado!';
-      setTimeout(() => { btnCopyFirebaseDomain.textContent = 'Copiar'; }, 2000);
-    });
-  });
 }
 
 // GESTIÓN DE EVENTO PWA BEFOREINSTALLPROMPT
@@ -462,21 +446,47 @@ if (vaultModal) {
 
 if (btnCopyVaultCode && vaultCodeText) {
   btnCopyVaultCode.addEventListener('click', () => {
-    navigator.clipboard.writeText(vaultCodeText.textContent).then(() => {
+    navigator.clipboard.writeText(activeVaultId).then(() => {
       btnCopyVaultCode.textContent = '¡Copiado!';
-      setTimeout(() => { btnCopyVaultCode.textContent = 'Copiar Código'; }, 2000);
+      setTimeout(() => { btnCopyVaultCode.textContent = '📋 Copiar Código'; }, 2000);
     });
   });
 }
 
+if (btnShareVaultLink) {
+  btnShareVaultLink.addEventListener('click', () => {
+    const origin = window.location.origin;
+    const path = window.location.pathname;
+    const directUrl = `${origin}${path}?boveda=${activeVaultId}`;
+    navigator.clipboard.writeText(directUrl).then(() => {
+      btnShareVaultLink.textContent = '¡Enlace Copiado!';
+      setTimeout(() => { btnShareVaultLink.textContent = '🔗 Enlace Directo'; }, 2000);
+      alert(`¡Enlace directo copiado al portapapeles!\n\n${directUrl}\n\nÁbrelo en tu celular o envíatelo por WhatsApp para ingresar a tu bóveda sin tener que escribir el código.`);
+    });
+  });
+}
+
+if (btnNewVault) {
+  btnNewVault.addEventListener('click', async () => {
+    if (confirm('¿Deseas crear una nueva Bóveda en blanco con código independiente? Tu bóveda actual no se borrará y podrás volver a ella en cualquier momento con su código.')) {
+      const newCode = generateVaultCode();
+      await switchVault(newCode, true);
+    }
+  });
+}
+
 if (btnLinkVault && vaultLinkCodeInput) {
-  btnLinkVault.addEventListener('click', () => {
+  btnLinkVault.addEventListener('click', async () => {
     const code = vaultLinkCodeInput.value.trim().toUpperCase();
-    if (!code) return alert('Por favor ingresa un código de Bóveda válido.');
-    localStorage.setItem('ahorros_boveda_code', code);
-    if (vaultCodeText) vaultCodeText.textContent = code;
-    alert(`¡Bóveda ${code} vinculada! Tus dispositivos ahora sincronizan sobre la misma bóveda.`);
-    if (vaultModal) vaultModal.classList.add('hidden');
+    if (!code || code.length < 3) return alert('Por favor ingresa un código de Bóveda válido.');
+    await switchVault(code, false);
+  });
+
+  vaultLinkCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      btnLinkVault.click();
+    }
   });
 }
 
@@ -736,167 +746,163 @@ async function syncClientTotalsToServer() {
   }
 }
 
-// GESTION DE SESION Y BÓVEDA EN LA NUBE (ZERO FRICCIÓN DE LOGINS)
+// GESTION DE SESION Y BÓVEDA EN LA NUBE
 if (btnVaultGoogleLogin) {
   btnVaultGoogleLogin.addEventListener('click', async () => {
     if (currentUser && !currentUser.isAnonymous) {
-      if (confirm('¿Cerrar sesión de Google? Continuarás con tu Bóveda local y en la nube.')) {
+      if (confirm('¿Cerrar sesión de Google? Tu Bóveda seguirá activa y protegida con tu código.')) {
         await signOut(auth);
       }
     } else {
       try {
         const result = await signInWithPopup(auth, googleProvider);
         console.log('Cuenta de Google vinculada:', result.user.email);
-        alert(`¡Cuenta vinculada con éxito a ${result.user.email}!`);
+        alert(`¡Cuenta vinculada con éxito a ${result.user.email}! Tu bóveda ahora está asociada a tu correo.`);
       } catch (error) {
         console.error('Error al vincular con Google:', error);
-        alert('No se pudo vincular con Google. Tu Bóveda sigue activa y sincronizada anónimamente.');
+        alert('No se pudo vincular con Google. Tu Bóveda sigue activa con tu código personal.');
       }
     }
   });
 }
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    // Si no hay usuario, iniciar sesión anónima automáticamente sin pedir contraseña
-    try {
-      await signInAnonymously(auth);
-      return;
-    } catch (e) {
-      console.warn('Fallo al iniciar sesión anónima:', e);
-      authBtnText.textContent = '🔐 MI BÓVEDA';
-      updateSyncStatus(false, 'MODO LOCAL');
-      return;
-    }
+// CAMBIO O CONEXION A OTRA BOVEDA
+async function switchVault(newCode, isNew = false) {
+  const cleanCode = String(newCode || '').trim().toUpperCase();
+  if (!cleanCode) return;
+
+  if (vaultLinkFeedback) {
+    vaultLinkFeedback.style.display = 'block';
+    vaultLinkFeedback.style.color = 'var(--primary-color)';
+    vaultLinkFeedback.textContent = '⏳ Conectando y descargando datos de la bóveda...';
   }
 
-  currentUser = user;
-  const isAnon = user.isAnonymous;
-  const vaultCode = localStorage.getItem('ahorros_boveda_code') || ('AHORROS-' + user.uid.substring(0, 6).toUpperCase());
-  localStorage.setItem('ahorros_boveda_code', vaultCode);
+  activeVaultId = cleanCode;
+  localStorage.setItem('ahorros_active_vault', cleanCode);
+  localStorage.setItem('ahorros_boveda_code', cleanCode);
 
-  if (vaultCodeText) vaultCodeText.textContent = vaultCode;
-  if (vaultGoogleEmail) {
-    vaultGoogleEmail.textContent = isAnon ? 'No vinculado (Bóveda sin correo)' : (user.email || 'Vinculado');
-  }
-  if (vaultGoogleNote) {
-    vaultGoogleNote.textContent = isAnon ? 'Tus finanzas se sincronizan en la nube sin claves' : 'Sincronizado con tu cuenta de Google';
-  }
-  if (btnVaultGoogleLogin) {
-    btnVaultGoogleLogin.textContent = isAnon ? 'Vincular Google' : 'Desvincular Google';
-  }
-
-  authBtnText.textContent = isAnon ? '🔐 MI BÓVEDA' : `MI CUENTA (${(user.email || 'USER').split('@')[0].toUpperCase()})`;
-  updateSyncStatus(true, isAnon ? '🟢 NUBE ACTIVA' : `NUBE: ${user.email}`);
+  if (vaultCodeText) vaultCodeText.textContent = cleanCode;
+  if (vaultLinkCodeInput) vaultLinkCodeInput.value = '';
+  authBtnText.textContent = `🔐 ${cleanCode}`;
 
   try {
-    const userRef = doc(db, 'users', user.uid);
-    const userDoc = await getDoc(userRef);
-    if (userDoc.exists()) {
-      const uData = userDoc.data();
-      if (uData.apiKey) {
-        userApiKey = uData.apiKey;
-        localStorage.setItem('ahorros_shortcut_key', userApiKey);
-        updateShortcutCredentialsUI();
-      }
-    } else {
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email || null,
-        isAnonymous: isAnon,
-        bovedaCode: vaultCode,
-        apiKey: userApiKey,
-        createdAt: new Date().toISOString()
-      });
-    }
-  } catch (e) {
-    handleFirestoreError(e, OperationType.WRITE, `users/${user.uid}`);
+    const vaultRef = doc(db, 'vaults', cleanCode);
+    await setDoc(vaultRef, {
+      code: cleanCode,
+      lastAccessed: new Date().toISOString()
+    }, { merge: true });
+  } catch (err) {
+    console.warn('Nota de metadatos de bóveda:', err);
   }
 
-  await migrateLocalDataToCloud(user.uid);
-  setupCloudListeners(user.uid);
-});
+  if (isNew) {
+    transactions = [];
+    debts = [];
+    savingsGoals = [];
+    recurringPayments = [];
+    localStorage.setItem('finances_v10_trans', JSON.stringify([]));
+    localStorage.setItem('finances_v10_debts', JSON.stringify([]));
+    localStorage.setItem('finances_v10_goals', JSON.stringify([]));
+    localStorage.setItem('finances_v10_recurring', JSON.stringify([]));
+    updateUI();
+    renderSavingsGoals();
+    renderRecurringPayments();
+  }
 
-// MIGRACION AUTOMATICA DE DATOS LOCALES A FIRESTORE
-async function migrateLocalDataToCloud(userId) {
+  setupVaultCloudListeners(cleanCode);
+  await syncLocalDataToVault(cleanCode);
+
+  if (vaultLinkFeedback) {
+    vaultLinkFeedback.style.color = 'var(--success-color)';
+    vaultLinkFeedback.textContent = `✅ ¡Bóveda ${cleanCode} conectada con éxito!`;
+    setTimeout(() => {
+      if (vaultLinkFeedback) vaultLinkFeedback.style.display = 'none';
+      if (vaultModal) vaultModal.classList.add('hidden');
+    }, 1200);
+  } else {
+    if (vaultModal) vaultModal.classList.add('hidden');
+  }
+
+  alert(`¡Bóveda ${cleanCode} activada!\nTus dispositivos sincronizan en tiempo real sobre esta misma bóveda.`);
+}
+
+// SINCRONIZACION AUTOMATICA DE DATOS LOCALES A LA BOVEDA
+async function syncLocalDataToVault(vaultId) {
+  if (!vaultId) return;
   const localTrans = JSON.parse(localStorage.getItem('finances_v10_trans')) || [];
   const localDebts = JSON.parse(localStorage.getItem('finances_v10_debts')) || [];
   const localGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
   const localRecurring = JSON.parse(localStorage.getItem('finances_v10_recurring')) || [];
 
-  if (localTrans.length > 0) {
-    try {
-      const txColl = collection(db, 'users', userId, 'transactions');
-      const existingSnap = await getDocs(txColl);
-      if (existingSnap.empty) {
-        for (const t of localTrans) {
-          await addDoc(txColl, {
-            ...t,
-            userId,
-            createdAt: t.createdAt || new Date().toISOString()
-          });
-        }
+  try {
+    const txColl = collection(db, 'vaults', vaultId, 'transactions');
+    const existingSnap = await getDocs(txColl);
+    if (existingSnap.empty && localTrans.length > 0) {
+      for (const t of localTrans) {
+        await addDoc(txColl, {
+          vaultId,
+          ...t,
+          createdAt: t.createdAt || new Date().toISOString()
+        });
       }
-    } catch (err) { console.warn('Error al migrar transacciones:', err); }
-  }
+    }
+  } catch (err) { console.warn('Sync transacciones a bóveda:', err); }
 
-  if (localDebts.length > 0) {
-    try {
-      const debtColl = collection(db, 'users', userId, 'debts');
-      const existingDebtSnap = await getDocs(debtColl);
-      if (existingDebtSnap.empty) {
-        for (const d of localDebts) {
-          await addDoc(debtColl, {
-            ...d,
-            userId,
-            createdAt: d.createdAt || new Date().toISOString()
-          });
-        }
+  try {
+    const debtColl = collection(db, 'vaults', vaultId, 'debts');
+    const existingDebtSnap = await getDocs(debtColl);
+    if (existingDebtSnap.empty && localDebts.length > 0) {
+      for (const d of localDebts) {
+        await addDoc(debtColl, {
+          vaultId,
+          ...d,
+          createdAt: d.createdAt || new Date().toISOString()
+        });
       }
-    } catch (err) { console.warn('Error al migrar deudas:', err); }
-  }
+    }
+  } catch (err) { console.warn('Sync deudas a bóveda:', err); }
 
-  if (localGoals.length > 0) {
-    try {
-      const gColl = collection(db, 'users', userId, 'savingsGoals');
-      const existingGSnap = await getDocs(gColl);
-      if (existingGSnap.empty) {
-        for (const g of localGoals) {
-          await addDoc(gColl, {
-            ...g,
-            userId,
-            createdAt: g.createdAt || new Date().toISOString()
-          });
-        }
+  try {
+    const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
+    const existingGSnap = await getDocs(gColl);
+    if (existingGSnap.empty && localGoals.length > 0) {
+      for (const g of localGoals) {
+        await addDoc(gColl, {
+          vaultId,
+          ...g,
+          createdAt: g.createdAt || new Date().toISOString()
+        });
       }
-    } catch (err) { console.warn('Error al migrar metas:', err); }
-  }
+    }
+  } catch (err) { console.warn('Sync metas a bóveda:', err); }
 
-  if (localRecurring.length > 0) {
-    try {
-      const rColl = collection(db, 'users', userId, 'recurringPayments');
-      const existingRSnap = await getDocs(rColl);
-      if (existingRSnap.empty) {
-        for (const r of localRecurring) {
-          await addDoc(rColl, {
-            ...r,
-            userId,
-            createdAt: r.createdAt || new Date().toISOString()
-          });
-        }
+  try {
+    const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
+    const existingRSnap = await getDocs(rColl);
+    if (existingRSnap.empty && localRecurring.length > 0) {
+      for (const r of localRecurring) {
+        await addDoc(rColl, {
+          vaultId,
+          ...r,
+          createdAt: r.createdAt || new Date().toISOString()
+        });
       }
-    } catch (err) { console.warn('Error al migrar pagos fijos:', err); }
-  }
+    }
+  } catch (err) { console.warn('Sync pagos fijos a bóveda:', err); }
 }
 
-// ESCUCHAS EN TIEMPO REAL CON ONSNAPSHOT
-function setupCloudListeners(userId) {
-  if (unsubscribeTransactions) unsubscribeTransactions();
-  if (unsubscribeDebts) unsubscribeDebts();
-  if (unsubscribeGoals) unsubscribeGoals();
-  if (unsubscribeRecurring) unsubscribeRecurring();
+// ESCUCHAS EN TIEMPO REAL CON ONSNAPSHOT POR BÓVEDA
+function setupVaultCloudListeners(vaultId) {
+  if (!vaultId) return;
+  if (unsubscribeTransactions) { unsubscribeTransactions(); unsubscribeTransactions = null; }
+  if (unsubscribeDebts) { unsubscribeDebts(); unsubscribeDebts = null; }
+  if (unsubscribeGoals) { unsubscribeGoals(); unsubscribeGoals = null; }
+  if (unsubscribeRecurring) { unsubscribeRecurring(); unsubscribeRecurring = null; }
 
-  const txColl = collection(db, 'users', userId, 'transactions');
+  updateSyncStatus(true, `🟢 BÓVEDA ${vaultId}`);
+  if (vaultCodeText) vaultCodeText.textContent = vaultId;
+
+  const txColl = collection(db, 'vaults', vaultId, 'transactions');
   unsubscribeTransactions = onSnapshot(txColl, (snapshot) => {
     const cloudTrans = [];
     snapshot.forEach(docSnap => {
@@ -906,10 +912,10 @@ function setupCloudListeners(userId) {
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
     updateUI();
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/transactions`);
+    console.warn('Error en transacciones:', error);
   });
 
-  const debtsColl = collection(db, 'users', userId, 'debts');
+  const debtsColl = collection(db, 'vaults', vaultId, 'debts');
   unsubscribeDebts = onSnapshot(debtsColl, (snapshot) => {
     const cloudDebts = [];
     snapshot.forEach(docSnap => {
@@ -919,10 +925,10 @@ function setupCloudListeners(userId) {
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
     updateUI();
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/debts`);
+    console.warn('Error en deudas:', error);
   });
 
-  const gColl = collection(db, 'users', userId, 'savingsGoals');
+  const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
   unsubscribeGoals = onSnapshot(gColl, (snapshot) => {
     const cloudGoals = [];
     snapshot.forEach(docSnap => {
@@ -932,10 +938,10 @@ function setupCloudListeners(userId) {
     localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
     renderSavingsGoals();
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/savingsGoals`);
+    console.warn('Error en metas:', error);
   });
 
-  const rColl = collection(db, 'users', userId, 'recurringPayments');
+  const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
   unsubscribeRecurring = onSnapshot(rColl, (snapshot) => {
     const cloudR = [];
     snapshot.forEach(docSnap => {
@@ -945,9 +951,68 @@ function setupCloudListeners(userId) {
     localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
     renderRecurringPayments();
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/recurringPayments`);
+    console.warn('Error en pagos fijos:', error);
   });
 }
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    try {
+      await signInAnonymously(auth);
+      return;
+    } catch (e) {
+      console.warn('Fallo inicio anónimo:', e);
+      authBtnText.textContent = `🔐 ${activeVaultId}`;
+      updateSyncStatus(false, 'MODO LOCAL');
+      return;
+    }
+  }
+
+  currentUser = user;
+  const isAnon = user.isAnonymous;
+
+  // Si inició sesión con Google, sincronizar con su bóveda guardada si existía
+  if (!isAnon && user.email) {
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        const uData = userDoc.data();
+        if (uData.bovedaCode && uData.bovedaCode !== activeVaultId) {
+          activeVaultId = uData.bovedaCode;
+          localStorage.setItem('ahorros_active_vault', activeVaultId);
+          localStorage.setItem('ahorros_boveda_code', activeVaultId);
+        }
+      } else {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          bovedaCode: activeVaultId,
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+      }
+    } catch (e) {
+      console.warn('Nota perfil Google:', e);
+    }
+  }
+
+  if (vaultCodeText) vaultCodeText.textContent = activeVaultId;
+  if (vaultGoogleEmail) {
+    vaultGoogleEmail.textContent = isAnon ? 'No vinculado (Bóveda sin correo)' : (user.email || 'Vinculado');
+  }
+  if (vaultGoogleNote) {
+    vaultGoogleNote.textContent = isAnon ? 'Tus finanzas se sincronizan en la nube con tu código' : `Asociado a ${user.email}`;
+  }
+  if (btnVaultGoogleLogin) {
+    btnVaultGoogleLogin.textContent = isAnon ? 'Vincular Google' : 'Desvincular Google';
+  }
+
+  authBtnText.textContent = `🔐 ${activeVaultId}`;
+  updateSyncStatus(true, `🟢 BÓVEDA ${activeVaultId}`);
+
+  setupVaultCloudListeners(activeVaultId);
+  await syncLocalDataToVault(activeVaultId);
+});
 
 // FILTRADO GLOBAL POR AÑO, MES, MEDIO Y MÉTODO
 globalFilterYear.addEventListener('change', () => {
@@ -1071,17 +1136,14 @@ async function addTransactionLocallyOrCloud(txData) {
     createdAt: new Date().toISOString()
   };
 
-  if (currentUser) {
-    try {
-      const txColl = collection(db, 'users', currentUser.uid, 'transactions');
-      await addDoc(txColl, {
-        userId: currentUser.uid,
-        ...cleanTx
-      });
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, `users/${currentUser.uid}/transactions`);
-    }
-  } else {
+  try {
+    const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
+    await addDoc(txColl, {
+      vaultId: activeVaultId,
+      ...cleanTx
+    });
+  } catch (e) {
+    console.warn('Guardando transacción local por error de red:', e);
     cleanTx.id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
     transactions.push(cleanTx);
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
@@ -1093,17 +1155,31 @@ async function addTransactionLocallyOrCloud(txData) {
 // ELIMINACION DE TRANSACCION
 window.removeTransaction = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar esta transacción?')) return;
-  if (currentUser && typeof idOrIndex === 'string') {
+  if (typeof idOrIndex === 'string') {
     try {
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'transactions', idOrIndex));
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', idOrIndex));
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `users/${currentUser.uid}/transactions/${idOrIndex}`);
+      console.warn('Error eliminando de Firestore:', e);
+      const idx = transactions.findIndex(t => t.id === idOrIndex);
+      if (idx !== -1) {
+        transactions.splice(idx, 1);
+        localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+        updateUI();
+      }
     }
   } else {
     const idx = parseInt(idOrIndex);
-    transactions.splice(idx, 1);
-    localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-    updateUI();
+    if (!isNaN(idx) && transactions[idx]) {
+      const target = transactions[idx];
+      if (target && target.id && typeof target.id === 'string' && !target.id.startsWith('tx_')) {
+        try {
+          await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', target.id));
+        } catch (e) { console.warn(e); }
+      }
+      transactions.splice(idx, 1);
+      localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+      updateUI();
+    }
   }
   syncClientTotalsToServer();
 };
@@ -1315,17 +1391,14 @@ debtForm.addEventListener('submit', async (e) => {
     createdAt: new Date().toISOString()
   };
 
-  if (currentUser) {
-    try {
-      const debtsColl = collection(db, 'users', currentUser.uid, 'debts');
-      await addDoc(debtsColl, {
-        userId: currentUser.uid,
-        ...debtData
-      });
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, `users/${currentUser.uid}/debts`);
-    }
-  } else {
+  try {
+    const debtsColl = collection(db, 'vaults', activeVaultId, 'debts');
+    await addDoc(debtsColl, {
+      vaultId: activeVaultId,
+      ...debtData
+    });
+  } catch (e) {
+    console.warn('Guardando deuda localmente:', e);
     debtData.id = 'debt_' + Date.now();
     debts.push(debtData);
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
@@ -1371,17 +1444,14 @@ if (goalForm) {
       });
     }
 
-    if (currentUser) {
-      try {
-        const gColl = collection(db, 'users', currentUser.uid, 'savingsGoals');
-        await addDoc(gColl, {
-          userId: currentUser.uid,
-          ...goalData
-        });
-      } catch (e) {
-        handleFirestoreError(e, OperationType.CREATE, `users/${currentUser.uid}/savingsGoals`);
-      }
-    } else {
+    try {
+      const gColl = collection(db, 'vaults', activeVaultId, 'savingsGoals');
+      await addDoc(gColl, {
+        vaultId: activeVaultId,
+        ...goalData
+      });
+    } catch (e) {
+      console.warn('Guardando meta localmente:', e);
       goalData.id = 'goal_' + Date.now();
       savingsGoals.push(goalData);
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
@@ -1419,17 +1489,14 @@ if (recurringForm) {
       createdAt: new Date().toISOString()
     };
 
-    if (currentUser) {
-      try {
-        const rColl = collection(db, 'users', currentUser.uid, 'recurringPayments');
-        await addDoc(rColl, {
-          userId: currentUser.uid,
-          ...rData
-        });
-      } catch (e) {
-        handleFirestoreError(e, OperationType.CREATE, `users/${currentUser.uid}/recurringPayments`);
-      }
-    } else {
+    try {
+      const rColl = collection(db, 'vaults', activeVaultId, 'recurringPayments');
+      await addDoc(rColl, {
+        vaultId: activeVaultId,
+        ...rData
+      });
+    } catch (e) {
+      console.warn('Guardando pago recurrente localmente:', e);
       rData.id = 'rec_' + Date.now();
       recurringPayments.push(rData);
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
@@ -1605,13 +1672,16 @@ if (goalActionForm) {
       });
     }
 
-    if (currentUser) {
+    if (targetGoal.id && !String(targetGoal.id).startsWith('goal_')) {
       try {
-        await updateDoc(doc(db, 'users', currentUser.uid, 'savingsGoals', targetGoal.id), {
+        await updateDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetGoal.id), {
           currentAmount: newAmount
         });
       } catch (err) {
-        handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}/savingsGoals/${targetGoal.id}`);
+        console.warn('Error actualizando meta:', err);
+        targetGoal.currentAmount = newAmount;
+        localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+        renderSavingsGoals();
       }
     } else {
       targetGoal.currentAmount = newAmount;
@@ -1625,16 +1695,23 @@ if (goalActionForm) {
 
 window.deleteSavingsGoal = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar esta meta de ahorro?')) return;
-  if (currentUser) {
+  if (typeof idOrIndex === 'string' && !idOrIndex.startsWith('goal_')) {
     try {
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'savingsGoals', idOrIndex));
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', idOrIndex));
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `users/${currentUser.uid}/savingsGoals/${idOrIndex}`);
+      console.warn('Error eliminando meta:', e);
+      const idx = savingsGoals.findIndex(g => g.id === idOrIndex);
+      if (idx !== -1) savingsGoals.splice(idx, 1);
+      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
     }
   } else {
-    savingsGoals.splice(parseInt(idOrIndex), 1);
-    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-    renderSavingsGoals();
+    const idx = typeof idOrIndex === 'number' ? idOrIndex : savingsGoals.findIndex(g => g.id === idOrIndex);
+    if (idx !== -1) {
+      savingsGoals.splice(idx, 1);
+      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
+    }
   }
 };
 
@@ -1720,13 +1797,16 @@ window.quickPayRecurring = async function(idOrIndex) {
   });
 
   // Marcar como pagado este mes
-  if (currentUser) {
+  if (targetR.id && !String(targetR.id).startsWith('rec_')) {
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid, 'recurringPayments', targetR.id), {
+      await updateDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.id), {
         lastPaidMonth: currentYM
       });
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `users/${currentUser.uid}/recurringPayments/${targetR.id}`);
+      console.warn('Error actualizando pago recurrente:', e);
+      targetR.lastPaidMonth = currentYM;
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
     }
   } else {
     targetR.lastPaidMonth = currentYM;
@@ -1739,16 +1819,23 @@ window.quickPayRecurring = async function(idOrIndex) {
 
 window.deleteRecurringPayment = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar este compromiso recurrente?')) return;
-  if (currentUser) {
+  if (typeof idOrIndex === 'string' && !idOrIndex.startsWith('rec_')) {
     try {
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'recurringPayments', idOrIndex));
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', idOrIndex));
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `users/${currentUser.uid}/recurringPayments/${idOrIndex}`);
+      console.warn('Error eliminando pago recurrente:', e);
+      const idx = recurringPayments.findIndex(r => r.id === idOrIndex);
+      if (idx !== -1) recurringPayments.splice(idx, 1);
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
     }
   } else {
-    recurringPayments.splice(parseInt(idOrIndex), 1);
-    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-    renderRecurringPayments();
+    const idx = typeof idOrIndex === 'number' ? idOrIndex : recurringPayments.findIndex(r => r.id === idOrIndex);
+    if (idx !== -1) {
+      recurringPayments.splice(idx, 1);
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
+    }
   }
 };
 
@@ -1806,14 +1893,18 @@ window.payDebt = async function(idOrIndex) {
     paymentMethod: 'BANCO'
   });
 
-  if (currentUser) {
+  if (targetDebt.id && !String(targetDebt.id).startsWith('debt_')) {
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid, 'debts', targetDebt.id), {
+      await updateDoc(doc(db, 'vaults', activeVaultId, 'debts', targetDebt.id), {
         paid: newPaid,
         history: JSON.stringify(historyArr)
       });
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `users/${currentUser.uid}/debts/${targetDebt.id}`);
+      console.warn('Error actualizando deuda:', e);
+      targetDebt.paid = newPaid;
+      targetDebt.history = JSON.stringify(historyArr);
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
     }
   } else {
     targetDebt.paid = newPaid;
@@ -1828,16 +1919,23 @@ window.payDebt = async function(idOrIndex) {
 // ELIMINAR DEUDA
 window.removeDebt = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar esta obligación de deuda?')) return;
-  if (currentUser) {
+  if (typeof idOrIndex === 'string' && !idOrIndex.startsWith('debt_')) {
     try {
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'debts', idOrIndex));
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', idOrIndex));
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `users/${currentUser.uid}/debts/${idOrIndex}`);
+      console.warn('Error eliminando deuda:', e);
+      const idx = debts.findIndex(d => d.id === idOrIndex);
+      if (idx !== -1) debts.splice(idx, 1);
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
     }
   } else {
-    debts.splice(idOrIndex, 1);
-    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-    updateUI();
+    const idx = typeof idOrIndex === 'number' ? idOrIndex : debts.findIndex(d => d.id === idOrIndex);
+    if (idx !== -1) {
+      debts.splice(idx, 1);
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
+    }
   }
   syncClientTotalsToServer();
 };

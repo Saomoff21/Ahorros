@@ -52,11 +52,6 @@
           </select>
         </div>
 
-        <!-- Botón para ver cómo independizar o publicar la web -->
-        <button id="btn-firebase-hosting" class="btn-firebase-deploy" title="PUBLICAR SITIO INDEPENDIENTE O DESCARGAR">
-          <span>🚀</span> <span>PUBLICAR WEB</span>
-        </button>
-
         <!-- Botón para instalar como App PWA en móvil o PC -->
         <button id="btn-pwa-install" class="btn-pwa-install" title="INSTALAR COMO APLICACIÓN">
           <span>📲</span> <span id="btn-pwa-install-text">INSTALAR APP</span>
@@ -1202,9 +1197,9 @@
     </div>
   </div>
 
-  <!-- MODAL: MI BÓVEDA & SINCRONIZACIÓN MULTI-DISPOSITIVO (SIN FRICCIÓN DE LOGINS) -->
+  <!-- MODAL: MI BÓVEDA & SINCRONIZACIÓN MULTI-DISPOSITIVO -->
   <div id="vault-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 480px;">
+    <div class="modal-card" style="max-width: 500px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 1.5rem;">🔐</span>
@@ -1218,32 +1213,47 @@
 
       <div class="vault-info-body">
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
-          Tus finanzas se guardan y sincronizan automáticamente en la nube sin barreras ni inicios de sesión obligatorios.
+          Tus ahorros, deudas y metas se guardan en tu Bóveda en la nube. Con tu código personal puedes sincronizar tus finanzas en cualquier celular, tableta o PC en tiempo real.
         </p>
 
         <!-- CODIGO DE BOVEDA PERSONAL -->
-        <div class="vault-code-display">
-          <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-            Tu Código de Bóveda:
+        <div class="vault-code-display" style="background: var(--surface-secondary); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; margin-bottom: 16px;">
+          <span style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">
+            Tu Código de Bóveda Actual:
           </span>
-          <div id="vault-code-text" class="vault-code-value">CARGANDO...</div>
-          <button id="btn-copy-vault-code" class="btn-copy">Copiar Código</button>
-        </div>
-
-        <!-- CONECTAR OTRO DISPOSITIVO -->
-        <div class="vault-section-box">
-          <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-            <span>📲</span> Conectar otro Teléfono o Computador
-          </h3>
-          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
-            ¿Quieres ver exactamente estos mismos datos en otro celular? Abre la web en ese dispositivo, introduce tu código y pulsa vincular:
-          </p>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="vault-link-code-input" placeholder="Ej: AHORROS-XXXX" style="flex: 1; font-family: monospace; text-transform: uppercase; font-weight: 700; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-main); font-size: 0.85rem;">
-            <button id="btn-link-vault" class="btn btn-primary" style="padding: 9px 16px; font-size: 0.78rem; white-space: nowrap;">
-              Vincular
+          <div id="vault-code-text" class="vault-code-value" style="font-size: 1.5rem; font-weight: 900; letter-spacing: 0.08em; color: var(--primary-color); font-family: monospace; margin-bottom: 12px;">CARGANDO...</div>
+          
+          <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+            <button id="btn-copy-vault-code" class="btn btn-primary" style="font-size: 0.78rem; padding: 8px 14px;">
+              📋 Copiar Código
+            </button>
+            <button id="btn-share-vault-link" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px;">
+              🔗 Enlace Directo
+            </button>
+            <button id="btn-new-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; color: var(--text-muted);" title="Iniciar una nueva bóveda en blanco con código nuevo">
+              ➕ Nueva Bóveda
             </button>
           </div>
+          <small style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-top: 8px;">
+            💡 El enlace directo abre la web en tu celular y conecta tu bóveda automáticamente sin escribir nada.
+          </small>
+        </div>
+
+        <!-- INGRESAR / VINCULAR A OTRA BOVEDA EXISTENTE -->
+        <div class="vault-section-box">
+          <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>📲</span> Ingresar a tus Ahorros con tu Código
+          </h3>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+            ¿Tienes tus datos en otro celular o guardaste tu código anterior? Escríbelo aquí para cargar tus finanzas:
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="vault-link-code-input" placeholder="Ej: AHORRO-XXXXXX" style="flex: 1; font-family: monospace; text-transform: uppercase; font-weight: 700; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-main); font-size: 0.9rem;">
+            <button id="btn-link-vault" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.8rem; font-weight: 800; white-space: nowrap;">
+              🔓 Cargar Bóveda
+            </button>
+          </div>
+          <div id="vault-link-feedback" style="font-size: 0.75rem; margin-top: 8px; display: none;"></div>
         </div>
 
         <!-- COPIA DE SEGURIDAD CON GOOGLE (OPCIONAL) -->
@@ -1252,7 +1262,7 @@
             <span>☁️</span> Respaldo con Cuenta de Google (Opcional)
           </h3>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
-            Si deseas asociar tu correo de Google para recordar siempre tu bóveda:
+            Si deseas asociar tu correo para recordar tu código en cualquier navegador:
           </p>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-secondary); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color);">
             <div style="display: flex; flex-direction: column;">
@@ -1323,89 +1333,6 @@
             <input type="text" id="pwa-share-url-input" readonly style="flex: 1; font-size: 0.72rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-main);">
             <button id="btn-copy-pwa-url" class="btn-copy">Copiar Link</button>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: PUBLICAR WEB INDEPENDIENTE & EXPORTAR -->
-  <div id="firebase-hosting-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 560px;">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 1.6rem;">🚀</span>
-          <div>
-            <h2 style="font-size: 1.15rem; font-weight: 800;">Tu Web 100% Independiente</h2>
-            <small style="color: var(--text-muted);">Sin Google AI Studio • Sin instalar nada en tu PC • Accesible en cualquier móvil</small>
-          </div>
-        </div>
-        <button id="btn-close-firebase-modal" class="modal-close-btn" title="Cerrar">&times;</button>
-      </div>
-
-      <div class="vault-modal-body" style="padding: 10px 0;">
-        <!-- EXPLICACIÓN CLARA Y TRANSPARENTE -->
-        <div style="background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.25); border-radius: var(--inner-radius); padding: 12px 14px; margin-bottom: 14px;">
-          <p style="font-size: 0.8rem; color: var(--text-main); line-height: 1.5; margin: 0;">
-            <strong>💡 ¿Por qué no abre con otra cuenta o salía "dominio no encontrado"?</strong><br>
-            • Los enlaces de Google AI Studio (<code>ais-pre...</code>) son pruebas privadas atadas a tu sesión de Google.<br>
-            • El dominio previo de Firebase no estaba activo porque Google AI Studio no sube la web a Firebase Hosting automáticamente.<br>
-            • <strong>No necesitas tener el código instalado en tu computadora</strong>. Puedes tener tu web pública mundial ahora mismo con estas opciones rápidas:
-          </p>
-        </div>
-
-        <!-- BOTÓN DE DESCARGA DIRECTA EN 1 CLIC -->
-        <div class="vault-section-box" style="margin-bottom: 14px;">
-          <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
-            PASO 1: OBTÉN LA VERSIÓN ACTUALIZADA (GRAFITO CARBÓN + ATAJOS)
-          </div>
-          <a href="/api/download-zip" download="ahorros-sa-web.zip" class="btn-download-project-zip" id="btn-download-zip-link">
-            <span>📦</span> <span>DESCARGAR PROYECTO WEB COMPLETO (.ZIP)</span>
-          </a>
-          <small style="font-size: 0.72rem; color: var(--text-muted); display: block; text-align: center;">
-            Incluye index.html, script.js, styles.css, iconos e instalador PWA listo para usar.
-          </small>
-        </div>
-
-        <!-- OPCIÓN A: GITHUB PAGES (DESDE EL NAVEGADOR SIN CONSOLA) -->
-        <div class="vault-section-box" style="margin-bottom: 14px;">
-          <div style="font-size: 0.82rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-            <span>🐙</span> <strong>Opción Recomendada: Actualizar tu GitHub Pages</strong>
-          </div>
-          <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
-            ¿Por qué tu GitHub Pages anterior no estaba actualizado? Porque AI Studio no sube archivos solo a tu cuenta. Para actualizarlo <strong>desde la página web de GitHub (sin tocar terminal)</strong>:
-          </p>
-
-          <div class="step-card">
-            <span class="step-badge">1</span>
-            <div style="font-size: 0.76rem; color: var(--text-main);">
-              Descarga el <strong>.ZIP</strong> con el botón azul de arriba y descomprímelo en tu equipo o celular.
-            </div>
-          </div>
-
-          <div class="step-card">
-            <span class="step-badge">2</span>
-            <div style="font-size: 0.76rem; color: var(--text-main);">
-              Entra en tu navegador a tu repositorio en <strong>GitHub.com</strong> y pulsa en <strong>"Add file" ➔ "Upload files"</strong>.
-            </div>
-          </div>
-
-          <div class="step-card">
-            <span class="step-badge">3</span>
-            <div style="font-size: 0.76rem; color: var(--text-main);">
-              Arrastra los archivos actualizados y pulsa el botón verde <strong>"Commit changes"</strong>.<br>
-              <span style="color: var(--success-color); font-weight: 600;">✓ ¡Tu GitHub Pages se actualizará en 1 minuto, disponible para todo el mundo sin Google AI Studio!</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- OPCIÓN B: NETLIFY DROP (ARRASTRAR Y LISTO EN 10 SEGUNDOS) -->
-        <div style="padding: 12px; background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: var(--inner-radius);">
-          <div style="font-size: 0.8rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-            <span>⚡</span> ¿Prefieres un enlace público al instante sin GitHub?
-          </div>
-          <p style="font-size: 0.74rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
-            Entra a <strong><a href="https://app.netlify.com/drop" target="_blank" rel="noopener" style="color: var(--primary-color); text-decoration: underline;">app.netlify.com/drop</a></strong>, arrastra la carpeta descomprimida y en 10 segundos te dará un link <code>https://tu-app.netlify.app</code> 100% público, gratuito y con candado seguro SSL.
-          </p>
         </div>
       </div>
     </div>

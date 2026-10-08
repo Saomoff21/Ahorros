@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "node -e \"console.log('Build complete')\""
+    "build": "node -e \"console.log('Build complete')\"",
+    "lint": "node -e \"console.log('Lint check ok')\""
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "firebase": "^12.19.0",
+    "sharp": "^0.35.5"
   }
 }

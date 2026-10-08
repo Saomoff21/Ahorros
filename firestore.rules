@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'type', 'description', 'amount', 'category', 'date'])
+        && data.type in ['income', 'expense']
+        && data.description is string && data.description.size() <= 200
+        && data.amount is number && data.amount >= 0
+        && data.category is string && data.category.size() <= 100
+        && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() <= 50));
+    }
+
+    function isValidDebt(data) {
+      return data.keys().hasAll(['userId', 'name', 'total', 'paid', 'startDate'])
+        && data.name is string && data.name.size() <= 200
+        && data.total is number && data.total >= 0
+        && data.paid is number && data.paid >= 0
+        && data.startDate is string && data.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isValidSavingsGoal(data) {
+      return data.keys().hasAll(['userId', 'name', 'targetAmount', 'currentAmount'])
+        && data.name is string && data.name.size() <= 150
+        && data.targetAmount is number && data.targetAmount > 0
+        && data.currentAmount is number && data.currentAmount >= 0;
+    }
+
+    function isValidRecurringPayment(data) {
+      return data.keys().hasAll(['userId', 'name', 'amount', 'type', 'frequency', 'dueDay'])
+        && data.name is string && data.name.size() <= 150
+        && data.amount is number && data.amount > 0
+        && data.type in ['income', 'expense']
+        && data.frequency in ['MENSUAL', 'QUINCENAL', 'SEMANAL', 'ANUAL']
+        && data.dueDay is number && data.dueDay >= 1 && data.dueDay <= 31;
+    }
+
+    // User Profile & Shortcut Key
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId)
+        && incoming().uid == request.auth.uid;
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId)
+        && incoming().uid == existing().uid;
+      allow delete: if false;
+
+      // Transactions subcollection
+      match /transactions/{transactionId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId
+          && isValidId(transactionId)
+          && incoming().userId == request.auth.uid
+          && isValidTransaction(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId
+          && isValidId(transactionId)
+          && incoming().userId == existing().userId
+          && isValidTransaction(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(transactionId);
+      }
+
+      // Debts subcollection
+      match /debts/{debtId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId
+          && isValidId(debtId)
+          && incoming().userId == request.auth.uid
+          && isValidDebt(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId
+          && isValidId(debtId)
+          && incoming().userId == existing().userId
+          && isValidDebt(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(debtId);
+      }
+
+      // Savings Goals subcollection
+      match /savingsGoals/{goalId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId
+          && isValidId(goalId)
+          && incoming().userId == request.auth.uid
+          && isValidSavingsGoal(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId
+          && isValidId(goalId)
+          && incoming().userId == existing().userId
+          && isValidSavingsGoal(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(goalId);
+      }
+
+      // Recurring Payments subcollection
+      match /recurringPayments/{recurringId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId
+          && isValidId(recurringId)
+          && incoming().userId == request.auth.uid
+          && isValidRecurringPayment(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId
+          && isValidId(recurringId)
+          && incoming().userId == existing().userId
+          && isValidRecurringPayment(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(recurringId);
+      }
+    }
+  }
+}

@@ -1,58 +1,254 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="light">
+<html lang="es" data-theme="carbon">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AHORROS SA - SISTEMA DE GESTION FINANCIERA</title>
-  <meta name="description" content="Sistema de gestión financiera integral para registro de ingresos, gastos y control de deudas.">
+  <meta name="description" content="Sistema de gestión financiera integral con soporte para Atajos de iPhone, metas de ahorro, pagos fijos, métodos de pago, sincronización en la nube y control de deudas.">
   <meta property="og:title" content="AHORROS SA - SISTEMA DE GESTION FINANCIERA">
-  <meta property="og:description" content="Sistema de gestión financiera integral para registro de ingresos, gastos y control de deudas.">
+  <meta property="og:description" content="Sistema de gestión financiera integral con soporte para Atajos de iPhone, metas de ahorro, pagos fijos, métodos de pago, sincronización en la nube y control de deudas.">
+  
+  <!-- PWA & MOBILE STANDARDS -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f0f11">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ahorros SA">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js para visualización de gráficos mensuales -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
+  <!-- HEADER MODERNO Y ELEGANTE -->
   <header class="app-header">
     <div class="header-container">
       <div class="brand">
-        <h1>AHORROS SA</h1>
-        <span class="badge">SISTEMA INTEGRAL</span>
+        <img src="/icon.svg" alt="Ahorros SA" style="width: 38px; height: 38px; border-radius: 10px; box-shadow: 0 4px 12px rgba(6,182,212,0.3);">
+        <div>
+          <h1>AHORROS SA</h1>
+          <span class="badge">FINANZAS & BÓVEDA NUBE</span>
+        </div>
       </div>
-      <button id="theme-toggle" class="btn-theme" title="CAMBIAR TEMA">
-        <span id="theme-text">MODO OSCURO</span>
-      </button>
+
+      <div class="header-actions">
+        <!-- Selector de Estilos y Temas para el usuario -->
+        <div class="theme-picker-wrapper" title="PERSONALIZAR ESTILO DE INTERFAZ">
+          <span class="theme-picker-label">ESTILO:</span>
+          <select id="theme-select" class="theme-select">
+            <option value="carbon" selected>⚡ GRAFITO CARBÓN</option>
+            <option value="dark">🌙 OSCURO MEDIANOCHE</option>
+            <option value="sapphire">💎 ZAFIRO FINTECH</option>
+            <option value="amethyst">🔮 AMATISTA ROYAL</option>
+            <option value="light">☀️ CLARO MINIMALISTA</option>
+          </select>
+        </div>
+
+        <!-- Botón para ver cómo independizar o publicar la web -->
+        <button id="btn-firebase-hosting" class="btn-firebase-deploy" title="PUBLICAR SITIO INDEPENDIENTE O DESCARGAR">
+          <span>🚀</span> <span>PUBLICAR WEB</span>
+        </button>
+
+        <!-- Botón para instalar como App PWA en móvil o PC -->
+        <button id="btn-pwa-install" class="btn-pwa-install" title="INSTALAR COMO APLICACIÓN">
+          <span>📲</span> <span id="btn-pwa-install-text">INSTALAR APP</span>
+        </button>
+
+        <!-- Indicador de sincronización en la nube -->
+        <div id="sync-indicator" class="sync-status" title="ESTADO DE SINCRONIZACIÓN EN LA NUBE">
+          <span class="sync-dot" id="sync-dot"></span>
+          <span id="sync-text">NUBE CONECTADA</span>
+        </div>
+
+        <!-- Botón de Bóveda & Sincronización Multi-dispositivo -->
+        <button id="auth-btn" class="btn-auth" title="MI BÓVEDA & MULTI-DISPOSITIVO">
+          <span id="auth-btn-text">🔐 MI BÓVEDA</span>
+        </button>
+      </div>
     </div>
   </header>
 
   <main class="main-container">
 
-    <!-- NAVEGACION DE PESTAÑAS -->
+    <!-- NAVEGACION DE PESTAÑAS (SEGMENTED REDONDEADO) -->
     <nav class="tabs-nav">
-      <button class="tab-btn active" data-tab="tab-dashboard">DASHBOARD</button>
-      <button class="tab-btn" data-tab="tab-movements">INGRESOS Y GASTOS</button>
-      <button class="tab-btn" data-tab="tab-debts">CONTROL DE DEUDAS</button>
+      <button class="tab-btn active" data-tab="tab-dashboard">📊 Dashboard</button>
+      <button class="tab-btn" data-tab="tab-movements">💰 Ingresos y Gastos</button>
+      <button class="tab-btn" data-tab="tab-savings">🎯 Metas de Ahorro</button>
+      <button class="tab-btn" data-tab="tab-recurring">🔄 Pagos Fijos y Suscripciones</button>
+      <button class="tab-btn" data-tab="tab-charts">📈 Gráficos y Análisis</button>
+      <button class="tab-btn" data-tab="tab-debts">🗓️ Control de Deudas y Calendario</button>
+      <button class="tab-btn" data-tab="tab-shortcuts">📱 Atajos de iPhone</button>
     </nav>
+
+    <!-- BARRA GLOBAL DE FILTRO DE PERIODO Y METODOS (AÑO, MES, MEDIO Y METODO) -->
+    <div class="toolbar-filter">
+      <div class="filter-group">
+        <span class="filter-label">Filtrar Historial y Reportes:</span>
+        <select id="global-filter-year" class="filter-select">
+          <option value="ALL">Todos los Años</option>
+          <option value="2027">2027</option>
+          <option value="2026" selected>2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+        </select>
+        <select id="global-filter-month" class="filter-select">
+          <option value="ALL">Todos los Meses</option>
+          <option value="01">Enero</option>
+          <option value="02">Febrero</option>
+          <option value="03">Marzo</option>
+          <option value="04">Abril</option>
+          <option value="05">Mayo</option>
+          <option value="06">Junio</option>
+          <option value="07">Julio</option>
+          <option value="08">Agosto</option>
+          <option value="09">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
+
+        <!-- Filtro por Modo Físico vs Digital -->
+        <select id="global-filter-medium" class="filter-select" title="Filtrar por pago físico o digital">
+          <option value="ALL">💵📱 Todos los Medios</option>
+          <option value="FISICO">💵 Solo Pagos Físicos (Efectivo)</option>
+          <option value="DIGITAL">📱 Solo Pagos Digitales (Apps/Tarjetas)</option>
+        </select>
+
+        <!-- Filtro por Método Específico -->
+        <select id="global-filter-method" class="filter-select" title="Filtrar por método específico">
+          <option value="ALL">🏦 Todas las Cuentas</option>
+          <option value="EFECTIVO">💵 Efectivo Físico</option>
+          <option value="NEQUI">📱 Nequi</option>
+          <option value="DAVIPLATA">📱 Daviplata</option>
+          <option value="BANCO">🏦 Banco / PSE</option>
+          <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+          <option value="TARJETA_CREDITO">💳 Tarjeta Crédito</option>
+          <option value="OTRO">🌐 Otros</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <span id="active-period-summary" style="font-size: 0.78rem; font-weight: 700; color: var(--primary-color);">
+          Mostrando: Todos los meses (2026)
+        </span>
+        <button id="btn-clear-method-filter" class="btn-account-action hidden" style="padding: 4px 8px; font-size: 0.7rem;">
+          ✖ Quitar Filtro de Cuenta
+        </button>
+      </div>
+    </div>
 
     <!-- PESTAÑA 1: DASHBOARD -->
     <section id="tab-dashboard" class="tab-content active">
       <div class="dashboard-grid">
-        <div class="kpi-card">
-          <span class="kpi-label">INGRESOS TOTALES</span>
+        <div class="kpi-card border-success">
+          <span class="kpi-label">INGRESOS EN PERIODO</span>
           <div id="total-income" class="kpi-value text-success">$ 0</div>
         </div>
-        <div class="kpi-card">
-          <span class="kpi-label">GASTOS TOTALES</span>
+        <div class="kpi-card border-danger">
+          <span class="kpi-label">GASTOS EN PERIODO</span>
           <div id="total-expense" class="kpi-value text-danger">$ 0</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card border-primary">
           <span class="kpi-label">BALANCE DISPONIBLE</span>
           <div id="total-balance" class="kpi-value text-primary">$ 0</div>
         </div>
-        <div class="kpi-card">
-          <span class="kpi-label">DEUDA PENDIENTE</span>
+        <div class="kpi-card border-purple">
+          <span class="kpi-label">DEUDA PENDIENTE TOTAL</span>
           <div id="total-debt-pending" class="kpi-value text-purple">$ 0</div>
+        </div>
+      </div>
+
+      <!-- DESGLOSE DE SALDOS POR MÉTODO DE PAGO / CUENTAS -->
+      <div style="margin-bottom: 24px;">
+        <div class="accounts-header-row">
+          <div>
+            <h3 style="font-size: 0.85rem; font-weight: 800; color: var(--text-muted); letter-spacing: 0.03em; margin: 0;">
+              SALDOS POR CUENTA Y MÉTODO DE PAGO:
+            </h3>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">Toca cualquier cuenta para filtrar tus movimientos</small>
+          </div>
+          <div class="accounts-actions">
+            <button id="btn-open-transfer-modal" class="btn-account-action btn-transfer" title="Mover dinero entre cuentas o retirar a efectivo físico">
+              <span>🔄</span> Mover Dinero / Retiro Cajero
+            </button>
+            <button id="btn-open-pay-card-modal" class="btn-account-action" title="Liquidar saldo gastado en tarjeta de crédito">
+              <span>💳</span> Pagar Tarjeta Crédito
+            </button>
+          </div>
+        </div>
+
+        <div class="accounts-grid" id="accounts-summary-grid">
+          <!-- 1. EFECTIVO FÍSICO EN MANO -->
+          <div class="account-card" data-account="EFECTIVO" title="Haz clic para filtrar por Efectivo Físico">
+            <div class="account-icon">💵</div>
+            <div class="account-info">
+              <span class="account-name">EFECTIVO (FÍSICO EN MANO)</span>
+              <span class="account-balance text-success" id="acc-efectivo">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 2. NEQUI -->
+          <div class="account-card" data-account="NEQUI" title="Haz clic para filtrar por Nequi">
+            <div class="account-icon">📱</div>
+            <div class="account-info">
+              <span class="account-name">NEQUI</span>
+              <span class="account-balance text-primary" id="acc-nequi">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 3. DAVIPLATA -->
+          <div class="account-card" data-account="DAVIPLATA" title="Haz clic para filtrar por Daviplata">
+            <div class="account-icon">📱</div>
+            <div class="account-info">
+              <span class="account-name">DAVIPLATA</span>
+              <span class="account-balance text-primary" id="acc-daviplata">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 4. BANCO / CUENTA -->
+          <div class="account-card" data-account="BANCO" title="Haz clic para filtrar por Banco / Ahorros">
+            <div class="account-icon">🏦</div>
+            <div class="account-info">
+              <span class="account-name">BANCO / CUENTA</span>
+              <span class="account-balance text-primary" id="acc-banco">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 5. TARJETA DÉBITO -->
+          <div class="account-card" data-account="TARJETA_DEBITO" title="Haz clic para filtrar por Tarjeta Débito">
+            <div class="account-icon">💳</div>
+            <div class="account-info">
+              <span class="account-name">TARJETA DÉBITO</span>
+              <span class="account-balance text-primary" id="acc-debito">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 6. TARJETA CRÉDITO -->
+          <div class="account-card" data-account="TARJETA_CREDITO" title="Haz clic para filtrar por Tarjeta Crédito">
+            <div class="account-icon">💳</div>
+            <div class="account-info">
+              <span class="account-name">TARJETA CRÉDITO (GASTADO)</span>
+              <span class="account-balance text-danger" id="acc-tarjeta">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 7. METAS DE AHORRO -->
+          <div class="account-card" data-account="GOALS" style="cursor: pointer;" title="Ir a la pestaña de Metas de Ahorro">
+            <div class="account-icon">🎯</div>
+            <div class="account-info">
+              <span class="account-name">TOTAL EN METAS DE AHORRO</span>
+              <span class="account-balance text-success" id="acc-goals-total">$ 0</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -60,17 +256,20 @@
 
       <div class="panel-card border-primary">
         <div class="panel-header">
-          <h2>RESUMEN GENERAL DE CUENTAS</h2>
+          <h2>Resumen General de Cuentas (Orden Cronológico)</h2>
+          <span id="summary-count-badge" class="tag-badge">0 Movimientos</span>
         </div>
         <div class="table-wrapper">
           <table>
             <thead>
               <tr>
-                <th>FECHA</th>
-                <th>TIPO</th>
-                <th>CONCEPTO / OBLIGACION</th>
-                <th>CATEGORIA</th>
-                <th>MONTO / SALDO</th>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Concepto / Obligación</th>
+                <th>Categoría</th>
+                <th>Medio</th>
+                <th>Método / Cuenta</th>
+                <th>Monto / Saldo</th>
               </tr>
             </thead>
             <tbody id="dashboard-summary-list"></tbody>
@@ -87,55 +286,80 @@
         <div class="movement-column">
           <div class="panel-card border-success">
             <div class="panel-header">
-              <h2>REGISTRAR INGRESO</h2>
+              <h2>Registrar Ingreso</h2>
+              <span class="tag-badge text-success">+ Entrada</span>
             </div>
             <form id="income-form" class="app-form">
               <div class="form-group">
-                <label for="income-date">FECHA DE TRANSACCION</label>
-                <input type="date" id="income-date">
+                <label for="income-date">Fecha de Transacción</label>
+                <input type="date" id="income-date" required>
               </div>
 
               <div class="form-group">
-                <label for="income-description">CONCEPTO</label>
-                <input type="text" id="income-description" class="uppercase-input" placeholder="EJ: HONORARIOS PROFESIONALES" required>
+                <label for="income-description">Concepto</label>
+                <input type="text" id="income-description" placeholder="Ej: Honorarios profesionales o salario" required>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="income-amount">Monto ($ COP)</label>
+                  <input type="text" id="income-amount" class="currency-input" placeholder="Ej: 500.000" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="income-payment-method">Cuenta de Destino</label>
+                  <select id="income-payment-method" required>
+                    <option value="EFECTIVO">💵 EFECTIVO (Pago Físico en mano)</option>
+                    <option value="NEQUI">📱 NEQUI</option>
+                    <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                    <option value="BANCO">🏦 BANCO / PSE / CUENTA</option>
+                    <option value="TARJETA_DEBITO">💳 TARJETA DÉBITO</option>
+                    <option value="OTRO">🌐 OTRO MÉTODO</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Indicador visual de medio de pago -->
+              <div id="income-medium-notice" style="font-size: 0.72rem; color: var(--success-color); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>💵</span> <span>Medio: PAGO FÍSICO (Efectivo en mano)</span>
               </div>
 
               <div class="form-group">
-                <label for="income-amount">MONTO ($ COP)</label>
-                <input type="text" id="income-amount" class="currency-input" placeholder="EJ: 250.000" required>
-              </div>
-
-              <div class="form-group">
-                <label for="income-category">CATEGORIA</label>
+                <label for="income-category">Categoría</label>
                 <select id="income-category" class="category-select" data-other="income-other-group" required>
                   <option value="SALARIO / TRABAJO">SALARIO / TRABAJO</option>
                   <option value="INVERSIONES">INVERSIONES</option>
-                  <option value="VENTAS">VENTAS</option>
+                  <option value="VENTAS / NEGOCIO">VENTAS / NEGOCIO</option>
+                  <option value="REEMBOLSOS">REEMBOLSOS</option>
+                  <option value="REGALOS / PREMIOS">REGALOS / PREMIOS</option>
                   <option value="OTROS">OTROS</option>
                 </select>
               </div>
 
               <div class="form-group hidden" id="income-other-group">
-                <label for="income-other-detail">ESPECIFIQUE OTRA CATEGORIA</label>
-                <input type="text" id="income-other-detail" class="uppercase-input" placeholder="DETALLE DE CATEGORIA">
+                <label for="income-other-detail">Especifique otra categoría</label>
+                <input type="text" id="income-other-detail" placeholder="Detalle de categoría">
               </div>
 
-              <button type="submit" class="btn btn-success">GUARDAR INGRESO</button>
+              <button type="submit" class="btn btn-success">Guardar Ingreso</button>
             </form>
           </div>
 
           <div class="panel-card table-panel border-success">
             <div class="panel-header">
-              <h2>HISTORIAL DE INGRESOS</h2>
+              <h2>Historial de Ingresos</h2>
+              <span id="income-period-total" class="tag-badge text-success">$ 0</span>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>FECHA</th>
-                    <th>CONCEPTO</th>
-                    <th>CATEGORIA</th>
-                    <th>MONTO</th>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th>Categoría</th>
+                    <th>Medio</th>
+                    <th>Cuenta</th>
+                    <th>Monto</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -149,57 +373,98 @@
         <div class="movement-column">
           <div class="panel-card border-danger">
             <div class="panel-header">
-              <h2>REGISTRAR GASTO</h2>
+              <h2>Registrar Gasto</h2>
+              <span class="tag-badge text-danger">- Salida</span>
             </div>
             <form id="expense-form" class="app-form">
               <div class="form-group">
-                <label for="expense-date">FECHA DE TRANSACCION</label>
-                <input type="date" id="expense-date">
+                <label for="expense-date">Fecha de Transacción</label>
+                <input type="date" id="expense-date" required>
               </div>
 
               <div class="form-group">
-                <label for="expense-description">CONCEPTO</label>
-                <input type="text" id="expense-description" class="uppercase-input" placeholder="EJ: SUMINISTROS Y MERCADO" required>
+                <label for="expense-description">Concepto</label>
+                <input type="text" id="expense-description" placeholder="Ej: Mercado, servicios, transporte" required>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="expense-amount">Monto ($ COP)</label>
+                  <input type="text" id="expense-amount" class="currency-input" placeholder="Ej: 150.000" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="expense-payment-method">Método de Pago (Origen)</label>
+                  <select id="expense-payment-method" required>
+                    <option value="EFECTIVO">💵 EFECTIVO (Pago Físico en mano)</option>
+                    <option value="NEQUI">📱 NEQUI</option>
+                    <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                    <option value="BANCO">🏦 BANCO / PSE</option>
+                    <option value="TARJETA_DEBITO">💳 TARJETA DÉBITO</option>
+                    <option value="TARJETA_CREDITO">💳 TARJETA DE CRÉDITO</option>
+                    <option value="OTRO">🌐 OTRO MÉTODO</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Indicador visual de medio de gasto -->
+              <div id="expense-medium-notice" style="font-size: 0.72rem; color: var(--success-color); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>💵</span> <span>Medio: PAGO FÍSICO (Efectivo en mano)</span>
+              </div>
+
+              <!-- Opciones adicionales si es tarjeta de crédito -->
+              <div id="expense-credit-group" class="form-group hidden">
+                <label for="expense-installments">Cuotas de Tarjeta de Crédito (Opcional)</label>
+                <select id="expense-installments">
+                  <option value="1">1 Cuota (Sin intereses corrientes)</option>
+                  <option value="2">2 Cuotas</option>
+                  <option value="3">3 Cuotas</option>
+                  <option value="6">6 Cuotas</option>
+                  <option value="12">12 Cuotas</option>
+                  <option value="24">24 Cuotas</option>
+                  <option value="36">36 Cuotas</option>
+                </select>
               </div>
 
               <div class="form-group">
-                <label for="expense-amount">MONTO ($ COP)</label>
-                <input type="text" id="expense-amount" class="currency-input" placeholder="EJ: 150.000" required>
-              </div>
-
-              <div class="form-group">
-                <label for="expense-category">CATEGORIA</label>
+                <label for="expense-category">Categoría</label>
                 <select id="expense-category" class="category-select" data-other="expense-other-group" required>
-                  <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
                   <option value="ALIMENTACION">ALIMENTACION</option>
                   <option value="TRANSPORTE">TRANSPORTE</option>
-                  <option value="ENTRETENIMIENTO">ENTRETENIMIENTO</option>
+                  <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
+                  <option value="SALUD Y BIENESTAR">SALUD Y BIENESTAR</option>
+                  <option value="ENTRETENIMIENTO Y OCIO">ENTRETENIMIENTO Y OCIO</option>
+                  <option value="EDUCACION">EDUCACION</option>
+                  <option value="ROPA Y CALZADO">ROPA Y CALZADO</option>
                   <option value="PAGO DE DEUDAS">PAGO DE DEUDAS</option>
                   <option value="OTROS">OTROS</option>
                 </select>
               </div>
 
               <div class="form-group hidden" id="expense-other-group">
-                <label for="expense-other-detail">ESPECIFIQUE OTRA CATEGORIA</label>
-                <input type="text" id="expense-other-detail" class="uppercase-input" placeholder="DETALLE DE CATEGORIA">
+                <label for="expense-other-detail">Especifique otra categoría</label>
+                <input type="text" id="expense-other-detail" placeholder="Detalle de categoría">
               </div>
 
-              <button type="submit" class="btn btn-danger">GUARDAR GASTO</button>
+              <button type="submit" class="btn btn-danger">Guardar Gasto</button>
             </form>
           </div>
 
           <div class="panel-card table-panel border-danger">
             <div class="panel-header">
-              <h2>HISTORIAL DE GASTOS</h2>
+              <h2>Historial de Gastos</h2>
+              <span id="expense-period-total" class="tag-badge text-danger">$ 0</span>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>FECHA</th>
-                    <th>CONCEPTO</th>
-                    <th>CATEGORIA</th>
-                    <th>MONTO</th>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th>Categoría</th>
+                    <th>Medio</th>
+                    <th>Método</th>
+                    <th>Monto</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -212,64 +477,565 @@
       </div>
     </section>
 
-    <!-- PESTAÑA 3: CONTROL DE DEUDAS -->
-    <section id="tab-debts" class="tab-content">
-      <div class="workspace-grid">
-        
-        <div class="forms-column">
+    <!-- PESTAÑA 3: METAS DE AHORRO ("BOLSILLOS") -->
+    <section id="tab-savings" class="tab-content">
+      <div class="goals-layout-grid">
+        <!-- FORMULARIO CREAR META -->
+        <div class="panel-card border-success">
+          <div class="panel-header">
+            <h2>Crear Meta de Ahorro / Bolsillo</h2>
+            <span class="tag-badge text-success">🎯 Objetivo</span>
+          </div>
+          <form id="goal-form" class="app-form">
+            <div class="form-group">
+              <label for="goal-name">Nombre de la Meta</label>
+              <input type="text" id="goal-name" placeholder="Ej: Viaje a San Andrés, Fondo de Emergencia" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="goal-target">Monto Objetivo ($ COP)</label>
+                <input type="text" id="goal-target" class="currency-input" placeholder="Ej: 2.000.000" required>
+              </div>
+
+              <div class="form-group">
+                <label for="goal-initial">Ahorro Inicial ($ COP)</label>
+                <input type="text" id="goal-initial" class="currency-input" placeholder="Ej: 100.000" value="0">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="goal-source-account">Cuenta para Ahorro Inicial</label>
+                <select id="goal-source-account">
+                  <option value="EFECTIVO">💵 EFECTIVO (Físico en mano)</option>
+                  <option value="NEQUI">📱 NEQUI</option>
+                  <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                  <option value="BANCO">🏦 BANCO / CUENTA</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="goal-icon">Icono / Emoji</label>
+                <select id="goal-icon">
+                  <option value="✈️">✈️ Viajes / Vacaciones</option>
+                  <option value="🛡️">🛡️ Fondo de Emergencia</option>
+                  <option value="📱">📱 Tecnología / Celular</option>
+                  <option value="🚗">🚗 Vehículo / Carro</option>
+                  <option value="🏠">🏠 Vivienda / Hogar</option>
+                  <option value="🎓">🎓 Educación / Cursos</option>
+                  <option value="💼">💼 Negocio / Inversión</option>
+                  <option value="🎁">🎁 Regalo / Celebración</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="goal-date">Fecha Límite (Opcional - Proyecta ahorro mensual)</label>
+              <input type="date" id="goal-date">
+            </div>
+
+            <button type="submit" class="btn btn-success">Crear Meta de Ahorro</button>
+          </form>
+        </div>
+
+        <!-- LISTA DE METAS ACTIVAS -->
+        <div>
+          <div class="panel-card border-primary">
+            <div class="panel-header">
+              <h2>Tus Metas de Ahorro Activas</h2>
+              <span id="goals-summary-badge" class="tag-badge text-success">Total Ahorrado: $ 0</span>
+            </div>
+            <div style="padding: 20px;">
+              <div id="goals-container" class="goals-grid">
+                <p style="color: var(--text-muted); font-size: 0.82rem;">No tienes metas creadas aún. ¡Crea tu primer bolsillo a la izquierda!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 4: PAGOS FIJOS Y SUSCRIPCIONES -->
+    <section id="tab-recurring" class="tab-content">
+      <div class="recurring-layout-grid">
+        <!-- FORMULARIO CREAR PAGO FIJO -->
+        <div class="panel-card border-warning">
+          <div class="panel-header">
+            <h2>Registrar Pago Fijo o Suscripción</h2>
+            <span class="tag-badge text-warning">🔄 Recurrente</span>
+          </div>
+          <form id="recurring-form" class="app-form">
+            <div class="form-group">
+              <label for="rec-name">Nombre del Compromiso o Servicio</label>
+              <input type="text" id="rec-name" placeholder="Ej: Arriendo, Netflix, Internet, Spotify" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rec-type">Tipo</label>
+                <select id="rec-type">
+                  <option value="expense">Gasto Fijo (Salida)</option>
+                  <option value="income">Ingreso Fijo (Entrada/Sueldo)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="rec-amount">Monto ($ COP)</label>
+                <input type="text" id="rec-amount" class="currency-input" placeholder="Ej: 80.000" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rec-frequency">Frecuencia</label>
+                <select id="rec-frequency">
+                  <option value="MENSUAL">Mensual</option>
+                  <option value="QUINCENAL">Quincenal</option>
+                  <option value="SEMANAL">Semanal</option>
+                  <option value="ANUAL">Anual</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="rec-day">Día de Cobro del Mes</label>
+                <input type="number" id="rec-day" min="1" max="31" value="5" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rec-category">Categoría</label>
+                <select id="rec-category">
+                  <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
+                  <option value="ENTRETENIMIENTO Y OCIO">ENTRETENIMIENTO (Streaming)</option>
+                  <option value="SALUD Y BIENESTAR">SALUD / GIMNASIO</option>
+                  <option value="EDUCACION">EDUCACION</option>
+                  <option value="SALARIO / TRABAJO">SALARIO / TRABAJO</option>
+                  <option value="OTROS">OTROS</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="rec-method">Método de Pago Habitual</label>
+                <select id="rec-method">
+                  <option value="NEQUI">📱 NEQUI</option>
+                  <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                  <option value="BANCO">🏦 DÉBITO AUTOMÁTICO / BANCO</option>
+                  <option value="TARJETA_CREDITO">💳 TARJETA DE CRÉDITO</option>
+                  <option value="EFECTIVO">💵 EFECTIVO</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar Pago Recurrente</button>
+          </form>
+        </div>
+
+        <!-- LISTA DE PAGOS FIJOS Y SUSCRIPCIONES -->
+        <div>
           <div class="panel-card border-purple">
             <div class="panel-header">
-              <h2>REGISTRAR OBLIGACION</h2>
+              <h2>Compromisos Fijos del Mes</h2>
+              <span id="recurring-summary-badge" class="tag-badge text-danger">Total Fijo: $ 0/mes</span>
+            </div>
+            <div style="padding: 20px;">
+              <div id="recurring-container" class="recurring-grid">
+                <p style="color: var(--text-muted); font-size: 0.82rem;">No tienes pagos fijos registrados aún.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 5: GRAFICOS Y ANALISIS -->
+    <section id="tab-charts" class="tab-content">
+      <div class="insights-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">TASA DE AHORRO DEL PERIODO</span>
+          <div id="chart-savings-rate" class="kpi-value text-success">0 %</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">MAYOR CATEGORIA DE GASTO</span>
+          <div id="chart-top-category" class="kpi-value text-primary" style="font-size: 1.15rem;">NINGUNA</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">PROMEDIO DE GASTO DIARIO</span>
+          <div id="chart-daily-avg" class="kpi-value text-danger">$ 0</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">BALANCE NETO DEL PERIODO</span>
+          <div id="chart-net-savings" class="kpi-value text-primary">$ 0</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- GRAFICO 1: COMPARATIVA MENSUAL INGRESOS VS GASTOS -->
+        <div class="panel-card border-primary">
+          <div class="panel-header">
+            <h2>Comparativa Mensual (Ingresos vs. Gastos)</h2>
+            <span class="tag-badge">12 Meses</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="monthlyBarChart"></canvas>
+          </div>
+        </div>
+
+        <!-- GRAFICO 2: DISTRIBUCION POR CATEGORIA -->
+        <div class="panel-card border-danger">
+          <div class="panel-header">
+            <h2>Gastos por Categoría</h2>
+            <span class="tag-badge">Distribución %</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="categoryPieChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid" style="margin-top: 22px;">
+        <!-- GRAFICO 3: TENDENCIA DEL BALANCE -->
+        <div class="panel-card border-purple">
+          <div class="panel-header">
+            <h2>Evolución y Tendencia del Balance Acumulado</h2>
+            <span class="tag-badge">Saldo Disponible</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="balanceLineChart"></canvas>
+          </div>
+        </div>
+
+        <!-- GRAFICO 4: FÍSICO VS DIGITAL -->
+        <div class="panel-card border-success">
+          <div class="panel-header">
+            <h2>Pagos Físicos (Efectivo) vs. Digitales (Apps/Tarjetas)</h2>
+            <span class="tag-badge">Medio de Pago</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="mediumDoughnutChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRAFICO 5: DISTRIBUCIÓN POR MÉTODO DE PAGO ESPECÍFICO -->
+      <div class="panel-card border-primary" style="margin-top: 22px;">
+        <div class="panel-header">
+          <h2>Gastos e Ingresos por Método de Pago (Nequi, Efectivo, Banco, Tarjetas)</h2>
+          <span class="tag-badge">Desglose de Cuentas</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="paymentMethodsBarChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 6: CONTROL DE DEUDAS Y CALENDARIO -->
+    <section id="tab-debts" class="tab-content">
+      <div class="debts-layout-grid">
+        
+        <!-- FORMULARIO CREAR DEUDA -->
+        <div class="debt-form-column">
+          <div class="panel-card border-purple">
+            <div class="panel-header">
+              <h2>Registrar Obligación / Deuda</h2>
             </div>
             <form id="debt-form" class="app-form">
               <div class="form-group">
-                <label for="debt-name">ACREEDOR / OBLIGACION</label>
-                <input type="text" id="debt-name" class="uppercase-input" placeholder="EJ: ENTIDAD BANCARIA" required>
+                <label for="debt-name">Nombre de la Obligación / Acreedor</label>
+                <input type="text" id="debt-name" placeholder="Ej: Banco, préstamo o persona" required>
               </div>
 
               <div class="form-group">
-                <label for="debt-total">MONTO CAPITAL ($ COP)</label>
-                <input type="text" id="debt-total" class="currency-input" placeholder="EJ: 1.500.000" required>
+                <label for="debt-total">Monto Capital ($ COP)</label>
+                <input type="text" id="debt-total" class="currency-input" placeholder="Ej: 1.200.000" required>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="debt-interest">% Interés</label>
+                  <input type="number" id="debt-interest" min="0" max="100" step="0.1" value="0">
+                </div>
+
+                <div class="form-group">
+                  <label for="debt-installments">Número de Cuotas</label>
+                  <input type="number" id="debt-installments" min="1" max="120" value="12" required>
+                </div>
               </div>
 
               <div class="form-group">
-                <label for="debt-interest">TASA DE INTERES % (OPCIONAL)</label>
-                <input type="number" id="debt-interest" placeholder="EJ: 2.5" min="0" step="0.1">
-              </div>
-
-              <div class="form-group">
-                <label for="debt-installments">NUMERO DE CUOTAS</label>
-                <input type="number" id="debt-installments" placeholder="EJ: 12" min="1" value="1" required>
-              </div>
-
-              <div class="form-group">
-                <label for="debt-start-date">FECHA PRIMER COBRO</label>
+                <label for="debt-start-date">Fecha Primer Cobro / Vencimiento</label>
                 <input type="date" id="debt-start-date" required>
               </div>
 
-              <button type="submit" class="btn btn-purple">CREAR OBLIGACION</button>
+              <button type="submit" class="btn btn-purple">Crear Obligación</button>
             </form>
           </div>
         </div>
 
-        <div class="tables-column">
-          <div class="panel-card table-panel border-purple">
-            <div class="panel-header">
-              <h2>OBLIGACIONES Y PLANES DE PAGO</h2>
+        <!-- CALENDARIO VISUAL DE PAGOS PENDIENTES -->
+        <div class="calendar-column">
+          <div class="panel-card border-warning">
+            <div class="calendar-header">
+              <div>
+                <h2>Calendario de Pagos Pendientes</h2>
+                <small style="color: var(--text-muted); font-size: 0.72rem;">Haz clic en cualquier día o cuota para ver detalles o abonar</small>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="calendar-prev-btn" class="calendar-nav-btn">&lt; Mes Anterior</button>
+                <span id="calendar-month-title" style="font-size: 0.82rem; font-weight: 700; color: var(--primary-color);">MES AÑO</span>
+                <button id="calendar-next-btn" class="calendar-nav-btn">Mes Siguiente &gt;</button>
+              </div>
             </div>
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>OBLIGACION</th>
-                    <th>PROGRESO / PLAN</th>
-                    <th>SALDO PENDIENTE</th>
-                    <th>GESTION DE CUOTA</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="debt-list"></tbody>
-              </table>
+
+            <!-- ENCABEZADOS DE LOS DIAS DE LA SEMANA -->
+            <div class="calendar-grid">
+              <div class="calendar-day-head">Lun</div>
+              <div class="calendar-day-head">Mar</div>
+              <div class="calendar-day-head">Mié</div>
+              <div class="calendar-day-head">Jue</div>
+              <div class="calendar-day-head">Vie</div>
+              <div class="calendar-day-head">Sáb</div>
+              <div class="calendar-day-head">Dom</div>
+            </div>
+            <!-- CUADRICULA DE CELDAS DEL CALENDARIO -->
+            <div id="calendar-days-container" class="calendar-grid"></div>
+
+            <!-- LEYENDA DEL CALENDARIO -->
+            <div style="padding: 12px 18px; background: var(--surface-secondary); border-top: 1px solid var(--border-color); display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.72rem;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="due-badge overdue">Cuota Vencida</span>
+              </span>
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="due-badge today">Vence esta semana</span>
+              </span>
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="due-badge future">Cuota Programada</span>
+              </span>
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="due-badge paid">Liquidada / Pagada</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TABLA DETALLADA DE DEUDAS Y PLANES -->
+      <div class="panel-card border-purple">
+        <div class="panel-header">
+          <h2>Obligaciones y Planes de Aceleración de Pago</h2>
+          <span id="debts-count-badge" class="tag-badge">0 Activas</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Obligación / Fechas</th>
+                <th>Progreso / Cuotas / Plan de Aceleración</th>
+                <th>Saldo Pendiente</th>
+                <th>Registrar Abono</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="debt-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 7: ATAJOS DE IPHONE (iOS SHORTCUTS) -->
+    <section id="tab-shortcuts" class="tab-content">
+      <div class="shortcuts-grid">
+        
+        <!-- PANEL DE CREDENCIALES Y CONFIGURACION DEL ATAJO -->
+        <div>
+          <div class="panel-card border-primary">
+            <div class="panel-header">
+              <h2>Configuración de tu Atajo de iPhone</h2>
+              <span class="tag-badge text-success">Webhook Activo</span>
+            </div>
+            <div style="padding: 22px;">
+              <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+                Conecta la app oficial <strong>Atajos (Shortcuts)</strong> de tu iPhone o Apple Watch para dictarle gastos e ingresos a Siri o registrarlos al tocar tu tarjeta o widget de inicio.
+              </p>
+
+              <!-- TU CLAVE DE ATAJO -->
+              <div class="api-box">
+                <div class="api-box-label">TU CLAVE SECRETA DE ATAJO (API KEY):</div>
+                <div class="api-box-value">
+                  <span id="shortcut-api-key" class="api-code">ahorros_key_cargando...</span>
+                  <div style="display: flex; gap: 6px;">
+                    <button id="btn-copy-key" class="btn-copy">Copiar Clave</button>
+                    <button id="btn-regen-key" class="btn-copy" title="Generar nueva">Nueva</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TU URL DE WEBHOOK -->
+              <div class="api-box">
+                <div class="api-box-label">URL DE ENLACE WEBHOOK (PARA LA ACCIÓN 'OBTENER CONTENIDO DE URL'):</div>
+                <div class="api-box-value">
+                  <span id="shortcut-webhook-url" class="api-code">https://.../api/shortcut/transaction</span>
+                  <button id="btn-copy-url" class="btn-copy">Copiar URL</button>
+                </div>
+              </div>
+
+              <!-- PASOS VISUALES -->
+              <div style="margin-top: 18px;">
+                <h3 style="font-size: 0.82rem; font-weight: 700; margin-bottom: 10px;">CÓMO CREAR EL ATAJO EN TU IPHONE:</h3>
+                
+                <div class="shortcut-step">
+                  <div class="step-num">1</div>
+                  <div class="step-body">
+                    <h3>Abre la app 'Atajos' en tu iPhone</h3>
+                    <p>Toca el botón <strong>+</strong> en la esquina superior derecha y nómbralo <em>"Registrar Gasto"</em>.</p>
+                  </div>
+                </div>
+
+                <div class="shortcut-step">
+                  <div class="step-num">2</div>
+                  <div class="step-body">
+                    <h3>Agrega 'Solicitar entrada' (Monto)</h3>
+                    <p>Selecciona Tipo: <strong>Número</strong>. En la indicación escribe: <em>"¿Cuánto gastaste?"</em>.</p>
+                  </div>
+                </div>
+
+                <div class="shortcut-step">
+                  <div class="step-num">3</div>
+                  <div class="step-body">
+                    <h3>Agrega 'Solicitar entrada' (Concepto)</h3>
+                    <p>Selecciona Tipo: <strong>Texto</strong>. En la indicación escribe: <em>"¿En qué concepto?"</em>.</p>
+                  </div>
+                </div>
+
+                <div class="shortcut-step">
+                  <div class="step-num">4</div>
+                  <div class="step-body">
+                    <h3>Agrega 'Elegir de la lista' (Categoría)</h3>
+                    <p>Agrega opciones: <em>ALIMENTACION, TRANSPORTE, VIVIENDA, SALUD, ENTRETENIMIENTO, OTROS</em>.</p>
+                  </div>
+                </div>
+
+                <div class="shortcut-step">
+                  <div class="step-num">5</div>
+                  <div class="step-body">
+                    <h3>Agrega 'Obtener contenido de URL'</h3>
+                    <p>
+                      - Método: <strong>POST</strong><br>
+                      - Encabezados: <code>Content-Type: application/json</code> y <code>x-api-key: TU_CLAVE</code><br>
+                      - Cuerpo: <strong>JSON</strong> con claves: <code>type</code> ("expense"), <code>amount</code> (Número), <code>description</code> (Texto), <code>category</code> (Elemento elegido), <code>paymentMethod</code> ("NEQUI" o "EFECTIVO").
+                    </p>
+                    <div class="step-code">
+                      {"type": "expense", "amount": 25000, "description": "Almuerzo", "category": "ALIMENTACION", "paymentMethod": "NEQUI"}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="shortcut-step">
+                  <div class="step-num">6</div>
+                  <div class="step-body">
+                    <h3>Siri te confirma el saldo</h3>
+                    <p>Agrega la acción <em>"Leer texto con la voz"</em> pasando el resultado del diccionario (campo <code>speech</code>) para que Siri te hable y confirme tu saldo.</p>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- SIMULADOR Y PROBADOR DEL ATAJO EN VIVO -->
+        <div>
+          <div class="panel-card border-success">
+            <div class="panel-header">
+              <h2>Probador / Simulador de Atajo en Vivo</h2>
+              <span class="tag-badge text-success">Test de Conexión</span>
+            </div>
+            <div style="padding: 22px;">
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+                Simula aquí exactamente cómo responderá tu iPhone cuando ejecutes el atajo desde Siri o un widget:
+              </p>
+
+              <form id="shortcut-tester-form" class="app-form" style="padding: 0;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="test-type">Tipo de Movimiento</label>
+                    <select id="test-type">
+                      <option value="expense">Gasto (Salida)</option>
+                      <option value="income">Ingreso (Entrada)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="test-amount">Monto ($ COP)</label>
+                    <input type="text" id="test-amount" class="currency-input" placeholder="Ej: 35.000" value="35.000" required>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="test-description">Concepto</label>
+                    <input type="text" id="test-description" placeholder="Ej: Almuerzo ejecutivo" value="Almuerzo ejecutivo" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="test-method">Método / Cuenta</label>
+                    <select id="test-method">
+                      <option value="NEQUI">📱 NEQUI</option>
+                      <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                      <option value="EFECTIVO">💵 EFECTIVO</option>
+                      <option value="BANCO">🏦 BANCO</option>
+                      <option value="TARJETA_CREDITO">💳 TARJETA CRÉDITO</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="test-category">Categoría</label>
+                  <select id="test-category">
+                    <option value="ALIMENTACION">ALIMENTACION</option>
+                    <option value="TRANSPORTE">TRANSPORTE</option>
+                    <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
+                    <option value="SALUD Y BIENESTAR">SALUD Y BIENESTAR</option>
+                    <option value="ENTRETENIMIENTO Y OCIO">ENTRETENIMIENTO Y OCIO</option>
+                    <option value="SALARIO / TRABAJO">SALARIO / TRABAJO</option>
+                    <option value="OTROS">OTROS</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="margin-top: 6px;">Simular Ejecución de Atajo</button>
+              </form>
+
+              <!-- RESPUESTA DEL SIMULADOR -->
+              <div id="test-response-box" class="api-box hidden" style="margin-top: 16px;">
+                <div class="api-box-label">RESPUESTA DEVUELTA AL IPHONE (JSON):</div>
+                <pre id="test-response-text" class="api-code" style="font-size: 0.75rem; white-space: pre-wrap; margin: 0;"></pre>
+              </div>
+
+              <!-- REGISTRO DE EVENTOS RECIBIDOS POR ATAJOS -->
+              <div style="margin-top: 22px;">
+                <h3 style="font-size: 0.82rem; font-weight: 700; margin-bottom: 10px;">Historial de Transacciones Recibidas por Atajos:</h3>
+                <div class="table-wrapper" style="max-height: 240px;">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Fecha/Hora</th>
+                        <th>Tipo</th>
+                        <th>Concepto</th>
+                        <th>Cuenta</th>
+                        <th>Monto</th>
+                        <th>Origen</th>
+                      </tr>
+                    </thead>
+                    <tbody id="shortcut-events-list">
+                      <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted);">Sin transacciones recientes de atajos.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -279,6 +1045,372 @@
 
   </main>
 
-  <script src="script.js"></script>
+  <!-- MODAL: GESTIONAR SALDO EN META DE AHORRO (ABONAR / RETIRAR) -->
+  <div id="goal-action-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span id="modal-goal-icon" style="font-size: 1.5rem;">🎯</span>
+          <div>
+            <h2 id="modal-goal-title" style="font-size: 1.05rem; font-weight: 800;">Abonar a Meta</h2>
+            <small id="modal-goal-subtitle" style="color: var(--text-muted); font-size: 0.72rem;">Meta</small>
+          </div>
+        </div>
+        <button id="btn-close-goal-modal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="goal-action-form" class="app-form" style="padding: 0;">
+        <input type="hidden" id="modal-goal-id">
+        <input type="hidden" id="modal-goal-action" value="deposit">
+
+        <div class="form-group">
+          <label id="modal-goal-amount-label">Monto a Depositar ($ COP)</label>
+          <input type="text" id="modal-goal-amount" class="currency-input" placeholder="Ej: 50.000" required>
+        </div>
+
+        <!-- Chips rápidos para sumar al monto -->
+        <div class="amount-chips-row">
+          <button type="button" class="amount-chip" data-add="20000">+ $ 20.000</button>
+          <button type="button" class="amount-chip" data-add="50000">+ $ 50.000</button>
+          <button type="button" class="amount-chip" data-add="100000">+ $ 100.000</button>
+          <button type="button" class="amount-chip" data-add="200000">+ $ 200.000</button>
+          <button type="button" class="amount-chip" data-add="500000">+ $ 500.000</button>
+        </div>
+
+        <div class="form-group">
+          <label for="modal-goal-account">Cuenta de Origen / Destino</label>
+          <select id="modal-goal-account">
+            <option value="EFECTIVO">💵 EFECTIVO (Físico en mano)</option>
+            <option value="NEQUI">📱 NEQUI</option>
+            <option value="DAVIPLATA">📱 DAVIPLATA</option>
+            <option value="BANCO">🏦 BANCO / CUENTA</option>
+          </select>
+        </div>
+
+        <button type="submit" id="modal-goal-submit-btn" class="btn btn-success" style="margin-top: 10px;">
+          Confirmar Abono
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TRANSFERENCIA ENTRE CUENTAS / RETIRO A EFECTIVO FÍSICO -->
+  <div id="transfer-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">🔄</span>
+          <div>
+            <h2 style="font-size: 1.05rem; font-weight: 800;">Mover Dinero entre Cuentas</h2>
+            <small style="color: var(--text-muted); font-size: 0.72rem;">Retiro de cajero a efectivo o transferencias internas</small>
+          </div>
+        </div>
+        <button id="btn-close-transfer-modal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="transfer-form" class="app-form" style="padding: 0;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="transfer-from">Desde la Cuenta (Origen)</label>
+            <select id="transfer-from" required>
+              <option value="BANCO">🏦 BANCO / CUENTA</option>
+              <option value="NEQUI">📱 NEQUI</option>
+              <option value="DAVIPLATA">📱 DAVIPLATA</option>
+              <option value="EFECTIVO">💵 EFECTIVO FÍSICO</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="transfer-to">Hacia la Cuenta (Destino)</label>
+            <select id="transfer-to" required>
+              <option value="EFECTIVO">💵 EFECTIVO FÍSICO (Retiro Cajero)</option>
+              <option value="NEQUI">📱 NEQUI</option>
+              <option value="DAVIPLATA">📱 DAVIPLATA</option>
+              <option value="BANCO">🏦 BANCO / CUENTA</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="transfer-amount">Monto a Mover ($ COP)</label>
+          <input type="text" id="transfer-amount" class="currency-input" placeholder="Ej: 100.000" required>
+        </div>
+
+        <div class="amount-chips-row">
+          <button type="button" class="amount-chip transfer-chip" data-add="50000">+ $ 50.000</button>
+          <button type="button" class="amount-chip transfer-chip" data-add="100000">+ $ 100.000</button>
+          <button type="button" class="amount-chip transfer-chip" data-add="200000">+ $ 200.000</button>
+          <button type="button" class="amount-chip transfer-chip" data-add="500000">+ $ 500.000</button>
+        </div>
+
+        <div class="form-group">
+          <label for="transfer-concept">Concepto o Motivo</label>
+          <input type="text" id="transfer-concept" value="Retiro de cajero a efectivo en mano" required>
+        </div>
+
+        <div class="form-group">
+          <label for="transfer-date">Fecha de la Transferencia</label>
+          <input type="date" id="transfer-date" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+          Confirmar Transferencia
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PAGAR SALDO DE TARJETA DE CRÉDITO -->
+  <div id="pay-card-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">💳</span>
+          <div>
+            <h2 style="font-size: 1.05rem; font-weight: 800;">Pagar Tarjeta de Crédito</h2>
+            <small id="pay-card-current-spent" style="color: var(--danger-color); font-weight: 700; font-size: 0.72rem;">Saldo Gastado: $ 0</small>
+          </div>
+        </div>
+        <button id="btn-close-pay-card-modal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="pay-card-form" class="app-form" style="padding: 0;">
+        <div class="form-group">
+          <label for="pay-card-amount">Monto a Abonar o Liquidar ($ COP)</label>
+          <input type="text" id="pay-card-amount" class="currency-input" placeholder="Ej: 200.000" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pay-card-source">Pagar desde la Cuenta</label>
+          <select id="pay-card-source" required>
+            <option value="BANCO">🏦 BANCO / PSE / CUENTA</option>
+            <option value="NEQUI">📱 NEQUI</option>
+            <option value="DAVIPLATA">📱 DAVIPLATA</option>
+            <option value="EFECTIVO">💵 EFECTIVO FÍSICO</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pay-card-date">Fecha del Pago</label>
+          <input type="date" id="pay-card-date" required>
+        </div>
+
+        <button type="submit" class="btn btn-danger" style="margin-top: 10px;">
+          Confirmar Pago de Tarjeta
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MI BÓVEDA & SINCRONIZACIÓN MULTI-DISPOSITIVO (SIN FRICCIÓN DE LOGINS) -->
+  <div id="vault-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">🔐</span>
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 800;">Mi Bóveda Financiera</h2>
+            <small id="vault-status-badge" style="color: var(--success-color); font-weight: 700; font-size: 0.72rem;">🟢 Nube Conectada y Protegida</small>
+          </div>
+        </div>
+        <button id="btn-close-vault-modal" class="modal-close-btn" title="Cerrar">&times;</button>
+      </div>
+
+      <div class="vault-info-body">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
+          Tus finanzas se guardan y sincronizan automáticamente en la nube sin barreras ni inicios de sesión obligatorios.
+        </p>
+
+        <!-- CODIGO DE BOVEDA PERSONAL -->
+        <div class="vault-code-display">
+          <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+            Tu Código de Bóveda:
+          </span>
+          <div id="vault-code-text" class="vault-code-value">CARGANDO...</div>
+          <button id="btn-copy-vault-code" class="btn-copy">Copiar Código</button>
+        </div>
+
+        <!-- CONECTAR OTRO DISPOSITIVO -->
+        <div class="vault-section-box">
+          <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>📲</span> Conectar otro Teléfono o Computador
+          </h3>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+            ¿Quieres ver exactamente estos mismos datos en otro celular? Abre la web en ese dispositivo, introduce tu código y pulsa vincular:
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="vault-link-code-input" placeholder="Ej: AHORROS-XXXX" style="flex: 1; font-family: monospace; text-transform: uppercase; font-weight: 700; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-main); font-size: 0.85rem;">
+            <button id="btn-link-vault" class="btn btn-primary" style="padding: 9px 16px; font-size: 0.78rem; white-space: nowrap;">
+              Vincular
+            </button>
+          </div>
+        </div>
+
+        <!-- COPIA DE SEGURIDAD CON GOOGLE (OPCIONAL) -->
+        <div class="vault-section-box" style="margin-top: 14px;">
+          <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>☁️</span> Respaldo con Cuenta de Google (Opcional)
+          </h3>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+            Si deseas asociar tu correo de Google para recordar siempre tu bóveda:
+          </p>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-secondary); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color);">
+            <div style="display: flex; flex-direction: column;">
+              <span id="vault-google-email" style="font-size: 0.78rem; color: var(--text-main); font-weight: 700;">No vinculado</span>
+              <small id="vault-google-note" style="font-size: 0.68rem; color: var(--text-muted);">Sesión instantánea anónima activa</small>
+            </div>
+            <button id="btn-vault-google-login" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 12px; white-space: nowrap;">
+              Vincular Google
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: INSTALACIÓN COMO WEB APP (PWA) -->
+  <div id="pwa-install-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="/icon.svg" alt="Ahorros SA" style="width: 34px; height: 34px; border-radius: 8px;">
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 800;">Instalar Ahorros SA</h2>
+            <small style="color: var(--text-muted);">Como una App nativa en tu pantalla de inicio</small>
+          </div>
+        </div>
+        <button id="btn-close-pwa-modal" class="modal-close-btn" title="Cerrar">&times;</button>
+      </div>
+
+      <div class="pwa-modal-body">
+        <div class="pwa-platform-card">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 1.4rem;">🍎</span>
+            <h3 style="font-size: 0.95rem; font-weight: 800;">En iPhone / iPad (Safari)</h3>
+          </div>
+          <ol style="font-size: 0.8rem; color: var(--text-muted); padding-left: 20px; line-height: 1.6; margin: 0;">
+            <li>En Safari, toca el botón <strong>Compartir</strong> (ícono cuadrado con flecha hacia arriba ⬆️ en la barra inferior).</li>
+            <li>Desliza hacia abajo y toca <strong>"Agregar a pantalla de inicio"</strong> (➕).</li>
+            <li>Toca <strong>"Agregar"</strong> en la esquina superior derecha.</li>
+          </ol>
+          <div style="margin-top: 10px; padding: 8px 12px; background: rgba(16,185,129,0.1); border-radius: 8px; border: 1px solid rgba(16,185,129,0.2); font-size: 0.75rem; color: var(--success-color); font-weight: 700;">
+            ✨ Se abrirá en pantalla completa sin barra de navegación, con su propio ícono oficial.
+          </div>
+        </div>
+
+        <div class="pwa-platform-card" style="margin-top: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 1.4rem;">🤖</span>
+            <h3 style="font-size: 0.95rem; font-weight: 800;">En Android o Computador (Chrome/Edge)</h3>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+            Instala la aplicación directamente con 1 toque en este navegador:
+          </p>
+          <button id="btn-pwa-direct-install" class="btn btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>📲</span> Instalar Ahora en este Dispositivo
+          </button>
+        </div>
+
+        <!-- QR CODE PARA ABRIR EN EL MOVIL -->
+        <div style="margin-top: 18px; text-align: center; background: var(--surface-secondary); padding: 16px; border-radius: var(--card-radius); border: 1px solid var(--border-color);">
+          <span style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">
+            O Escanea con tu Cámara para abrir en el celular:
+          </span>
+          <div style="margin: 12px auto; width: 160px; height: 160px; background: #fff; padding: 8px; border-radius: 12px;">
+            <img id="pwa-qr-img" src="" alt="QR Ahorros SA" style="width: 100%; height: 100%; display: block;">
+          </div>
+          <div style="display: flex; gap: 8px; max-width: 360px; margin: 0 auto;">
+            <input type="text" id="pwa-share-url-input" readonly style="flex: 1; font-size: 0.72rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-main);">
+            <button id="btn-copy-pwa-url" class="btn-copy">Copiar Link</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PUBLICAR WEB INDEPENDIENTE & EXPORTAR -->
+  <div id="firebase-hosting-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.6rem;">🚀</span>
+          <div>
+            <h2 style="font-size: 1.15rem; font-weight: 800;">Tu Web 100% Independiente</h2>
+            <small style="color: var(--text-muted);">Sin Google AI Studio • Sin instalar nada en tu PC • Accesible en cualquier móvil</small>
+          </div>
+        </div>
+        <button id="btn-close-firebase-modal" class="modal-close-btn" title="Cerrar">&times;</button>
+      </div>
+
+      <div class="vault-modal-body" style="padding: 10px 0;">
+        <!-- EXPLICACIÓN CLARA Y TRANSPARENTE -->
+        <div style="background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.25); border-radius: var(--inner-radius); padding: 12px 14px; margin-bottom: 14px;">
+          <p style="font-size: 0.8rem; color: var(--text-main); line-height: 1.5; margin: 0;">
+            <strong>💡 ¿Por qué no abre con otra cuenta o salía "dominio no encontrado"?</strong><br>
+            • Los enlaces de Google AI Studio (<code>ais-pre...</code>) son pruebas privadas atadas a tu sesión de Google.<br>
+            • El dominio previo de Firebase no estaba activo porque Google AI Studio no sube la web a Firebase Hosting automáticamente.<br>
+            • <strong>No necesitas tener el código instalado en tu computadora</strong>. Puedes tener tu web pública mundial ahora mismo con estas opciones rápidas:
+          </p>
+        </div>
+
+        <!-- BOTÓN DE DESCARGA DIRECTA EN 1 CLIC -->
+        <div class="vault-section-box" style="margin-bottom: 14px;">
+          <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+            PASO 1: OBTÉN LA VERSIÓN ACTUALIZADA (GRAFITO CARBÓN + ATAJOS)
+          </div>
+          <a href="/api/download-zip" download="ahorros-sa-web.zip" class="btn-download-project-zip" id="btn-download-zip-link">
+            <span>📦</span> <span>DESCARGAR PROYECTO WEB COMPLETO (.ZIP)</span>
+          </a>
+          <small style="font-size: 0.72rem; color: var(--text-muted); display: block; text-align: center;">
+            Incluye index.html, script.js, styles.css, iconos e instalador PWA listo para usar.
+          </small>
+        </div>
+
+        <!-- OPCIÓN A: GITHUB PAGES (DESDE EL NAVEGADOR SIN CONSOLA) -->
+        <div class="vault-section-box" style="margin-bottom: 14px;">
+          <div style="font-size: 0.82rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span>🐙</span> <strong>Opción Recomendada: Actualizar tu GitHub Pages</strong>
+          </div>
+          <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+            ¿Por qué tu GitHub Pages anterior no estaba actualizado? Porque AI Studio no sube archivos solo a tu cuenta. Para actualizarlo <strong>desde la página web de GitHub (sin tocar terminal)</strong>:
+          </p>
+
+          <div class="step-card">
+            <span class="step-badge">1</span>
+            <div style="font-size: 0.76rem; color: var(--text-main);">
+              Descarga el <strong>.ZIP</strong> con el botón azul de arriba y descomprímelo en tu equipo o celular.
+            </div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-badge">2</span>
+            <div style="font-size: 0.76rem; color: var(--text-main);">
+              Entra en tu navegador a tu repositorio en <strong>GitHub.com</strong> y pulsa en <strong>"Add file" ➔ "Upload files"</strong>.
+            </div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-badge">3</span>
+            <div style="font-size: 0.76rem; color: var(--text-main);">
+              Arrastra los archivos actualizados y pulsa el botón verde <strong>"Commit changes"</strong>.<br>
+              <span style="color: var(--success-color); font-weight: 600;">✓ ¡Tu GitHub Pages se actualizará en 1 minuto, disponible para todo el mundo sin Google AI Studio!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OPCIÓN B: NETLIFY DROP (ARRASTRAR Y LISTO EN 10 SEGUNDOS) -->
+        <div style="padding: 12px; background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: var(--inner-radius);">
+          <div style="font-size: 0.8rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>⚡</span> ¿Prefieres un enlace público al instante sin GitHub?
+          </div>
+          <p style="font-size: 0.74rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+            Entra a <strong><a href="https://app.netlify.com/drop" target="_blank" rel="noopener" style="color: var(--primary-color); text-decoration: underline;">app.netlify.com/drop</a></strong>, arrastra la carpeta descomprimida y en 10 segundos te dará un link <code>https://tu-app.netlify.app</code> 100% público, gratuito y con candado seguro SSL.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
 </body>
 </html>

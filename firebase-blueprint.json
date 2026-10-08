@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with personal API key for iPhone Shortcuts webhook authentication",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "apiKey": { "type": "string", "description": "Private key for iOS Shortcut HTTP webhooks" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "apiKey"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial income or expense transaction record with payment method account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique transaction ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Transaction movement type" },
+        "description": { "type": "string", "maxLength": 200, "description": "Transaction concept or reason" },
+        "amount": { "type": "number", "description": "Monetary amount in COP" },
+        "category": { "type": "string", "maxLength": 100, "description": "Category classification" },
+        "paymentMethod": { "type": "string", "maxLength": 50, "description": "Payment method or account" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Transaction date YYYY-MM-DD" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation ISO timestamp" }
+      },
+      "required": ["userId", "type", "description", "amount", "category", "date"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "Personal debt obligation with installments and repayment progress",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique debt ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "maxLength": 200, "description": "Obligation or creditor name" },
+        "total": { "type": "number", "description": "Principal amount" },
+        "paid": { "type": "number", "description": "Total amount paid to date" },
+        "interest": { "type": "number", "description": "Interest percentage" },
+        "installments": { "type": "number", "description": "Number of installments" },
+        "startDate": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Start date YYYY-MM-DD" },
+        "history": { "type": "string", "description": "JSON string of payment installments history" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation ISO timestamp" }
+      },
+      "required": ["userId", "name", "total", "paid", "startDate"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "Target savings goal piggy bank with target amount and current allocated savings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique savings goal ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "maxLength": 150, "description": "Goal title or purpose" },
+        "targetAmount": { "type": "number", "description": "Target savings amount in COP" },
+        "currentAmount": { "type": "number", "description": "Currently saved amount in COP" },
+        "targetDate": { "type": "string", "description": "Optional deadline date YYYY-MM-DD" },
+        "icon": { "type": "string", "maxLength": 20, "description": "Visual emoji icon identifier" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation ISO timestamp" }
+      },
+      "required": ["userId", "name", "targetAmount", "currentAmount"]
+    },
+    "RecurringPayment": {
+      "title": "RecurringPayment",
+      "description": "Fixed or recurring monthly/periodic payment commitment or subscription",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique recurring payment ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "maxLength": 150, "description": "Commitment name or service" },
+        "amount": { "type": "number", "description": "Payment amount in COP" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Income or expense type" },
+        "category": { "type": "string", "maxLength": 100, "description": "Category classification" },
+        "paymentMethod": { "type": "string", "maxLength": 50, "description": "Default payment method" },
+        "frequency": { "type": "string", "enum": ["MENSUAL", "QUINCENAL", "SEMANAL", "ANUAL"], "description": "Recurrence frequency" },
+        "dueDay": { "type": "number", "description": "Day of the month for payment (1-31)" },
+        "lastPaidMonth": { "type": "string", "description": "Last paid month tracker YYYY-MM" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation ISO timestamp" }
+      },
+      "required": ["userId", "name", "amount", "type", "frequency", "dueDay"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account document containing private shortcut webhook token"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Income and expense transactions belonging to the user"
+    },
+    "/users/{userId}/debts/{debtId}": {
+      "schema": "Debt",
+      "description": "Personal debts and payment obligations belonging to the user"
+    },
+    "/users/{userId}/savingsGoals/{goalId}": {
+      "schema": "SavingsGoal",
+      "description": "Target savings goals belonging to the user"
+    },
+    "/users/{userId}/recurringPayments/{recurringId}": {
+      "schema": "RecurringPayment",
+      "description": "Fixed recurring commitments and subscriptions belonging to the user"
+    }
+  }
+}

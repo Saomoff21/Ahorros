@@ -1377,19 +1377,112 @@ tbody tr:hover {
 /* METAS DE AHORRO (BOLSILLOS) */
 .goals-layout-grid {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 22px;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  gap: 24px;
   margin-bottom: 24px;
+  align-items: start;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 960px) {
   .goals-layout-grid { grid-template-columns: 1fr; }
+}
+
+/* SELECTOR DE EMOJIS DE METAS DE AHORRO */
+.goal-preview-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface-secondary);
+  border: 2px solid var(--primary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px var(--primary-glow);
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.goal-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  background: var(--surface-secondary);
+  padding: 10px;
+  border-radius: var(--inner-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: 10px;
+}
+
+@media (max-width: 600px) {
+  .goal-emoji-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+}
+
+.goal-emoji-btn {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.goal-emoji-btn:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  background: var(--surface-hover);
+}
+
+.goal-emoji-btn.active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color);
+  transform: scale(1.05);
+}
+
+.goal-custom-emoji-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.goal-custom-emoji-input {
+  width: 60px;
+  height: 36px;
+  text-align: center;
+  font-size: 1.3rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-main);
+  padding: 2px;
+  line-height: 1;
 }
 
 .goals-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .goals-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .goal-card {
@@ -1402,7 +1495,7 @@ tbody tr:hover {
   flex-direction: column;
   gap: 14px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.2s ease;
 }
 
@@ -1416,31 +1509,40 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
 }
 
 .goal-title-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .goal-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 14px;
   background: var(--surface-secondary);
   border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
+  font-size: 1.6rem;
+  line-height: 1;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .goal-name {
   font-size: 0.95rem;
   font-weight: 800;
+  line-height: 1.3;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .goal-deadline {
@@ -1854,9 +1956,12 @@ body[data-device="desktop"] .debts-layout-grid {
   grid-template-columns: 380px 1fr !important;
 }
 
-body[data-device="desktop"] .recurring-layout-grid,
-body[data-device="desktop"] .goals-layout-grid {
+body[data-device="desktop"] .recurring-layout-grid {
   grid-template-columns: 380px 1fr !important;
+}
+
+body[data-device="desktop"] .goals-layout-grid {
+  grid-template-columns: 420px 1fr !important;
 }
 
 /* MEDIA QUERIES GENERALES ANTI-CORTE (RESPONSIVE FLUIDO) */
@@ -1931,3 +2036,60 @@ body[data-device="desktop"] .goals-layout-grid {
 }
 
 .hidden { display: none !important; }
+
+/* TOAST NOTIFICADOR FLOTANTE */
+.app-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .app-toast-container {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+  }
+}
+
+.app-toast {
+  pointer-events: auto;
+  background: var(--surface-color);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--success-color);
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideToastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.app-toast.toast-danger {
+  border-left-color: var(--danger-color);
+}
+
+.app-toast.toast-info {
+  border-left-color: var(--primary-color);
+}
+
+@keyframes slideToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

@@ -2,16 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default deny catch-all
-    match /{document=**} {
-      allow read, write: if false;
+    // Test ping collection
+    match /test/{docId} {
+      allow read, write: if true;
     }
 
-    // Vaults collection and subcollections for cross-device shared code access
+    // Vaults collection and all subcollections for cross-device shared code access
     match /vaults/{vaultId} {
       allow read, write: if true;
 
-      match /{subcollection}/{docId} {
+      match /{allChildren=**} {
         allow read, write: if true;
       }
     }

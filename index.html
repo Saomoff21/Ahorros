@@ -546,30 +546,47 @@
               </div>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label for="goal-source-account">Cuenta para Ahorro Inicial</label>
-                <select id="goal-source-account">
-                  <option value="EFECTIVO">💵 EFECTIVO (Físico en mano)</option>
-                  <option value="NEQUI">📱 NEQUI</option>
-                  <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                  <option value="BANCO">🏦 BANCO / CUENTA</option>
-                </select>
-              </div>
+            <div class="form-group">
+              <label for="goal-source-account">Cuenta para Ahorro Inicial</label>
+              <select id="goal-source-account">
+                <option value="EFECTIVO">💵 EFECTIVO (Físico en mano)</option>
+                <option value="NEQUI">📱 NEQUI</option>
+                <option value="DAVIPLATA">📱 DAVIPLATA</option>
+                <option value="BANCO">🏦 BANCO / CUENTA</option>
+              </select>
+            </div>
 
-              <div class="form-group">
-                <label for="goal-icon">Icono / Emoji</label>
-                <select id="goal-icon">
-                  <option value="✈️">✈️ Viajes / Vacaciones</option>
-                  <option value="🛡️">🛡️ Fondo de Emergencia</option>
-                  <option value="📱">📱 Tecnología / Celular</option>
-                  <option value="🚗">🚗 Vehículo / Carro</option>
-                  <option value="🏠">🏠 Vivienda / Hogar</option>
-                  <option value="🎓">🎓 Educación / Cursos</option>
-                  <option value="💼">💼 Negocio / Inversión</option>
-                  <option value="🎁">🎁 Regalo / Celebración</option>
-                </select>
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="margin: 0; font-weight: 700;">Icono / Emoji de la Meta:</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.72rem; color: var(--text-muted);">Seleccionado:</span>
+                  <span id="goal-icon-preview" class="goal-preview-box">🎯</span>
+                </div>
               </div>
+              <div class="goal-emoji-grid" id="goal-emoji-picker">
+                <button type="button" class="goal-emoji-btn active" data-emoji="🎯" title="Objetivo / Meta">🎯</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="💰" title="Ahorro / Dinero">💰</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="✈️" title="Viaje / Vacaciones">✈️</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🏖️" title="Playa / Descanso">🏖️</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🚗" title="Carro / Auto">🚗</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🏍️" title="Moto">🏍️</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🏠" title="Casa / Hogar">🏠</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🛡️" title="Fondo de Emergencia">🛡️</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="📱" title="Celular / Tecnología">📱</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="💻" title="Computador">💻</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🎓" title="Estudio / Universidad">🎓</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="💼" title="Negocio / Emprendimiento">💼</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🎁" title="Regalo / Deseo">🎁</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="💍" title="Boda / Compromiso">💍</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="👶" title="Bebé / Familia">👶</button>
+                <button type="button" class="goal-emoji-btn" data-emoji="🏥" title="Salud / Bienestar">🏥</button>
+              </div>
+              <div class="goal-custom-emoji-row">
+                <span>O escribe tu propio icono / emoji:</span>
+                <input type="text" id="goal-custom-emoji-input" maxlength="4" placeholder="Ej: 🎮" class="goal-custom-emoji-input">
+              </div>
+              <input type="hidden" id="goal-icon" value="🎯">
             </div>
 
             <div class="form-group">
@@ -1435,6 +1452,9 @@
       </div>
     </div>
   </div>
+
+  <!-- NOTIFICADOR TOAST FLOTANTE -->
+  <div id="app-toast-container" class="app-toast-container"></div>
 
   <script type="module" src="script.js"></script>
 </body>

@@ -568,6 +568,53 @@ function updateSyncStatus(isOnline, text) {
   }
 }
 
+// TOAST NOTIFICADOR RÁPIDO
+function showQuickToast(message, type = 'success') {
+  const container = document.getElementById('app-toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `app-toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(12px) scale(0.96)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+// SELECTOR DE EMOJIS DE METAS DE AHORRO
+const goalEmojiPicker = document.getElementById('goal-emoji-picker');
+const goalIconPreview = document.getElementById('goal-icon-preview');
+const goalIconInput = document.getElementById('goal-icon');
+const goalCustomEmojiInput = document.getElementById('goal-custom-emoji-input');
+
+if (goalEmojiPicker) {
+  goalEmojiPicker.querySelectorAll('.goal-emoji-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      goalEmojiPicker.querySelectorAll('.goal-emoji-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const emoji = btn.dataset.emoji || '🎯';
+      if (goalIconInput) goalIconInput.value = emoji;
+      if (goalIconPreview) goalIconPreview.textContent = emoji;
+      if (goalCustomEmojiInput) goalCustomEmojiInput.value = '';
+    });
+  });
+}
+
+if (goalCustomEmojiInput) {
+  goalCustomEmojiInput.addEventListener('input', (e) => {
+    const val = e.target.value.trim();
+    if (val) {
+      if (goalEmojiPicker) {
+        goalEmojiPicker.querySelectorAll('.goal-emoji-btn').forEach(b => b.classList.remove('active'));
+      }
+      if (goalIconInput) goalIconInput.value = val;
+      if (goalIconPreview) goalIconPreview.textContent = val;
+    }
+  });
+}
+
 // MASCARA DE MONEDA
 document.querySelectorAll('.currency-input').forEach(input => {
   input.addEventListener('input', (e) => {
@@ -980,6 +1027,54 @@ if (btnVaultGoogleLogin) {
   });
 }
 
+// CARGA DIRECTA DE LA BOVEDA DESDE FIRESTORE (INMEDIATA Y COMPLETA)
+async function loadVaultFromCloud(vaultId) {
+  if (!vaultId) return;
+  try {
+    const txColl = collection(db, 'vaults', vaultId, 'transactions');
+    const txSnap = await getDocs(txColl);
+    if (!txSnap.empty) {
+      const cloudTrans = [];
+      txSnap.forEach(d => cloudTrans.push({ id: d.id, ...d.data() }));
+      transactions = cloudTrans;
+      localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+      updateUI();
+    }
+
+    const debtsColl = collection(db, 'vaults', vaultId, 'debts');
+    const debtsSnap = await getDocs(debtsColl);
+    if (!debtsSnap.empty) {
+      const cloudDebts = [];
+      debtsSnap.forEach(d => cloudDebts.push({ id: d.id, ...d.data() }));
+      debts = cloudDebts;
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
+    }
+
+    const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
+    const gSnap = await getDocs(gColl);
+    if (!gSnap.empty) {
+      const cloudGoals = [];
+      gSnap.forEach(d => cloudGoals.push({ id: d.id, ...d.data() }));
+      savingsGoals = cloudGoals;
+      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
+    }
+
+    const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
+    const rSnap = await getDocs(rColl);
+    if (!rSnap.empty) {
+      const cloudRec = [];
+      rSnap.forEach(d => cloudRec.push({ id: d.id, ...d.data() }));
+      recurringPayments = cloudRec;
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
+    }
+  } catch (err) {
+    console.warn('Nota carga inicial de bóveda:', err);
+  }
+}
+
 // CAMBIO O CONEXION A OTRA BOVEDA
 async function switchVault(newCode, isNew = false) {
   let cleanCode = String(newCode || '').trim().toUpperCase();
@@ -1003,6 +1098,7 @@ async function switchVault(newCode, isNew = false) {
   if (vaultCodeText) vaultCodeText.textContent = cleanCode;
   if (vaultLinkCodeInput) vaultLinkCodeInput.value = '';
   authBtnText.textContent = `🔐 ${cleanCode}`;
+  updateVaultModalDirectUrl();
 
   try {
     const vaultRef = doc(db, 'vaults', cleanCode);
@@ -1014,23 +1110,14 @@ async function switchVault(newCode, isNew = false) {
     console.warn('Nota de metadatos de bóveda:', err);
   }
 
-  // Limpiar memoria para cargar datos frescos de la nueva bóveda
-  transactions = [];
-  debts = [];
-  savingsGoals = [];
-  recurringPayments = [];
-  localStorage.setItem('finances_v10_trans', JSON.stringify([]));
-  localStorage.setItem('finances_v10_debts', JSON.stringify([]));
-  localStorage.setItem('finances_v10_goals', JSON.stringify([]));
-  localStorage.setItem('finances_v10_recurring', JSON.stringify([]));
-  updateUI();
-  renderSavingsGoals();
-  renderRecurringPayments();
-
-  setupVaultCloudListeners(cleanCode);
   if (isNew) {
     await syncLocalDataToVault(cleanCode);
+  } else {
+    // Descarga directa e inmediata de los datos existentes en la bóveda
+    await loadVaultFromCloud(cleanCode);
   }
+
+  setupVaultCloudListeners(cleanCode);
 
   if (vaultLinkFeedback) {
     vaultLinkFeedback.style.color = 'var(--success-color)';
@@ -1043,7 +1130,7 @@ async function switchVault(newCode, isNew = false) {
     if (vaultModal) vaultModal.classList.add('hidden');
   }
 
-  alert(`¡Bóveda ${cleanCode} activada!\nTus dispositivos sincronizan en tiempo real sobre esta misma bóveda.`);
+  showQuickToast(`🔐 Bóveda ${cleanCode} sincronizada`);
 }
 
 // SINCRONIZACION AUTOMATICA DE DATOS LOCALES A LA BOVEDA
@@ -1128,11 +1215,18 @@ function setupVaultCloudListeners(vaultId) {
     snapshot.forEach(docSnap => {
       cloudTrans.push({ id: docSnap.id, ...docSnap.data() });
     });
-    transactions = cloudTrans;
-    localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-    updateUI();
+    // Preservar transacciones locales provisionales recién insertadas
+    const localPending = transactions.filter(t => typeof t.id === 'string' && t.id.startsWith('tx_') && !cloudTrans.some(c => c.createdAt === t.createdAt && c.amount === t.amount));
+    if (cloudTrans.length > 0 || localPending.length > 0 || transactions.length === 0) {
+      transactions = [...cloudTrans, ...localPending];
+      localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+      updateUI();
+    }
   }, (error) => {
-    console.warn('Error en transacciones:', error);
+    console.warn('Nota listener transacciones:', error);
+    setTimeout(() => {
+      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
+    }, 4000);
   });
 
   const debtsColl = collection(db, 'vaults', vaultId, 'debts');
@@ -1141,11 +1235,17 @@ function setupVaultCloudListeners(vaultId) {
     snapshot.forEach(docSnap => {
       cloudDebts.push({ id: docSnap.id, ...docSnap.data() });
     });
-    debts = cloudDebts;
-    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-    updateUI();
+    const localPending = debts.filter(d => typeof d.id === 'string' && d.id.startsWith('debt_') && !cloudDebts.some(c => c.name === d.name && c.total === d.total));
+    if (cloudDebts.length > 0 || localPending.length > 0 || debts.length === 0) {
+      debts = [...cloudDebts, ...localPending];
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
+    }
   }, (error) => {
-    console.warn('Error en deudas:', error);
+    console.warn('Nota listener deudas:', error);
+    setTimeout(() => {
+      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
+    }, 4000);
   });
 
   const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
@@ -1154,11 +1254,17 @@ function setupVaultCloudListeners(vaultId) {
     snapshot.forEach(docSnap => {
       cloudGoals.push({ id: docSnap.id, ...docSnap.data() });
     });
-    savingsGoals = cloudGoals;
-    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-    renderSavingsGoals();
+    const localPending = savingsGoals.filter(g => typeof g.id === 'string' && g.id.startsWith('goal_') && !cloudGoals.some(c => c.name === g.name && c.targetAmount === g.targetAmount));
+    if (cloudGoals.length > 0 || localPending.length > 0 || savingsGoals.length === 0) {
+      savingsGoals = [...cloudGoals, ...localPending];
+      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
+    }
   }, (error) => {
-    console.warn('Error en metas:', error);
+    console.warn('Nota listener metas:', error);
+    setTimeout(() => {
+      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
+    }, 4000);
   });
 
   const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
@@ -1167,34 +1273,43 @@ function setupVaultCloudListeners(vaultId) {
     snapshot.forEach(docSnap => {
       cloudR.push({ id: docSnap.id, ...docSnap.data() });
     });
-    recurringPayments = cloudR;
-    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-    renderRecurringPayments();
+    const localPending = recurringPayments.filter(r => typeof r.id === 'string' && r.id.startsWith('rec_') && !cloudR.some(c => c.name === r.name && c.amount === r.amount));
+    if (cloudR.length > 0 || localPending.length > 0 || recurringPayments.length === 0) {
+      recurringPayments = [...cloudR, ...localPending];
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
+    }
   }, (error) => {
-    console.warn('Error en pagos fijos:', error);
+    console.warn('Nota listener pagos fijos:', error);
+    setTimeout(() => {
+      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
+    }, 4000);
   });
 }
+
+// INICIAR ESCUCHA INMEDIATA Y DESCARGA INICIAL DE LA NUBE
+loadVaultFromCloud(activeVaultId);
+setupVaultCloudListeners(activeVaultId);
+updateSyncStatus(true, `🟢 BÓVEDA ${activeVaultId}`);
+if (authBtnText) authBtnText.textContent = `🔐 ${activeVaultId}`;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     try {
       await signInAnonymously(auth);
-      return;
     } catch (e) {
-      console.warn('Fallo inicio anónimo:', e);
-      authBtnText.textContent = `🔐 ${activeVaultId}`;
-      updateSyncStatus(false, 'MODO LOCAL');
-      return;
+      // Si el inicio anónimo no está activo en Firebase Console, la bóveda sigue 100% activa por código
+      console.info('Operando con código de bóveda sin sesión de Firebase Auth');
     }
   }
 
-  currentUser = user;
-  const isAnon = user.isAnonymous;
+  currentUser = auth.currentUser;
+  const isAnon = !currentUser || currentUser.isAnonymous;
 
   // Si inició sesión con Google, sincronizar con su bóveda guardada si existía
-  if (!isAnon && user.email) {
+  if (currentUser && !isAnon && currentUser.email) {
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const uData = userDoc.data();
@@ -1205,8 +1320,8 @@ onAuthStateChanged(auth, async (user) => {
         }
       } else {
         await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
+          uid: currentUser.uid,
+          email: currentUser.email,
           bovedaCode: activeVaultId,
           createdAt: new Date().toISOString()
         }, { merge: true });
@@ -1218,13 +1333,13 @@ onAuthStateChanged(auth, async (user) => {
 
   if (vaultCodeText) vaultCodeText.textContent = activeVaultId;
   if (vaultGoogleEmail) {
-    vaultGoogleEmail.textContent = isAnon ? 'No vinculado (Bóveda sin correo)' : (user.email || 'Vinculado');
+    vaultGoogleEmail.textContent = (currentUser && !isAnon) ? (currentUser.email || 'Vinculado') : 'No vinculado (Bóveda sin correo)';
   }
   if (vaultGoogleNote) {
-    vaultGoogleNote.textContent = isAnon ? 'Tus finanzas se sincronizan en la nube con tu código' : `Asociado a ${user.email}`;
+    vaultGoogleNote.textContent = (currentUser && !isAnon) ? `Asociado a ${currentUser.email}` : 'Tus finanzas se sincronizan en la nube con tu código';
   }
   if (btnVaultGoogleLogin) {
-    btnVaultGoogleLogin.textContent = isAnon ? 'Vincular Google' : 'Desvincular Google';
+    btnVaultGoogleLogin.textContent = (currentUser && !isAnon) ? 'Desvincular Google' : 'Vincular Google';
   }
 
   authBtnText.textContent = `🔐 ${activeVaultId}`;
@@ -1346,7 +1461,9 @@ function updateActivePeriodLabel() {
 
 // INSERCION DE MOVIMIENTO (LOCAL O NUBE)
 async function addTransactionLocallyOrCloud(txData) {
+  const localId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
   const cleanTx = {
+    id: localId,
     type: txData.type,
     description: txData.description,
     amount: txData.amount,
@@ -1356,49 +1473,53 @@ async function addTransactionLocallyOrCloud(txData) {
     createdAt: new Date().toISOString()
   };
 
+  // 1. Guardar localmente y actualizar interfaz INMEDIATAMENTE
+  transactions.unshift(cleanTx);
+  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+  updateUI();
+  showQuickToast(`✅ ${cleanTx.type === 'income' ? 'Ingreso' : 'Gasto'} registrado: ${formatCurrency(cleanTx.amount)}`);
+
+  // 2. Persistir en Firebase Firestore para sincronización multi-dispositivo (PC <-> Celular)
   try {
     const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
-    await addDoc(txColl, {
+    const docRef = await addDoc(txColl, {
       vaultId: activeVaultId,
       ...cleanTx
     });
-  } catch (e) {
-    console.warn('Guardando transacción local por error de red:', e);
-    cleanTx.id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-    transactions.push(cleanTx);
+    // Actualizar el ID provisional con el de Firestore
+    cleanTx.id = docRef.id;
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-    updateUI();
+  } catch (e) {
+    console.warn('Transacción guardada localmente (pendiente de sync en la nube):', e);
   }
+
   syncClientTotalsToServer();
 }
 
 // ELIMINACION DE TRANSACCION
 window.removeTransaction = async function(idOrIndex) {
-  if (!confirm('¿Deseas eliminar esta transacción?')) return;
+  if (!confirm('¿Deseas eliminar este movimiento?')) return;
+  let targetId = null;
   if (typeof idOrIndex === 'string') {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', idOrIndex));
-    } catch (e) {
-      console.warn('Error eliminando de Firestore:', e);
-      const idx = transactions.findIndex(t => t.id === idOrIndex);
-      if (idx !== -1) {
-        transactions.splice(idx, 1);
-        localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-        updateUI();
-      }
-    }
+    targetId = idOrIndex;
+    const idx = transactions.findIndex(t => t.id === targetId);
+    if (idx !== -1) transactions.splice(idx, 1);
   } else {
     const idx = parseInt(idOrIndex);
     if (!isNaN(idx) && transactions[idx]) {
-      const target = transactions[idx];
-      if (target && target.id && typeof target.id === 'string' && !target.id.startsWith('tx_')) {
-        try {
-          await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', target.id));
-        } catch (e) { console.warn(e); }
-      }
+      targetId = transactions[idx].id;
       transactions.splice(idx, 1);
-      localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-      updateUI();
+    }
+  }
+  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+  updateUI();
+  showQuickToast('🗑️ Movimiento eliminado');
+
+  if (targetId && typeof targetId === 'string' && !targetId.startsWith('tx_')) {
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', targetId));
+    } catch (e) {
+      console.warn('Error eliminando de Firestore:', e);
     }
   }
   syncClientTotalsToServer();
@@ -1600,7 +1721,9 @@ debtForm.addEventListener('submit', async (e) => {
 
   if (!totalVal) return alert('Por favor ingresa un monto de deuda válido.');
 
+  const localId = 'debt_' + Date.now();
   const debtData = {
+    id: localId,
     name: nameVal,
     total: totalVal,
     paid: 0,
@@ -1611,18 +1734,21 @@ debtForm.addEventListener('submit', async (e) => {
     createdAt: new Date().toISOString()
   };
 
+  debts.push(debtData);
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+  updateUI();
+  showQuickToast(`✅ Deuda "${debtData.name}" registrada`);
+
   try {
     const debtsColl = collection(db, 'vaults', activeVaultId, 'debts');
-    await addDoc(debtsColl, {
+    const docRef = await addDoc(debtsColl, {
       vaultId: activeVaultId,
       ...debtData
     });
-  } catch (e) {
-    console.warn('Guardando deuda localmente:', e);
-    debtData.id = 'debt_' + Date.now();
-    debts.push(debtData);
+    debtData.id = docRef.id;
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-    updateUI();
+  } catch (e) {
+    console.warn('Deuda guardada localmente (pendiente de sync a la nube):', e);
   }
 
   debtForm.reset();
@@ -1638,12 +1764,14 @@ if (goalForm) {
     const targetVal = parseAmount(document.getElementById('goal-target').value);
     const initialVal = parseAmount(document.getElementById('goal-initial').value) || 0;
     const sourceAcc = document.getElementById('goal-source-account')?.value || 'EFECTIVO';
-    const iconVal = document.getElementById('goal-icon').value || '🎯';
-    const dateVal = document.getElementById('goal-date').value || '';
+    const iconVal = document.getElementById('goal-icon')?.value || '🎯';
+    const dateVal = document.getElementById('goal-date')?.value || '';
 
     if (!targetVal || targetVal <= 0) return alert('Ingresa un monto objetivo válido');
 
+    const localId = 'goal_' + Date.now();
     const goalData = {
+      id: localId,
       name: nameVal,
       targetAmount: targetVal,
       currentAmount: initialVal,
@@ -1652,7 +1780,6 @@ if (goalForm) {
       createdAt: new Date().toISOString()
     };
 
-    // Si hubo ahorro inicial, registrar la salida correlativa de la cuenta seleccionada
     if (initialVal > 0) {
       await addTransactionLocallyOrCloud({
         type: 'expense',
@@ -1664,22 +1791,33 @@ if (goalForm) {
       });
     }
 
+    savingsGoals.push(goalData);
+    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+    renderSavingsGoals();
+    showQuickToast(`🎯 Meta "${goalData.name}" creada exitosamente`);
+
     try {
       const gColl = collection(db, 'vaults', activeVaultId, 'savingsGoals');
-      await addDoc(gColl, {
+      const docRef = await addDoc(gColl, {
         vaultId: activeVaultId,
         ...goalData
       });
-    } catch (e) {
-      console.warn('Guardando meta localmente:', e);
-      goalData.id = 'goal_' + Date.now();
-      savingsGoals.push(goalData);
+      goalData.id = docRef.id;
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-      renderSavingsGoals();
+    } catch (e) {
+      console.warn('Meta guardada localmente (pendiente de sync a la nube):', e);
     }
 
     goalForm.reset();
     document.getElementById('goal-initial').value = '0';
+    if (goalIconPreview) goalIconPreview.textContent = '🎯';
+    if (goalIconInput) goalIconInput.value = '🎯';
+    if (goalCustomEmojiInput) goalCustomEmojiInput.value = '';
+    if (goalEmojiPicker) {
+      goalEmojiPicker.querySelectorAll('.goal-emoji-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.emoji === '🎯');
+      });
+    }
   });
 }
 
@@ -1697,7 +1835,9 @@ if (recurringForm) {
 
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido');
 
+    const localId = 'rec_' + Date.now();
     const rData = {
+      id: localId,
       name: nameVal,
       type: typeVal,
       amount: amountVal,
@@ -1709,21 +1849,25 @@ if (recurringForm) {
       createdAt: new Date().toISOString()
     };
 
+    recurringPayments.push(rData);
+    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+    renderRecurringPayments();
+    showQuickToast(`✅ Registro fijo "${rData.name}" guardado`);
+
     try {
       const rColl = collection(db, 'vaults', activeVaultId, 'recurringPayments');
-      await addDoc(rColl, {
+      const docRef = await addDoc(rColl, {
         vaultId: activeVaultId,
         ...rData
       });
-    } catch (e) {
-      console.warn('Guardando pago recurrente localmente:', e);
-      rData.id = 'rec_' + Date.now();
-      recurringPayments.push(rData);
+      rData.id = docRef.id;
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-      renderRecurringPayments();
+    } catch (e) {
+      console.warn('Registro fijo guardado localmente (pendiente de sync):', e);
     }
 
     recurringForm.reset();
+    setRecurringType('expense');
   });
 }
 
@@ -1857,10 +2001,7 @@ if (goalActionForm) {
 
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido');
 
-    let targetGoal = null;
-    if (currentUser) targetGoal = savingsGoals.find(g => g.id === gId);
-    else targetGoal = savingsGoals[parseInt(gId)];
-
+    let targetGoal = savingsGoals.find(g => g.id === gId) || savingsGoals[parseInt(gId, 10)];
     if (!targetGoal) return;
 
     if (action === 'withdraw' && amountVal > targetGoal.currentAmount) {
@@ -1870,6 +2011,12 @@ if (goalActionForm) {
     const newAmount = action === 'deposit'
       ? targetGoal.currentAmount + amountVal
       : targetGoal.currentAmount - amountVal;
+
+    // Actualización inmediata en memoria y localStorage
+    targetGoal.currentAmount = newAmount;
+    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+    renderSavingsGoals();
+    showQuickToast(`🎯 ${action === 'deposit' ? 'Abono a' : 'Retiro de'} "${targetGoal.name}": ${formatCurrency(amountVal)}`);
 
     // Registrar movimiento correlativo en transacciones
     if (action === 'deposit') {
@@ -1898,15 +2045,8 @@ if (goalActionForm) {
           currentAmount: newAmount
         });
       } catch (err) {
-        console.warn('Error actualizando meta:', err);
-        targetGoal.currentAmount = newAmount;
-        localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-        renderSavingsGoals();
+        console.warn('Error actualizando meta en Firestore:', err);
       }
-    } else {
-      targetGoal.currentAmount = newAmount;
-      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-      renderSavingsGoals();
     }
 
     goalActionModal.classList.add('hidden');
@@ -1915,22 +2055,27 @@ if (goalActionForm) {
 
 window.deleteSavingsGoal = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar esta meta de ahorro?')) return;
-  if (typeof idOrIndex === 'string' && !idOrIndex.startsWith('goal_')) {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', idOrIndex));
-    } catch (e) {
-      console.warn('Error eliminando meta:', e);
-      const idx = savingsGoals.findIndex(g => g.id === idOrIndex);
-      if (idx !== -1) savingsGoals.splice(idx, 1);
-      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-      renderSavingsGoals();
-    }
+  let targetId = null;
+  const idx = savingsGoals.findIndex(g => g.id === idOrIndex);
+  if (idx !== -1) {
+    targetId = savingsGoals[idx].id;
+    savingsGoals.splice(idx, 1);
   } else {
-    const idx = typeof idOrIndex === 'number' ? idOrIndex : savingsGoals.findIndex(g => g.id === idOrIndex);
-    if (idx !== -1) {
-      savingsGoals.splice(idx, 1);
-      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-      renderSavingsGoals();
+    const numIdx = parseInt(idOrIndex, 10);
+    if (!isNaN(numIdx) && savingsGoals[numIdx]) {
+      targetId = savingsGoals[numIdx].id;
+      savingsGoals.splice(numIdx, 1);
+    }
+  }
+  localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+  renderSavingsGoals();
+  showQuickToast('🗑️ Meta eliminada');
+
+  if (targetId && typeof targetId === 'string' && !targetId.startsWith('goal_')) {
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetId));
+    } catch (e) {
+      console.warn('Error eliminando meta de Firestore:', e);
     }
   }
 };
@@ -2027,10 +2172,7 @@ function renderRecurringPayments() {
 }
 
 window.quickPayRecurring = async function(idOrIndex) {
-  let targetR = null;
-  if (currentUser) targetR = recurringPayments.find(r => r.id === idOrIndex);
-  else targetR = recurringPayments[idOrIndex];
-
+  let targetR = recurringPayments.find(r => r.id === idOrIndex) || recurringPayments[parseInt(idOrIndex, 10)];
   if (!targetR) return;
 
   const currentYM = getCurrentYearMonth();
@@ -2047,60 +2189,54 @@ window.quickPayRecurring = async function(idOrIndex) {
   });
 
   // Marcar como pagado / cobrado este mes
+  targetR.lastPaidMonth = currentYM;
+  localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+  renderRecurringPayments();
+
   if (targetR.id && !String(targetR.id).startsWith('rec_')) {
     try {
       await updateDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.id), {
         lastPaidMonth: currentYM
       });
     } catch (e) {
-      console.warn('Error actualizando compromiso recurrente:', e);
-      targetR.lastPaidMonth = currentYM;
-      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-      renderRecurringPayments();
+      console.warn('Error actualizando compromiso recurrente en Firestore:', e);
     }
-  } else {
-    targetR.lastPaidMonth = currentYM;
-    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-    renderRecurringPayments();
   }
 
-  alert(`¡${isIncome ? 'Ingreso de' : 'Pago de'} "${targetR.name}" registrado en tus movimientos exitosamente!`);
+  showQuickToast(`⚡ ${isIncome ? 'Ingreso de' : 'Pago de'} "${targetR.name}" registrado`);
 };
 
 window.deleteRecurringPayment = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar este compromiso recurrente?')) return;
-  if (typeof idOrIndex === 'string' && !idOrIndex.startsWith('rec_')) {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', idOrIndex));
-    } catch (e) {
-      console.warn('Error eliminando pago recurrente:', e);
-      const idx = recurringPayments.findIndex(r => r.id === idOrIndex);
-      if (idx !== -1) recurringPayments.splice(idx, 1);
-      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-      renderRecurringPayments();
-    }
+  let targetId = null;
+  const idx = recurringPayments.findIndex(r => r.id === idOrIndex);
+  if (idx !== -1) {
+    targetId = recurringPayments[idx].id;
+    recurringPayments.splice(idx, 1);
   } else {
-    const idx = typeof idOrIndex === 'number' ? idOrIndex : recurringPayments.findIndex(r => r.id === idOrIndex);
-    if (idx !== -1) {
-      recurringPayments.splice(idx, 1);
-      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-      renderRecurringPayments();
+    const numIdx = parseInt(idOrIndex, 10);
+    if (!isNaN(numIdx) && recurringPayments[numIdx]) {
+      targetId = recurringPayments[numIdx].id;
+      recurringPayments.splice(numIdx, 1);
+    }
+  }
+  localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+  renderRecurringPayments();
+  showQuickToast('🗑️ Registro recurrente eliminado');
+
+  if (targetId && typeof targetId === 'string' && !targetId.startsWith('rec_')) {
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', targetId));
+    } catch (e) {
+      console.warn('Error eliminando pago recurrente de Firestore:', e);
     }
   }
 };
 
 // ABONAR A DEUDA
 window.payDebt = async function(idOrIndex) {
-  let targetDebt = null;
-  let debtId = null;
-
-  if (currentUser) {
-    targetDebt = debts.find(d => d.id === idOrIndex);
-    debtId = idOrIndex;
-  } else {
-    targetDebt = debts[idOrIndex];
-    debtId = idOrIndex;
-  }
+  let targetDebt = debts.find(d => d.id === idOrIndex) || debts[parseInt(idOrIndex, 10)];
+  let debtId = idOrIndex;
 
   if (!targetDebt) return;
 
@@ -2169,22 +2305,27 @@ window.payDebt = async function(idOrIndex) {
 // ELIMINAR DEUDA
 window.removeDebt = async function(idOrIndex) {
   if (!confirm('¿Deseas eliminar esta obligación de deuda?')) return;
-  if (typeof idOrIndex === 'string' && !idOrIndex.startsWith('debt_')) {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', idOrIndex));
-    } catch (e) {
-      console.warn('Error eliminando deuda:', e);
-      const idx = debts.findIndex(d => d.id === idOrIndex);
-      if (idx !== -1) debts.splice(idx, 1);
-      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-      updateUI();
-    }
+  let targetId = null;
+  const idx = debts.findIndex(d => d.id === idOrIndex);
+  if (idx !== -1) {
+    targetId = debts[idx].id;
+    debts.splice(idx, 1);
   } else {
-    const idx = typeof idOrIndex === 'number' ? idOrIndex : debts.findIndex(d => d.id === idOrIndex);
-    if (idx !== -1) {
-      debts.splice(idx, 1);
-      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-      updateUI();
+    const numIdx = parseInt(idOrIndex, 10);
+    if (!isNaN(numIdx) && debts[numIdx]) {
+      targetId = debts[numIdx].id;
+      debts.splice(numIdx, 1);
+    }
+  }
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+  updateUI();
+  showQuickToast('🗑️ Deuda eliminada');
+
+  if (targetId && typeof targetId === 'string' && !targetId.startsWith('debt_')) {
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', targetId));
+    } catch (e) {
+      console.warn('Error eliminando deuda de Firestore:', e);
     }
   }
   syncClientTotalsToServer();

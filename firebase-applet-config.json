@@ -1,12 +1,9 @@
 {
-  "projectId": "gen-lang-client-0791489226",
-  "appId": "1:444846324805:web:84aae995b6c52346beb72c",
-  "apiKey": "AIzaSyAEAlepremteHWQAZGao8OqVJqMgJvEREA",
-  "authDomain": "gen-lang-client-0791489226.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-ahorros-d1309347-2e5b-4342-ae0c-d494bd27f1c4",
-  "storageBucket": "gen-lang-client-0791489226.firebasestorage.app",
-  "messagingSenderId": "444846324805",
-  "measurementId": "",
-  "oAuthClientId": "444846324805-124hu7avkc6umhu4afn31q8mo2bosoor.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "ahorros-sa",
+  "appId": "1:161318086592:web:f795e936d14ea7cc6d4a25",
+  "apiKey": "AIzaSyASRcR-3pV6LUcdbN4YwzGRF235z5PNb54",
+  "authDomain": "ahorros-sa.firebaseapp.com",
+  "storageBucket": "ahorros-sa.firebasestorage.app",
+  "messagingSenderId": "161318086592",
+  "measurementId": "G-FVK1SHVFFY"
 }

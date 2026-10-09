@@ -76,13 +76,15 @@
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    let firebaseConfig;
-    try {
-      const response = await fetch('./firebase-applet-config.json');
-      firebaseConfig = await response.json();
-    } catch (e) {
-      console.error("Error al cargar firebase-applet-config.json", e);
-    }
+    const firebaseConfig = {
+      projectId: "ahorros-sa",
+      appId: "1:161318886592:web:f796e936d14ea7cc5d4a25",
+      apiKey: "AIzaSyASRcR-3pV6LUcdbN4YWzGRF23Sz5PNb54",
+      authDomain: "ahorros-sa.firebaseapp.com",
+      storageBucket: "ahorros-sa.firebasestorage.app",
+      messagingSenderId: "161318886592",
+      measurementId: "G-FVK1SHVFFY"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);

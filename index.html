@@ -27,6 +27,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+  <!-- Modal de Autenticación / Login -->
+<div id="auth-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+  <div style="background: #1e1e2f; color: #fff; padding: 25px; border-radius: 12px; width: 340px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+    <h2 id="auth-title" style="margin-bottom: 15px; font-size: 1.4rem;">Iniciar Sesión</h2>
+    <form id="auth-form" style="display: flex; flex-direction: column; gap: 12px;">
+      <input type="text" id="auth-username" placeholder="Nombre de usuario" style="display: none; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #2a2a3d; color: #fff;" />
+      <input type="email" id="auth-email" placeholder="Correo electrónico" required style="padding: 10px; border-radius: 6px; border: 1px solid #333; background: #2a2a3d; color: #fff;" />
+      <input type="password" id="auth-password" placeholder="Contraseña" required style="padding: 10px; border-radius: 6px; border: 1px solid #333; background: #2a2a3d; color: #fff;" />
+      <button type="submit" id="auth-btn" style="padding: 10px; border-radius: 6px; border: none; background: #00d26a; color: #000; font-weight: bold; cursor: pointer;">Ingresar</button>
+    </form>
+    <p style="margin-top: 15px; font-size: 0.85rem; color: #aaa;">
+      <span id="auth-switch-text">¿No tienes cuenta?</span> 
+      <a href="#" id="auth-switch-btn" style="color: #00d26a; text-decoration: none; font-weight: bold;">Regístrate aquí</a>
+    </p>
+  </div>
+</div>
 
   <!-- HEADER MODERNO Y ELEGANTE -->
   <header class="app-header">

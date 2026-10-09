@@ -71,21 +71,18 @@
     </div>
   </div>
 
-<script type="module">
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // Configuración oficial de tu proyecto Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyASRcR_3pY6-UcdbW4YxzGRF23Sz5PND54",
-      authDomain: "ahorros-sa.firebaseapp.com",
-      projectId: "ahorros-sa",
-      storageBucket: "ahorros-sa.firebasestorage.app",
-      messagingSenderId: "161318886592",
-      appId: "1:161318886592:web:f796e936d14aa7cc5d4a25",
-      measurementId: "G-PVK1SMVHFF"
-    };
+    let firebaseConfig;
+    try {
+      const response = await fetch('./firebase-applet-config.json');
+      firebaseConfig = await response.json();
+    } catch (e) {
+      console.error("Error al cargar firebase-applet-config.json", e);
+    }
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -164,3 +161,5 @@
       }
     });
   </script>
+</body>
+</html>

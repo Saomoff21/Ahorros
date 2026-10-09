@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ahorros SA - Acceso</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0;
+      background: #0d0f12;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .auth-card {
+      background: #161a23;
+      border: 1px solid #282f3f;
+      padding: 35px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+    .auth-card h1 { margin-bottom: 8px; font-size: 1.6rem; color: #00d26a; }
+    .auth-card p { color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px; }
+    .input-group { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+    .input-group input {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #282f3f;
+      background: #0d0f12;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    .btn-submit {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #00d26a;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .switch-mode { margin-top: 20px; font-size: 0.85rem; color: #8a94a6; }
+    .switch-mode a { color: #00d26a; text-decoration: none; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="auth-card">
+    <h1 id="auth-title">Ahorros SA</h1>
+    <p id="auth-sub">Inicia sesión para gestionar tus finanzas</p>
+
+    <form id="auth-form" class="input-group">
+      <input type="text" id="auth-username" placeholder="Nombre de usuario" style="display:none;">
+      <input type="email" id="auth-email" placeholder="Correo electrónico" required>
+      <input type="password" id="auth-password" placeholder="Contraseña" required>
+      <button type="submit" id="auth-btn" class="btn-submit">Ingresar</button>
+    </form>
+
+    <div class="switch-mode">
+      <span id="switch-text">¿No tienes una cuenta?</span>
+      <a href="#" id="switch-btn">Regístrate aquí</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const response = await fetch('./firebase-applet-config.json');
+    const firebaseConfig = await response.json();
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    function generarCodigoUnico() {
+      return 'USR-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    let isRegisterMode = false;
+    const authTitle = document.getElementById('auth-title');
+    const authSub = document.getElementById('auth-sub');
+    const authForm = document.getElementById('auth-form');
+    const authUsername = document.getElementById('auth-username');
+    const authEmail = document.getElementById('auth-email');
+    const authPassword = document.getElementById('auth-password');
+    const authBtn = document.getElementById('auth-btn');
+    const switchText = document.getElementById('switch-text');
+    const switchBtn = document.getElementById('switch-btn');
+
+    switchBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      isRegisterMode = !isRegisterMode;
+      if (isRegisterMode) {
+        authTitle.innerText = 'Crear Cuenta';
+        authSub.innerText = 'Regístrate para obtener tu código único';
+        authUsername.style.display = 'block';
+        authUsername.required = true;
+        authBtn.innerText = 'Registrarse';
+        switchText.innerText = '¿Ya tienes una cuenta?';
+        switchBtn.innerText = 'Inicia sesión aquí';
+      } else {
+        authTitle.innerText = 'Ahorros SA';
+        authSub.innerText = 'Inicia sesión para gestionar tus finanzas';
+        authUsername.style.display = 'none';
+        authUsername.required = false;
+        authBtn.innerText = 'Ingresar';
+        switchText.innerText = '¿No tienes una cuenta?';
+        switchBtn.innerText = 'Regístrate aquí';
+      }
+    });
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+      const username = authUsername.value.trim();
+
+      try {
+        if (isRegisterMode) {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+          const userCode = generarCodigoUnico();
+
+          await setDoc(doc(db, "users", user.uid), {
+            username: username,
+            email: email,
+            userCode: userCode,
+            createdAt: new Date()
+          });
+
+          alert(`¡Registro exitoso! Tu Código Único de Usuario es: ${userCode}`);
+          window.location.href = 'index.html';
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+          window.location.href = 'index.html';
+        }
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.location.href = 'index.html';
+      }
+    });
+  </script>
+</body>
+</html>

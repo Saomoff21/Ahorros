@@ -1,3 +1,125 @@
+// Importar módulos necesarios de Firebase SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  onAuthStateChanged, 
+  signOut 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+// Configuración e Inicialización de Firebase
+import firebaseConfig from './firebase-applet-config.json' assert { type: 'json' };
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app); // Inicialización correcta después de 'app'
+
+// Función para generar un Código Único de Usuario (Ejemplo: USR-X8A2K9)
+function generarCodigoUnico() {
+  return 'USR-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// Variables del Modal de Autenticación
+let isRegisterMode = false;
+const authModal = document.getElementById('auth-modal');
+const authTitle = document.getElementById('auth-title');
+const authForm = document.getElementById('auth-form');
+const authUsername = document.getElementById('auth-username');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const authBtn = document.getElementById('auth-btn');
+const authSwitchText = document.getElementById('auth-switch-text');
+const authSwitchBtn = document.getElementById('auth-switch-btn');
+
+// Alternar entre Iniciar Sesión y Registrarse
+if (authSwitchBtn) {
+  authSwitchBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    isRegisterMode = !isRegisterMode;
+    if (isRegisterMode) {
+      authTitle.innerText = 'Crear Cuenta';
+      authUsername.style.display = 'block';
+      authUsername.required = true;
+      authBtn.innerText = 'Registrarse';
+      authSwitchText.innerText = '¿Ya tienes cuenta?';
+      authSwitchBtn.innerText = 'Inicia sesión aquí';
+    } else {
+      authTitle.innerText = 'Iniciar Sesión';
+      authUsername.style.display = 'none';
+      authUsername.required = false;
+      authBtn.innerText = 'Ingresar';
+      authSwitchText.innerText = '¿No tienes cuenta?';
+      authSwitchBtn.innerText = 'Regístrate aquí';
+    }
+  });
+}
+
+// Manejar el envío del formulario de Login / Registro
+if (authForm) {
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    const username = authUsername.value.trim();
+
+    try {
+      if (isRegisterMode) {
+        // Registrar usuario en Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        const userCode = generarCodigoUnico();
+
+        // Guardar el perfil del usuario con su código único en Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          username: username,
+          email: email,
+          userCode: userCode,
+          createdAt: new Date()
+        });
+
+        alert(`¡Registro exitoso! Tu Código Único de Usuario es: ${userCode}`);
+      } else {
+        // Iniciar sesión
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (error) {
+      alert("Error de autenticación: " + error.message);
+    }
+  });
+}
+
+// Controlar la sesión y visibilidad de la interfaz
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    // Si hay un usuario autenticado, ocultar el modal de login
+    if (authModal) authModal.style.display = 'none';
+    
+    // Obtener los datos del usuario desde Firestore
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      console.log("Sesión activa:", userData.username, "| Código:", userData.userCode);
+    }
+  } else {
+    // Si no hay sesión, mostrar el modal de acceso obligatorio
+    if (authModal) authModal.style.display = 'flex';
+  }
+});
+
+
 // AHORROS SA - SISTEMA DE GESTION FINANCIERA & ATAJOS DE IPHONE
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
 import {

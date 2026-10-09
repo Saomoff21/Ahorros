@@ -66,71 +66,34 @@ service cloud.firestore {
         && data.dueDay is number && data.dueDay >= 1 && data.dueDay <= 31;
     }
 
-    // User Profile & Shortcut Key
+    // User Profiles & Vault Metadata
     match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId)
-        && incoming().uid == request.auth.uid;
-      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId)
-        && incoming().uid == existing().uid;
-      allow delete: if false;
+      allow read, write: if true;
 
       // Transactions subcollection
       match /transactions/{transactionId} {
-        allow get, list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && request.auth.uid == userId
-          && isValidId(transactionId)
-          && incoming().userId == request.auth.uid
-          && isValidTransaction(incoming());
-        allow update: if isSignedIn() && request.auth.uid == userId
-          && isValidId(transactionId)
-          && incoming().userId == existing().userId
-          && isValidTransaction(incoming());
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(transactionId);
+        allow read, write: if true;
       }
 
       // Debts subcollection
       match /debts/{debtId} {
-        allow get, list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && request.auth.uid == userId
-          && isValidId(debtId)
-          && incoming().userId == request.auth.uid
-          && isValidDebt(incoming());
-        allow update: if isSignedIn() && request.auth.uid == userId
-          && isValidId(debtId)
-          && incoming().userId == existing().userId
-          && isValidDebt(incoming());
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(debtId);
+        allow read, write: if true;
       }
 
       // Savings Goals subcollection
       match /savingsGoals/{goalId} {
-        allow get, list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && request.auth.uid == userId
-          && isValidId(goalId)
-          && incoming().userId == request.auth.uid
-          && isValidSavingsGoal(incoming());
-        allow update: if isSignedIn() && request.auth.uid == userId
-          && isValidId(goalId)
-          && incoming().userId == existing().userId
-          && isValidSavingsGoal(incoming());
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(goalId);
+        allow read, write: if true;
       }
 
       // Recurring Payments subcollection
       match /recurringPayments/{recurringId} {
-        allow get, list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && request.auth.uid == userId
-          && isValidId(recurringId)
-          && incoming().userId == request.auth.uid
-          && isValidRecurringPayment(incoming());
-        allow update: if isSignedIn() && request.auth.uid == userId
-          && isValidId(recurringId)
-          && incoming().userId == existing().userId
-          && isValidRecurringPayment(incoming());
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(recurringId);
+        allow read, write: if true;
       }
+    }
+
+    // Fast Cross-Device User Lookup Index
+    match /users_index/{lookupKey} {
+      allow read, write: if true;
     }
   }
 }

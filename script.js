@@ -1,36 +1,13 @@
-// Importar módulos de Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-// Cargar la configuración de Firebase
-const response = await fetch('./firebase-applet-config.json');
-const firebaseConfig = await response.json();
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-// Escuchar la sesión activa del usuario
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    // Obtener datos del perfil y código único
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      console.log("Sesión activa de:", userData.username, "| Código Único:", userData.userCode);
-      
-      const displayUser = document.getElementById('display-user-code');
-      if (displayUser) {
-        displayUser.innerText = `${userData.username} (${userData.userCode})`;
-      }
-    }
-  } else {
-    // Si la sesión se cierra o no existe, redirigir a la pantalla de acceso independiente
-    window.location.href = 'login.html';
-  }
-});
-} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
+// IMPORTACION DE MODULOS DE FIREBASE SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth,
+  signInAnonymously,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore,
   doc,
@@ -43,7 +20,7 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot
-} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // CARGA DE CONFIGURACION DE FIREBASE
 let firebaseConfig = {
@@ -113,6 +90,33 @@ function generateVaultCode() {
   return `AHO-${rand}`;
 }
 
+// ORDENACION CRONOLOGICA ESTRICTA POR FECHA (MÁS RECIENTES PRIMERO)
+function sortTransactionsByDate(list) {
+  if (!Array.isArray(list)) return [];
+  return list.sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (da !== db) return db.localeCompare(da);
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
+}
+
+// SESIÓN DE USUARIO AUTENTICADO & PROTECCIÓN DE ACCESO
+const savedSessionRaw = localStorage.getItem('ahorros_current_user');
+let savedUserSession = null;
+if (savedSessionRaw) {
+  try {
+    savedUserSession = JSON.parse(savedSessionRaw);
+  } catch (e) {
+    savedUserSession = null;
+  }
+}
+
+// Si no hay sesión válida registrada, redirigir a la pantalla de login
+if (!savedUserSession || !savedUserSession.userCode) {
+  window.location.replace('login.html');
+}
+
 // Comprobar parámetros de URL (?boveda=... o ?code=... o ?vault=...)
 const urlSearch = new URLSearchParams(window.location.search);
 const paramCode = urlSearch.get('boveda') || urlSearch.get('code') || urlSearch.get('vault');
@@ -123,24 +127,49 @@ if (paramCode && paramCode.trim().length >= 3) {
   }
 }
 
-let activeVaultId = localStorage.getItem('ahorros_active_vault') ||
+let activeVaultId = (savedUserSession && savedUserSession.userCode) ||
+                    localStorage.getItem('ahorros_active_vault') ||
                     localStorage.getItem('ahorros_boveda_code') ||
                     generateVaultCode();
 activeVaultId = activeVaultId.trim().toUpperCase();
 localStorage.setItem('ahorros_active_vault', activeVaultId);
 localStorage.setItem('ahorros_boveda_code', activeVaultId);
 
+// Inicializar datos visuales del perfil en la cabecera
+const userBadgeName = document.getElementById('user-badge-name');
+const userBadgeCode = document.getElementById('user-badge-code');
+if (userBadgeName && savedUserSession) {
+  userBadgeName.textContent = savedUserSession.username || savedUserSession.email || 'Mi Usuario';
+}
+if (userBadgeCode && savedUserSession) {
+  userBadgeCode.textContent = savedUserSession.userCode;
+}
+
+const btnLogout = document.getElementById('btn-logout');
+if (btnLogout) {
+  btnLogout.addEventListener('click', async () => {
+    if (confirm('¿Deseas cerrar tu sesión? Tus finanzas permanecen seguras y sincronizadas en tu bóveda.')) {
+      localStorage.removeItem('ahorros_current_user');
+      if (auth) {
+        try { await signOut(auth); } catch (e) {}
+      }
+      window.location.replace('login.html');
+    }
+  });
+}
+
 // ESTADO GLOBAL DE LA APLICACION
 let currentUser = null;
 let userApiKey = localStorage.getItem('ahorros_shortcut_key') || generateApiKey();
-let transactions = JSON.parse(localStorage.getItem('finances_v10_trans')) || [];
+let transactions = sortTransactionsByDate(JSON.parse(localStorage.getItem('finances_v10_trans')) || []);
 let debts = JSON.parse(localStorage.getItem('finances_v10_debts')) || [];
 let savingsGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
 let recurringPayments = JSON.parse(localStorage.getItem('finances_v10_recurring')) || [];
 let shortcutEvents = [];
 
-let activeYear = '2026';
-let activeMonth = 'ALL';
+const initDateObj = new Date();
+let activeYear = String(initDateObj.getFullYear());
+let activeMonth = String(initDateObj.getMonth() + 1).padStart(2, '0');
 let activeMedium = 'ALL'; // 'ALL', 'FISICO', 'DIGITAL'
 let activeMethod = 'ALL'; // 'ALL', 'EFECTIVO', 'NEQUI', 'DAVIPLATA', 'BANCO', 'TARJETA_DEBITO', 'TARJETA_CREDITO', 'OTRO'
 let activeRecurringFilter = 'ALL'; // 'ALL', 'income', 'expense'
@@ -1059,7 +1088,7 @@ async function loadVaultFromCloud(vaultId) {
     if (!txSnap.empty) {
       const cloudTrans = [];
       txSnap.forEach(d => cloudTrans.push({ id: d.id, ...d.data() }));
-      transactions = cloudTrans;
+      transactions = sortTransactionsByDate(cloudTrans);
       localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
       updateUI();
     }
@@ -1241,7 +1270,7 @@ function setupVaultCloudListeners(vaultId) {
     // Preservar transacciones locales provisionales recién insertadas
     const localPending = transactions.filter(t => typeof t.id === 'string' && t.id.startsWith('tx_') && !cloudTrans.some(c => c.createdAt === t.createdAt && c.amount === t.amount));
     if (cloudTrans.length > 0 || localPending.length > 0 || transactions.length === 0) {
-      transactions = [...cloudTrans, ...localPending];
+      transactions = sortTransactionsByDate([...cloudTrans, ...localPending]);
       localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
       updateUI();
     }
@@ -1375,12 +1404,14 @@ onAuthStateChanged(auth, async (user) => {
 // FILTRADO GLOBAL POR AÑO, MES, MEDIO Y MÉTODO
 globalFilterYear.addEventListener('change', () => {
   activeYear = globalFilterYear.value;
+  syncGlobalAndMovementsFilters();
   updateActivePeriodLabel();
   updateUI();
 });
 
 globalFilterMonth.addEventListener('change', () => {
   activeMonth = globalFilterMonth.value;
+  syncGlobalAndMovementsFilters();
   updateActivePeriodLabel();
   updateUI();
 });
@@ -1497,7 +1528,8 @@ async function addTransactionLocallyOrCloud(txData) {
   };
 
   // 1. Guardar localmente y actualizar interfaz INMEDIATAMENTE
-  transactions.unshift(cleanTx);
+  transactions.push(cleanTx);
+  sortTransactionsByDate(transactions);
   localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
   updateUI();
   showQuickToast(`✅ ${cleanTx.type === 'income' ? 'Ingreso' : 'Gasto'} registrado: ${formatCurrency(cleanTx.amount)}`);
@@ -2481,6 +2513,8 @@ function updateUI() {
 
   let lastIncomeMonthKey = null;
   let lastExpenseMonthKey = null;
+  let incomeCount = 0;
+  let expenseCount = 0;
 
   sortedTransactions.forEach((t, idx) => {
     const tYear = (t.date || '').substring(0, 4);
@@ -2499,8 +2533,13 @@ function updateUI() {
 
     if (inPeriod) {
       periodItemCount++;
-      if (t.type === 'income') totalIncomePeriod += t.amount;
-      else totalExpensePeriod += t.amount;
+      if (t.type === 'income') {
+        totalIncomePeriod += t.amount;
+        incomeCount++;
+      } else {
+        totalExpensePeriod += t.amount;
+        expenseCount++;
+      }
 
       const deleteIdentifier = currentUser ? `'${t.id}'` : idx;
       const methodDisplay = t.paymentMethod || 'EFECTIVO';
@@ -2560,6 +2599,42 @@ function updateUI() {
       dashboardSummaryList.appendChild(summaryRow);
     }
   });
+
+  // Mensajes de lista vacía según mes seleccionado
+  if (incomeCount === 0) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = `
+      <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
+        <div style="font-size: 1.3rem; margin-bottom: 4px;">📂</div>
+        <div style="font-weight: 600;">No hay ingresos registrados en ${activeMonth === 'ALL' ? 'este periodo' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
+        <small style="color: var(--text-muted); opacity: 0.8;">Registra una entrada de dinero con el formulario superior.</small>
+      </td>
+    `;
+    incomeList.appendChild(emptyRow);
+  }
+
+  if (expenseCount === 0) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = `
+      <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
+        <div style="font-size: 1.3rem; margin-bottom: 4px;">📂</div>
+        <div style="font-weight: 600;">No hay gastos registrados en ${activeMonth === 'ALL' ? 'este periodo' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
+        <small style="color: var(--text-muted); opacity: 0.8;">Registra una salida de dinero con el formulario superior.</small>
+      </td>
+    `;
+    expenseList.appendChild(emptyRow);
+  }
+
+  if (periodItemCount === 0) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = `
+      <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
+        <div style="font-size: 1.3rem; margin-bottom: 4px;">📊</div>
+        <div>No hay movimientos para ${activeMonth === 'ALL' ? 'Todos los meses' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
+      </td>
+    `;
+    dashboardSummaryList.appendChild(emptyRow);
+  }
 
   // KPIs
   totalIncomeEl.textContent = formatCurrency(totalIncomePeriod);

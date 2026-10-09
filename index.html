@@ -1,21 +1,15 @@
 <!DOCTYPE html>
 <html lang="es" data-theme="carbon">
 <head>
-  <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-  const response = await fetch('./firebase-applet-config.json');
-  const firebaseConfig = await response.json();
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      window.location.href = 'login.html';
-    }
-  });
-</script>
+  <script>
+    // Verificación inmediata de sesión: si no hay usuario activo, redirigir a login
+    try {
+      const activeUser = localStorage.getItem('ahorros_current_user');
+      if (!activeUser) {
+        window.location.replace('login.html');
+      }
+    } catch (e) {}
+  </script>
   
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -43,15 +37,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <!-- Modal de Autenticación / Login -->
-
-    </form>
-    <p style="margin-top: 15px; font-size: 0.85rem; color: #aaa;">
-      <span id="auth-switch-text">¿No tienes cuenta?</span> 
-      <a href="#" id="auth-switch-btn" style="color: #00d26a; text-decoration: none; font-weight: bold;">Regístrate aquí</a>
-    </p>
-  </div>
-</div>
 
   <!-- HEADER MODERNO Y ELEGANTE -->
   <header class="app-header">
@@ -102,6 +87,18 @@
         <button id="auth-btn" class="btn-auth" title="MI BÓVEDA & MULTI-DISPOSITIVO">
           <span id="auth-btn-text">🔐 MI BÓVEDA</span>
         </button>
+
+        <!-- Perfil de Usuario y Botón Cerrar Sesión -->
+        <div class="user-profile-badge" id="user-profile-badge" title="Sesión activa y Código Único">
+          <span class="user-badge-icon">👤</span>
+          <div class="user-badge-info">
+            <span id="user-badge-name" class="user-badge-name">Usuario</span>
+            <span id="user-badge-code" class="user-badge-code" title="Tu Código Único de Bóveda">USR-XXXXXX</span>
+          </div>
+          <button type="button" id="btn-logout" class="btn-logout" title="Cerrar Sesión Segura">
+            <span>Salir</span> 🚪
+          </button>
+        </div>
       </div>
     </div>
   </header>

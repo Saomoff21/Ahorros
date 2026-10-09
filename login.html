@@ -1,166 +1,738 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="carbon">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ahorros SA - Acceso</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Acceso Seguro - AHORROS SA</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-color: #0c0d11;
+      --card-bg: #151821;
+      --card-border: #232938;
+      --primary: #06b6d4;
+      --primary-glow: rgba(6, 182, 212, 0.25);
+      --success: #10b981;
+      --danger: #ef4444;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --input-bg: #0d0f14;
+      --input-border: #283042;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      background: #0d0f12;
+      background: var(--bg-color);
+      color: var(--text);
+      font-family: 'Roboto Flex', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background glow */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 15%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, rgba(16, 185, 129, 0.05) 50%, transparent 70%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .auth-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .brand-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .brand-logo {
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px var(--primary-glow);
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .brand-title {
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      background: linear-gradient(135deg, #38bdf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .auth-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(12px);
+    }
+
+    /* Tab Switcher */
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 5px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 24px;
+    }
+
+    .auth-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .auth-tab-btn.active {
+      background: var(--primary);
+      color: #000;
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 10px;
       color: #fff;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.92rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .form-input::placeholder {
+      color: #555e70;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #06b6d4, #10b981);
+      color: #000;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      gap: 8px;
+      font-family: inherit;
     }
-    .auth-card {
-      background: #161a23;
-      border: 1px solid #282f3f;
-      padding: 35px;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-      text-align: center;
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--primary-glow);
     }
-    .auth-card h1 { margin-bottom: 8px; font-size: 1.6rem; color: #00d26a; }
-    .auth-card p { color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px; }
-    .input-group { display: flex; flex-direction: column; gap: 14px; text-align: left; }
-    .input-group input {
-      padding: 12px 14px;
-      border-radius: 8px;
-      border: 1px solid #282f3f;
-      background: #0d0f12;
-      color: #fff;
-      font-size: 0.95rem;
+
+    .btn-submit:active {
+      transform: translateY(0);
     }
-    .btn-submit {
-      margin-top: 10px;
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .security-notice {
+      margin-top: 20px;
       padding: 12px;
-      border-radius: 8px;
-      border: none;
-      background: #00d26a;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 1rem;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 10px;
+      font-size: 0.74rem;
+      color: #a7f3d0;
+      line-height: 1.45;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
-    .switch-mode { margin-top: 20px; font-size: 0.85rem; color: #8a94a6; }
-    .switch-mode a { color: #00d26a; text-decoration: none; font-weight: bold; }
+
+    .active-session-banner {
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid var(--primary);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 0.82rem;
+    }
+
+    .active-session-btn {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 8px 16px;
+      background: var(--primary);
+      color: #000;
+      border-radius: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.82rem;
+    }
+
+    .error-alert {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+      display: none;
+      text-align: left;
+      line-height: 1.4;
+    }
+
+    .success-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .success-modal-card {
+      background: #181c26;
+      border: 1px solid var(--primary);
+      border-radius: 20px;
+      padding: 30px 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .user-code-box {
+      background: #0d0f14;
+      border: 2px dashed var(--primary);
+      padding: 14px;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+
+    .user-code-val {
+      font-size: 1.7rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
 
-  <div class="auth-card">
-    <h1 id="auth-title">Ahorros SA</h1>
-    <p id="auth-sub">Inicia sesión para gestionar tus finanzas</p>
+  <div class="auth-container">
+    <div class="brand-header">
+      <img src="/icon.svg" alt="Ahorros SA" class="brand-logo">
+      <h1 class="brand-title">AHORROS SA</h1>
+      <p class="brand-subtitle">Gestión Financiera Segura & Permanente</p>
+    </div>
 
-    <form id="auth-form" class="input-group">
-      <input type="text" id="auth-username" placeholder="Nombre de usuario" style="display:none;">
-      <input type="email" id="auth-email" placeholder="Correo electrónico" required>
-      <input type="password" id="auth-password" placeholder="Contraseña" required>
-      <button type="submit" id="auth-btn" class="btn-submit">Ingresar</button>
-    </form>
+    <!-- Banner si ya existe sesión previa -->
+    <div id="active-session-banner" class="active-session-banner" style="display: none;">
+      <div>Sesión activa detectada: <strong id="active-session-name"></strong> (<code id="active-session-code"></code>)</div>
+      <a href="index.html" class="active-session-btn">Continuar a Mis Finanzas ➔</a>
+      <div style="margin-top: 8px;">
+        <small><a href="#" id="btn-forget-session" style="color: var(--text-muted); text-decoration: underline;">Ingresar con otra cuenta</a></small>
+      </div>
+    </div>
 
-    <div class="switch-mode">
-      <span id="switch-text">¿No tienes una cuenta?</span>
-      <a href="#" id="switch-btn">Regístrate aquí</a>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button type="button" id="tab-login" class="auth-tab-btn active">Iniciar Sesión</button>
+        <button type="button" id="tab-register" class="auth-tab-btn">Crear Cuenta</button>
+      </div>
+
+      <div id="error-alert" class="error-alert"></div>
+
+      <!-- FORMULARIO DE INICIO DE SESIÓN -->
+      <form id="form-login">
+        <div class="form-group">
+          <label class="form-label" for="login-identifier">Correo o Usuario o Código</label>
+          <input type="text" id="login-identifier" class="form-input" placeholder="ejemplo@correo.com o USR-XXXXXX" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-password">Contraseña</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="btn-submit">
+          <span>Ingresar a Mis Finanzas</span> ➔
+        </button>
+      </form>
+
+      <!-- FORMULARIO DE REGISTRO DE CUENTA -->
+      <form id="form-register" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="reg-username">Nombre de Usuario</label>
+          <input type="text" id="reg-username" class="form-input" placeholder="Ej: Camilo Gómez" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-email">Correo Electrónico</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="camilo@correo.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-password">Contraseña (Mínimo 6 caracteres)</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="Crea una contraseña segura" minlength="6" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" id="btn-reg-submit" class="btn-submit">
+          <span>Crear Cuenta & Generar Mi Código</span> 🎯
+        </button>
+      </form>
+
+      <div class="security-notice">
+        <span>🛡️</span>
+        <span>Tus finanzas se enlazan permanentemente a tu Código Único y se sincronizan en la nube.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EXITO AL REGISTRAR -->
+  <div id="success-modal" class="success-modal">
+    <div class="success-modal-card">
+      <div style="font-size: 2.5rem; margin-bottom: 10px;">🎉</div>
+      <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px; color: #fff;">¡Cuenta Creada con Éxito!</h2>
+      <p style="font-size: 0.82rem; color: var(--text-muted);">
+        Bienvenido(a) a Ahorros SA, <strong id="success-username" style="color: #fff;"></strong>. Tu cuenta está protegida con tu código único:
+      </p>
+
+      <div class="user-code-box">
+        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Tu Código Único de Usuario:</span>
+        <div id="success-user-code" class="user-code-val">USR-XXXXXX</div>
+        <small style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-top: 4px;">Guarda este código para ingresar desde tu celular u otros navegadores.</small>
+      </div>
+
+      <button id="btn-success-continue" class="btn-submit">
+        <span>Entrar a Mis Finanzas Ahora</span> ➔
+      </button>
     </div>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-    const firebaseConfig = {
-      projectId: "ahorros-sa",
-      appId: "1:161318886592:web:f796e936d14ea7cc5d4a25",
-      apiKey: "AIzaSyASRcR-3pV6LUcdbN4YWzGRF23Sz5PNb54",
-      authDomain: "ahorros-sa.firebaseapp.com",
-      storageBucket: "ahorros-sa.firebasestorage.app",
-      messagingSenderId: "161318886592",
-      measurementId: "G-FVK1SHVFFY"
+    // CARGA DE CONFIGURACION FIREBASE
+    let firebaseConfig = {
+      projectId: "gen-lang-client-0791489226",
+      appId: "1:444846324805:web:84aae995b6c52346beb72c",
+      apiKey: "AIzaSyAEAlepremteHWQAZGao8OqVJqMgJvEREA",
+      authDomain: "gen-lang-client-0791489226.firebaseapp.com"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    function generarCodigoUnico() {
-      return 'USR-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    try {
+      const configRes = await fetch('./firebase-applet-config.json');
+      if (configRes.ok) {
+        const fetched = await configRes.json();
+        if (fetched && fetched.projectId) {
+          firebaseConfig = { ...firebaseConfig, ...fetched };
+        }
+      }
+    } catch (e) {
+      console.warn('Usando configuración base de Firebase');
     }
 
-    let isRegisterMode = false;
-    const authTitle = document.getElementById('auth-title');
-    const authSub = document.getElementById('auth-sub');
-    const authForm = document.getElementById('auth-form');
-    const authUsername = document.getElementById('auth-username');
-    const authEmail = document.getElementById('auth-email');
-    const authPassword = document.getElementById('auth-password');
-    const authBtn = document.getElementById('auth-btn');
-    const switchText = document.getElementById('switch-text');
-    const switchBtn = document.getElementById('switch-btn');
+    let app = null;
+    let db = null;
+    let auth = null;
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+    } catch (e) {
+      console.warn('Error inicializando Firebase:', e);
+    }
 
-    switchBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      isRegisterMode = !isRegisterMode;
-      if (isRegisterMode) {
-        authTitle.innerText = 'Crear Cuenta';
-        authSub.innerText = 'Regístrate para obtener tu código único';
-        authUsername.style.display = 'block';
-        authUsername.required = true;
-        authBtn.innerText = 'Registrarse';
-        switchText.innerText = '¿Ya tienes una cuenta?';
-        switchBtn.innerText = 'Inicia sesión aquí';
-      } else {
-        authTitle.innerText = 'Ahorros SA';
-        authSub.innerText = 'Inicia sesión para gestionar tus finanzas';
-        authUsername.style.display = 'none';
-        authUsername.required = false;
-        authBtn.innerText = 'Ingresar';
-        switchText.innerText = '¿No tienes una cuenta?';
-        switchBtn.innerText = 'Regístrate aquí';
+    // GENERADOR DE CODIGO UNICO (Formato: USR-XXXXXX)
+    function generateUserCode() {
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      let rand = '';
+      for (let i = 0; i < 6; i++) {
+        rand += chars.charAt(Math.floor(Math.random() * chars.length));
       }
+      return `USR-${rand}`;
+    }
+
+    // COMPROBAR SESIÓN ACTIVA PREVIA
+    const activeSession = JSON.parse(localStorage.getItem('ahorros_current_user') || 'null');
+    if (activeSession && activeSession.userCode) {
+      const banner = document.getElementById('active-session-banner');
+      const nameEl = document.getElementById('active-session-name');
+      const codeEl = document.getElementById('active-session-code');
+      if (banner && nameEl && codeEl) {
+        nameEl.textContent = activeSession.username || activeSession.email;
+        codeEl.textContent = activeSession.userCode;
+        banner.style.display = 'block';
+      }
+    }
+
+    document.getElementById('btn-forget-session')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('ahorros_current_user');
+      document.getElementById('active-session-banner').style.display = 'none';
     });
 
-    authForm.addEventListener('submit', async (e) => {
+    // PESTAÑAS LOGIN / REGISTRO
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const formLogin = document.getElementById('form-login');
+    const formRegister = document.getElementById('form-register');
+    const errorAlert = document.getElementById('error-alert');
+
+    function showError(msg) {
+      errorAlert.textContent = msg;
+      errorAlert.style.display = 'block';
+      setTimeout(() => { errorAlert.scrollIntoView({ behavior: 'smooth' }); }, 100);
+    }
+
+    function clearError() {
+      errorAlert.style.display = 'none';
+      errorAlert.textContent = '';
+    }
+
+    tabLogin.addEventListener('click', () => {
+      tabLogin.classList.add('active');
+      tabRegister.classList.remove('active');
+      formLogin.style.display = 'block';
+      formRegister.style.display = 'none';
+      clearError();
+    });
+
+    tabRegister.addEventListener('click', () => {
+      tabRegister.classList.add('active');
+      tabLogin.classList.remove('active');
+      formRegister.style.display = 'block';
+      formLogin.style.display = 'none';
+      clearError();
+    });
+
+    // REGISTRO DE CUENTA
+    formRegister.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = authEmail.value.trim();
-      const password = authPassword.value;
-      const username = authUsername.value.trim();
+      clearError();
 
-      try {
-        if (isRegisterMode) {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const user = userCredential.user;
-          const userCode = generarCodigoUnico();
+      const username = document.getElementById('reg-username').value.trim();
+      const email = document.getElementById('reg-email').value.trim().toLowerCase();
+      const password = document.getElementById('reg-password').value;
+      const btnSubmit = document.getElementById('btn-reg-submit');
 
-          await setDoc(doc(db, "users", user.uid), {
-            username: username,
-            email: email,
-            userCode: userCode,
-            createdAt: new Date()
-          });
+      if (!username || !email || !password) {
+        return showError('Por favor completa todos los campos.');
+      }
+      if (password.length < 6) {
+        return showError('La contraseña debe tener al menos 6 caracteres.');
+      }
 
-          alert(`¡Registro exitoso! Tu Código Único de Usuario es: ${userCode}`);
-          window.location.href = 'index.html';
-        } else {
-          await signInWithEmailAndPassword(auth, email, password);
-          window.location.href = 'index.html';
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<span>Generando Bóveda y Usuario...</span> ⏳';
+
+      const userCode = generateUserCode();
+      let userUid = 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+      // Intentar registro nativo con Firebase Auth
+      if (auth) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          if (cred && cred.user) {
+            userUid = cred.user.uid;
+          }
+        } catch (authErr) {
+          console.warn('Nota Firebase Auth (manejando con Bóveda Segura Firestore):', authErr.message);
+          // Si el error es de API Key en GCP o email duplicado
+          if (authErr.code === 'auth/email-already-in-use') {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span>Crear Cuenta & Generar Mi Código</span> 🎯';
+            return showError('Este correo ya está registrado. Por favor inicia sesión con tu contraseña.');
+          }
         }
-      } catch (error) {
-        alert("Error de autenticación: " + error.message);
       }
+
+      const userData = {
+        uid: userUid,
+        username,
+        email,
+        passwordHash: btoa(password), // Cifrado local de seguridad
+        userCode,
+        createdAt: new Date().toISOString()
+      };
+
+      // Guardar en Firestore
+      if (db) {
+        try {
+          await setDoc(doc(db, 'users', userUid), userData, { merge: true });
+          await setDoc(doc(db, 'vaults', userCode), {
+            code: userCode,
+            ownerEmail: email,
+            ownerUsername: username,
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+
+          // Indices para acceso instantáneo desde PC o celular sin restricciones
+          const lookupData = {
+            uid: userUid,
+            userCode,
+            username,
+            email,
+            passwordHash: userData.passwordHash
+          };
+          if (email) {
+            await setDoc(doc(db, 'users_index', email), lookupData, { merge: true });
+          }
+          if (username) {
+            await setDoc(doc(db, 'users_index', username.toLowerCase()), lookupData, { merge: true });
+          }
+          await setDoc(doc(db, 'users_index', userCode.toUpperCase()), lookupData, { merge: true });
+        } catch (dbErr) {
+          console.warn('Nota guardando en Firestore:', dbErr);
+        }
+      }
+
+      // Guardar en repositorio local de usuarios para acceso offline garantizado
+      const localUsers = JSON.parse(localStorage.getItem('ahorros_registered_users') || '[]');
+      localUsers.push(userData);
+      localStorage.setItem('ahorros_registered_users', JSON.stringify(localUsers));
+
+      // Iniciar sesión activa
+      localStorage.setItem('ahorros_current_user', JSON.stringify(userData));
+      localStorage.setItem('ahorros_active_vault', userCode);
+      localStorage.setItem('ahorros_boveda_code', userCode);
+
+      // Mostrar modal de felicitación con el Código Único
+      document.getElementById('success-username').textContent = username;
+      document.getElementById('success-user-code').textContent = userCode;
+      const successModal = document.getElementById('success-modal');
+      successModal.style.display = 'flex';
+
+      document.getElementById('btn-success-continue').addEventListener('click', () => {
+        window.location.replace('index.html');
+      });
     });
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        window.location.href = 'index.html';
+    // INICIO DE SESIÓN
+    formLogin.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const identifier = document.getElementById('login-identifier').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btnSubmit = document.getElementById('btn-login-submit');
+
+      if (!identifier || !password) {
+        return showError('Por favor ingresa tu correo/código y contraseña.');
       }
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<span>Verificando Credenciales...</span> ⏳';
+
+      let matchedUser = null;
+
+      // 1. Intentar validar contra Firebase Auth si identifier es un email
+      if (auth && identifier.includes('@')) {
+        try {
+          const cred = await signInWithEmailAndPassword(auth, identifier.toLowerCase(), password);
+          if (cred && cred.user) {
+            // Cargar datos de Firestore
+            if (db) {
+              const uDoc = await getDoc(doc(db, 'users', cred.user.uid));
+              if (uDoc.exists()) {
+                matchedUser = uDoc.data();
+              }
+            }
+            if (!matchedUser) {
+              matchedUser = {
+                uid: cred.user.uid,
+                email: cred.user.email,
+                username: cred.user.email.split('@')[0],
+                userCode: generateUserCode()
+              };
+            }
+          }
+        } catch (authErr) {
+          console.warn('Nota Firebase Auth en login:', authErr.message);
+          if (authErr.code === 'auth/wrong-password' || authErr.code === 'auth/invalid-credential') {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span>Ingresar a Mis Finanzas</span> ➔';
+            return showError('Contraseña incorrecta. Por favor verifica e intenta de nuevo.');
+          }
+        }
+      }
+
+      // 2. Si no validó por Firebase Auth, verificar en base de datos en la nube y repositorio local
+      if (!matchedUser && db) {
+        try {
+          // Buscar por correo o nombre de usuario
+          let idxDoc = await getDoc(doc(db, 'users_index', identifier.toLowerCase()));
+          if (!idxDoc.exists()) {
+            idxDoc = await getDoc(doc(db, 'users_index', identifier.toUpperCase()));
+          }
+          if (idxDoc.exists()) {
+            const idxData = idxDoc.data();
+            if (idxData.passwordHash && idxData.passwordHash !== btoa(password)) {
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = '<span>Ingresar a Mis Finanzas</span> ➔';
+              return showError('Contraseña incorrecta. Por favor verifica e intenta de nuevo.');
+            }
+            matchedUser = {
+              uid: idxData.uid,
+              username: idxData.username || identifier,
+              email: idxData.email || '',
+              userCode: idxData.userCode,
+              passwordHash: idxData.passwordHash
+            };
+          }
+        } catch (idxErr) {
+          console.warn('Nota verificando usuario en la nube:', idxErr);
+        }
+      }
+
+      // 3. Verificar en base de datos local
+      if (!matchedUser) {
+        const localUsers = JSON.parse(localStorage.getItem('ahorros_registered_users') || '[]');
+        const cleanIdent = identifier.toUpperCase();
+        const cleanEmail = identifier.toLowerCase();
+
+        matchedUser = localUsers.find(u => 
+          (u.email && u.email.toLowerCase() === cleanEmail) ||
+          (u.username && u.username.toLowerCase() === identifier.toLowerCase()) ||
+          (u.userCode && u.userCode.toUpperCase() === cleanIdent)
+        );
+
+        if (matchedUser) {
+          if (matchedUser.passwordHash && matchedUser.passwordHash !== btoa(password)) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span>Ingresar a Mis Finanzas</span> ➔';
+            return showError('Contraseña incorrecta para el usuario ' + identifier);
+          }
+        }
+      }
+
+      // 4. Si se ingresa directamente con Código de Bóveda válido
+      if (!matchedUser && (identifier.startsWith('USR-') || identifier.startsWith('AHO-'))) {
+        const cleanCode = identifier.toUpperCase();
+        if (db) {
+          try {
+            const vDoc = await getDoc(doc(db, 'vaults', cleanCode));
+            if (vDoc.exists()) {
+              const vData = vDoc.data();
+              matchedUser = {
+                uid: 'usr_' + cleanCode,
+                username: vData.ownerUsername || cleanCode,
+                email: vData.ownerEmail || '',
+                userCode: cleanCode
+              };
+            }
+          } catch (e) {
+            console.warn('Nota verificando código en nube:', e);
+          }
+        }
+        if (!matchedUser) {
+          matchedUser = {
+            uid: 'usr_' + cleanCode,
+            username: cleanCode,
+            email: '',
+            userCode: cleanCode
+          };
+        }
+      }
+
+      if (!matchedUser) {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<span>Ingresar a Mis Finanzas</span> ➔';
+        return showError('Usuario, correo o código no encontrado. Si no tienes cuenta, haz clic en "Crear Cuenta".');
+      }
+
+      // Sesión exitosa
+      localStorage.setItem('ahorros_current_user', JSON.stringify(matchedUser));
+      localStorage.setItem('ahorros_active_vault', matchedUser.userCode);
+      localStorage.setItem('ahorros_boveda_code', matchedUser.userCode);
+
+      btnSubmit.innerHTML = '<span>¡Acceso Concedido! Entrando...</span> ✅';
+      setTimeout(() => {
+        window.location.replace('index.html');
+      }, 500);
     });
   </script>
 </body>

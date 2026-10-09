@@ -289,7 +289,7 @@ app.get('/api/download-zip', async (req, res) => {
   try {
     const { execSync } = await import('child_process');
     const pyScript = `import zipfile, os
-files = ['index.html', 'script.js', 'styles.css', 'manifest.json', 'sw.js', 'icon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'firebase-applet-config.json']
+files = ['index.html', 'login.html', 'script.js', 'styles.css', 'manifest.json', 'sw.js', 'icon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'firebase-applet-config.json', 'firestore.rules']
 with zipfile.ZipFile('ahorros-sa-web.zip', 'w', zipfile.ZIP_DEFLATED) as z:
     for f in files:
         if os.path.exists(f):

@@ -167,6 +167,12 @@ let savingsGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
 let recurringPayments = JSON.parse(localStorage.getItem('finances_v10_recurring')) || [];
 let shortcutEvents = [];
 
+// Sets de IDs eliminados recientemente para evitar resurrección por snapshot en tiempo real
+const recentlyDeletedTxIds = new Set();
+const recentlyDeletedDebtIds = new Set();
+const recentlyDeletedGoalIds = new Set();
+const recentlyDeletedRecurringIds = new Set();
+
 const initDateObj = new Date();
 let activeYear = String(initDateObj.getFullYear());
 let activeMonth = String(initDateObj.getMonth() + 1).padStart(2, '0');
@@ -332,26 +338,42 @@ const payCardSource = document.getElementById('pay-card-source');
 const payCardDate = document.getElementById('pay-card-date');
 const payCardCurrentSpent = document.getElementById('pay-card-current-spent');
 
-// CONTROL DE PESTAÑAS
+// CONTROL DE PESTAÑAS (CON PERSISTENCIA DE NAVEGACION)
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 
+function activateTab(tabId) {
+  if (!tabId) return;
+  const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  const target = document.getElementById(tabId);
+  if (!targetBtn || !target) return;
+
+  tabButtons.forEach(b => b.classList.remove('active'));
+  tabContents.forEach(c => c.classList.remove('active'));
+
+  targetBtn.classList.add('active');
+  target.classList.add('active');
+  localStorage.setItem('ahorros_active_tab', tabId);
+
+  if (tabId === 'tab-charts') renderCharts();
+  else if (tabId === 'tab-debts') renderCalendar();
+  else if (tabId === 'tab-savings') renderSavingsGoals();
+  else if (tabId === 'tab-recurring') renderRecurringPayments();
+}
+
 tabButtons.forEach(btn => {
   btn.addEventListener('click', () => {
-    tabButtons.forEach(b => b.classList.remove('active'));
-    tabContents.forEach(c => c.classList.remove('active'));
-
-    btn.classList.add('active');
-    const target = document.getElementById(btn.dataset.tab);
-    if (target) {
-      target.classList.add('active');
-      if (btn.dataset.tab === 'tab-charts') renderCharts();
-      else if (btn.dataset.tab === 'tab-debts') renderCalendar();
-      else if (btn.dataset.tab === 'tab-savings') renderSavingsGoals();
-      else if (btn.dataset.tab === 'tab-recurring') renderRecurringPayments();
-    }
+    activateTab(btn.dataset.tab);
   });
 });
+
+// Restaurar pestaña activa al recargar la página
+try {
+  const savedTab = localStorage.getItem('ahorros_active_tab') || 'tab-dashboard';
+  if (savedTab && document.getElementById(savedTab)) {
+    activateTab(savedTab);
+  }
+} catch (e) {}
 
 // CONTROL DE ESTILOS Y TEMAS (BASE POR DEFECTO: GRAFITO CARBÓN)
 const themeSelect = document.getElementById('theme-select');
@@ -754,10 +776,17 @@ document.querySelectorAll('.amount-chip').forEach(chip => {
 });
 
 // INICIALIZACION DE CREDENCIALES DE ATAJOS
+const shortcutDirectUrlEl = document.getElementById('shortcut-direct-url');
+const btnCopyDirectUrl = document.getElementById('btn-copy-direct-url');
+const btnDownloadShortcutGuide = document.getElementById('btn-download-shortcut-guide');
+const btnCopySampleJson = document.getElementById('btn-copy-sample-json');
+
 function updateShortcutCredentialsUI() {
   const webhookUrl = `${publicSharedOrigin}/api/shortcut/transaction`;
+  const directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=25000&desc=Almuerzo&category=ALIMENTACION&account=NEQUI`;
   if (shortcutApiKeyEl) shortcutApiKeyEl.textContent = userApiKey;
   if (shortcutWebhookUrlEl) shortcutWebhookUrlEl.textContent = webhookUrl;
+  if (shortcutDirectUrlEl) shortcutDirectUrlEl.textContent = directUrl;
 }
 updateShortcutCredentialsUI();
 
@@ -775,6 +804,91 @@ btnCopyUrl.addEventListener('click', () => {
     setTimeout(() => { btnCopyUrl.textContent = 'COPIAR URL'; }, 2000);
   });
 });
+
+if (btnCopyDirectUrl) {
+  btnCopyDirectUrl.addEventListener('click', () => {
+    const directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=25000&desc=Almuerzo&category=ALIMENTACION&account=NEQUI`;
+    navigator.clipboard.writeText(directUrl).then(() => {
+      btnCopyDirectUrl.textContent = '✅ ¡ENLACE COPIADO!';
+      showQuickToast('📋 Enlace directo con tu clave copiado al portapapeles');
+      setTimeout(() => { btnCopyDirectUrl.textContent = '📋 Copiar Enlace Directo'; }, 2000);
+    });
+  });
+}
+
+if (btnCopySampleJson) {
+  btnCopySampleJson.addEventListener('click', () => {
+    const sample = JSON.stringify({
+      type: "expense",
+      amount: 25000,
+      description: "Almuerzo",
+      category: "ALIMENTACION",
+      paymentMethod: "NEQUI"
+    }, null, 2);
+    navigator.clipboard.writeText(sample).then(() => {
+      btnCopySampleJson.textContent = '✅ ¡JSON COPIADO!';
+      showQuickToast('📋 JSON de ejemplo copiado al portapapeles');
+      setTimeout(() => { btnCopySampleJson.textContent = '📋 Copiar JSON de Ejemplo'; }, 2000);
+    });
+  });
+}
+
+if (btnDownloadShortcutGuide) {
+  btnDownloadShortcutGuide.addEventListener('click', () => {
+    const guideText = `===================================================================
+      GUIA RÁPIDA DE INSTALACIÓN - ATAJO DE IPHONE (SIRI & WIDGET)
+      AHORROS SA - SISTEMA DE CONTROL FINANCIERO
+===================================================================
+
+BÓVEDA SINCRONIZADA: ${activeVaultId}
+TU CLAVE SECRETA (API KEY): ${userApiKey}
+
+-------------------------------------------------------------------
+MÉTODO 1: EL MÁS SENCILLO (1 ACCIÓN EN LA APP "ATAJOS" DE TU IPHONE)
+-------------------------------------------------------------------
+1. En tu iPhone o iPad, abre la app oficial "Atajos" (Shortcuts).
+2. Toca el botón "+" (arriba a la derecha) para crear uno nuevo.
+3. Nómbralo: "Registrar Gasto".
+4. Agrega la acción: "Solicitar entrada"
+   - Tipo: Número
+   - Pregunta: "¿Cuánto gastaste?"
+5. Agrega la acción: "Solicitar entrada"
+   - Tipo: Texto
+   - Pregunta: "¿Concepto o detalle?"
+6. Agrega la acción: "Obtener contenido de URL":
+   - Método: GET
+   - Pega esta URL EXACTA:
+${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=[Entrada provista]&desc=[Entrada provista 2]&category=ALIMENTACION&account=NEQUI
+
+7. (Opcional) Agrega la acción "Leer texto con la voz" usando el resultado
+   para que Siri te confirme: "Gasto registrado, tu saldo restante es..."
+
+-------------------------------------------------------------------
+MÉTODO 2: MÉTODO POST CON DICCIONARIO JSON
+-------------------------------------------------------------------
+- URL: ${publicSharedOrigin}/api/shortcut/transaction
+- Método: POST
+- Encabezados:
+    Content-Type: application/json
+    x-api-key: ${userApiKey}
+- JSON:
+    {"type": "expense", "amount": 25000, "description": "Almuerzo", "category": "ALIMENTACION", "paymentMethod": "NEQUI"}
+
+¡Listo! Ya puedes dictarle tus finanzas a Siri desde el reloj o la pantalla bloqueada.
+===================================================================`;
+
+    const blob = new Blob([guideText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Atajo_iPhone_AhorrosSA_${activeVaultId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showQuickToast('📥 Guía y plantilla descargada');
+  });
+}
 
 btnRegenKey.addEventListener('click', async () => {
   if (confirm('¿Deseas generar una nueva clave de Atajo? Deberás actualizarla en tu iPhone.')) {
@@ -815,7 +929,6 @@ if (deviceViewSelect) {
 }
 
 // BOTON COPIAR JSON DE EJEMPLO DE ATAJO
-const btnCopySampleJson = document.getElementById('btn-copy-sample-json');
 if (btnCopySampleJson) {
   btnCopySampleJson.addEventListener('click', () => {
     const sampleObj = {
@@ -1087,7 +1200,20 @@ async function loadVaultFromCloud(vaultId) {
     const txSnap = await getDocs(txColl);
     if (!txSnap.empty) {
       const cloudTrans = [];
-      txSnap.forEach(d => cloudTrans.push({ id: d.id, ...d.data() }));
+      txSnap.forEach(d => {
+        if (!recentlyDeletedTxIds.has(d.id)) {
+          const tData = d.data();
+          // Limpiar transacciones residuales de metas que antes distorsionaban ingresos/gastos
+          if (tData.description && (
+            tData.description.startsWith('AHORRO EN META:') ||
+            tData.description.startsWith('AHORRO INICIAL EN META:') ||
+            tData.description.startsWith('RETIRO DE META:')
+          )) {
+            return;
+          }
+          cloudTrans.push({ ...tData, id: d.id, firestoreId: d.id });
+        }
+      });
       transactions = sortTransactionsByDate(cloudTrans);
       localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
       updateUI();
@@ -1097,7 +1223,11 @@ async function loadVaultFromCloud(vaultId) {
     const debtsSnap = await getDocs(debtsColl);
     if (!debtsSnap.empty) {
       const cloudDebts = [];
-      debtsSnap.forEach(d => cloudDebts.push({ id: d.id, ...d.data() }));
+      debtsSnap.forEach(d => {
+        if (!recentlyDeletedDebtIds.has(d.id)) {
+          cloudDebts.push({ ...d.data(), id: d.id, firestoreId: d.id });
+        }
+      });
       debts = cloudDebts;
       localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
       updateUI();
@@ -1107,7 +1237,11 @@ async function loadVaultFromCloud(vaultId) {
     const gSnap = await getDocs(gColl);
     if (!gSnap.empty) {
       const cloudGoals = [];
-      gSnap.forEach(d => cloudGoals.push({ id: d.id, ...d.data() }));
+      gSnap.forEach(d => {
+        if (!recentlyDeletedGoalIds.has(d.id)) {
+          cloudGoals.push({ ...d.data(), id: d.id, firestoreId: d.id });
+        }
+      });
       savingsGoals = cloudGoals;
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
       renderSavingsGoals();
@@ -1117,7 +1251,11 @@ async function loadVaultFromCloud(vaultId) {
     const rSnap = await getDocs(rColl);
     if (!rSnap.empty) {
       const cloudRec = [];
-      rSnap.forEach(d => cloudRec.push({ id: d.id, ...d.data() }));
+      rSnap.forEach(d => {
+        if (!recentlyDeletedRecurringIds.has(d.id)) {
+          cloudRec.push({ ...d.data(), id: d.id, firestoreId: d.id });
+        }
+      });
       recurringPayments = cloudRec;
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
       renderRecurringPayments();
@@ -1265,10 +1403,20 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeTransactions = onSnapshot(txColl, (snapshot) => {
     const cloudTrans = [];
     snapshot.forEach(docSnap => {
-      cloudTrans.push({ id: docSnap.id, ...docSnap.data() });
+      if (!recentlyDeletedTxIds.has(docSnap.id)) {
+        const tData = docSnap.data();
+        if (tData.description && (
+          tData.description.startsWith('AHORRO EN META:') ||
+          tData.description.startsWith('AHORRO INICIAL EN META:') ||
+          tData.description.startsWith('RETIRO DE META:')
+        )) {
+          return;
+        }
+        cloudTrans.push({ ...tData, id: docSnap.id, firestoreId: docSnap.id });
+      }
     });
     // Preservar transacciones locales provisionales recién insertadas
-    const localPending = transactions.filter(t => typeof t.id === 'string' && t.id.startsWith('tx_') && !cloudTrans.some(c => c.createdAt === t.createdAt && c.amount === t.amount));
+    const localPending = transactions.filter(t => typeof t.id === 'string' && t.id.startsWith('tx_') && !recentlyDeletedTxIds.has(t.id) && !cloudTrans.some(c => c.createdAt === t.createdAt && c.amount === t.amount));
     if (cloudTrans.length > 0 || localPending.length > 0 || transactions.length === 0) {
       transactions = sortTransactionsByDate([...cloudTrans, ...localPending]);
       localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
@@ -1285,9 +1433,11 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeDebts = onSnapshot(debtsColl, (snapshot) => {
     const cloudDebts = [];
     snapshot.forEach(docSnap => {
-      cloudDebts.push({ id: docSnap.id, ...docSnap.data() });
+      if (!recentlyDeletedDebtIds.has(docSnap.id)) {
+        cloudDebts.push({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id });
+      }
     });
-    const localPending = debts.filter(d => typeof d.id === 'string' && d.id.startsWith('debt_') && !cloudDebts.some(c => c.name === d.name && c.total === d.total));
+    const localPending = debts.filter(d => typeof d.id === 'string' && d.id.startsWith('debt_') && !recentlyDeletedDebtIds.has(d.id) && !cloudDebts.some(c => c.name === d.name && c.total === d.total));
     if (cloudDebts.length > 0 || localPending.length > 0 || debts.length === 0) {
       debts = [...cloudDebts, ...localPending];
       localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
@@ -1304,9 +1454,11 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeGoals = onSnapshot(gColl, (snapshot) => {
     const cloudGoals = [];
     snapshot.forEach(docSnap => {
-      cloudGoals.push({ id: docSnap.id, ...docSnap.data() });
+      if (!recentlyDeletedGoalIds.has(docSnap.id)) {
+        cloudGoals.push({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id });
+      }
     });
-    const localPending = savingsGoals.filter(g => typeof g.id === 'string' && g.id.startsWith('goal_') && !cloudGoals.some(c => c.name === g.name && c.targetAmount === g.targetAmount));
+    const localPending = savingsGoals.filter(g => typeof g.id === 'string' && g.id.startsWith('goal_') && !recentlyDeletedGoalIds.has(g.id) && !cloudGoals.some(c => c.name === g.name && c.targetAmount === g.targetAmount));
     if (cloudGoals.length > 0 || localPending.length > 0 || savingsGoals.length === 0) {
       savingsGoals = [...cloudGoals, ...localPending];
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
@@ -1323,9 +1475,11 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeRecurring = onSnapshot(rColl, (snapshot) => {
     const cloudR = [];
     snapshot.forEach(docSnap => {
-      cloudR.push({ id: docSnap.id, ...docSnap.data() });
+      if (!recentlyDeletedRecurringIds.has(docSnap.id)) {
+        cloudR.push({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id });
+      }
     });
-    const localPending = recurringPayments.filter(r => typeof r.id === 'string' && r.id.startsWith('rec_') && !cloudR.some(c => c.name === r.name && c.amount === r.amount));
+    const localPending = recurringPayments.filter(r => typeof r.id === 'string' && r.id.startsWith('rec_') && !recentlyDeletedRecurringIds.has(r.id) && !cloudR.some(c => c.name === r.name && c.amount === r.amount));
     if (cloudR.length > 0 || localPending.length > 0 || recurringPayments.length === 0) {
       recurringPayments = [...cloudR, ...localPending];
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
@@ -1543,6 +1697,7 @@ async function addTransactionLocallyOrCloud(txData) {
     });
     // Actualizar el ID provisional con el de Firestore
     cleanTx.id = docRef.id;
+    cleanTx.firestoreId = docRef.id;
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
   } catch (e) {
     console.warn('Transacción guardada localmente (pendiente de sync en la nube):', e);
@@ -1553,29 +1708,36 @@ async function addTransactionLocallyOrCloud(txData) {
 
 // ELIMINACION DE TRANSACCION
 window.removeTransaction = async function(idOrIndex) {
-  if (!confirm('¿Deseas eliminar este movimiento?')) return;
-  let targetId = null;
-  if (typeof idOrIndex === 'string') {
-    targetId = idOrIndex;
-    const idx = transactions.findIndex(t => t.id === targetId);
-    if (idx !== -1) transactions.splice(idx, 1);
-  } else {
-    const idx = parseInt(idOrIndex);
-    if (!isNaN(idx) && transactions[idx]) {
-      targetId = transactions[idx].id;
-      transactions.splice(idx, 1);
-    }
+  if (!confirm('¿Deseas eliminar este movimiento permanentemente?')) return;
+  const strId = String(idOrIndex);
+  let targetTx = transactions.find(t => String(t.id) === strId || String(t.firestoreId) === strId);
+  if (!targetTx && !isNaN(parseInt(idOrIndex, 10))) {
+    targetTx = transactions[parseInt(idOrIndex, 10)];
   }
+
+  const idToDelete = targetTx ? targetTx.id : strId;
+  const firestoreIdToDelete = targetTx && targetTx.firestoreId ? targetTx.firestoreId : strId;
+
+  recentlyDeletedTxIds.add(String(idToDelete));
+  recentlyDeletedTxIds.add(String(firestoreIdToDelete));
+
+  if (targetTx) {
+    transactions = transactions.filter(t => t !== targetTx);
+  } else {
+    transactions = transactions.filter(t => String(t.id) !== strId && String(t.firestoreId) !== strId);
+  }
+
   localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
   updateUI();
   showQuickToast('🗑️ Movimiento eliminado');
 
-  if (targetId && typeof targetId === 'string' && !targetId.startsWith('tx_')) {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', targetId));
-    } catch (e) {
-      console.warn('Error eliminando de Firestore:', e);
+  try {
+    await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', idToDelete));
+    if (firestoreIdToDelete !== idToDelete) {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', firestoreIdToDelete));
     }
+  } catch (e) {
+    console.warn('Error eliminando de Firestore:', e);
   }
   syncClientTotalsToServer();
 };
@@ -1835,17 +1997,6 @@ if (goalForm) {
       createdAt: new Date().toISOString()
     };
 
-    if (initialVal > 0) {
-      await addTransactionLocallyOrCloud({
-        type: 'expense',
-        date: getTodayStr(),
-        description: `AHORRO INICIAL EN META: ${nameVal}`,
-        amount: initialVal,
-        category: 'OTROS',
-        paymentMethod: sourceAcc
-      });
-    }
-
     savingsGoals.push(goalData);
     localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
     renderSavingsGoals();
@@ -1858,6 +2009,7 @@ if (goalForm) {
         ...goalData
       });
       goalData.id = docRef.id;
+      goalData.firestoreId = docRef.id;
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
     } catch (e) {
       console.warn('Meta guardada localmente (pendiente de sync a la nube):', e);
@@ -1940,11 +2092,11 @@ function renderSavingsGoals() {
   }
 
   goalsContainer.innerHTML = '';
-  savingsGoals.forEach((g, idx) => {
+  savingsGoals.forEach((g) => {
     totalSavedInGoals += (g.currentAmount || 0);
     const percent = Math.min(100, Math.round(((g.currentAmount || 0) / (g.targetAmount || 1)) * 100));
     const isCompleted = (g.currentAmount || 0) >= (g.targetAmount || 1);
-    const goalIdentifier = currentUser ? `'${g.id}'` : idx;
+    const goalIdentifier = `'${g.id}'`;
 
     let projectionHtml = '';
     if (isCompleted) {
@@ -2013,13 +2165,11 @@ function renderSavingsGoals() {
 
 // GESTION MODAL METAS (DEPOSITAR O RETIRAR)
 window.openGoalModal = function(idOrIndex, action) {
-  let targetGoal = null;
-  if (currentUser) targetGoal = savingsGoals.find(g => g.id === idOrIndex);
-  else targetGoal = savingsGoals[idOrIndex];
-
+  const strId = String(idOrIndex);
+  const targetGoal = savingsGoals.find(g => String(g.id) === strId || String(g.firestoreId) === strId) || savingsGoals[parseInt(idOrIndex, 10)];
   if (!targetGoal) return;
 
-  modalGoalId.value = currentUser ? targetGoal.id : idOrIndex;
+  modalGoalId.value = targetGoal.id;
   modalGoalAction.value = action;
   modalGoalIcon.textContent = targetGoal.icon || '🎯';
   modalGoalSubtitle.textContent = `Meta: ${targetGoal.name} (Actual: ${formatCurrency(targetGoal.currentAmount)})`;
@@ -2052,11 +2202,10 @@ if (goalActionForm) {
     const gId = modalGoalId.value;
     const action = modalGoalAction.value;
     const amountVal = parseAmount(modalGoalAmount.value);
-    const accountVal = modalGoalAccount.value;
 
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido');
 
-    let targetGoal = savingsGoals.find(g => g.id === gId) || savingsGoals[parseInt(gId, 10)];
+    let targetGoal = savingsGoals.find(g => String(g.id) === String(gId) || String(g.firestoreId) === String(gId));
     if (!targetGoal) return;
 
     if (action === 'withdraw' && amountVal > targetGoal.currentAmount) {
@@ -2067,41 +2216,21 @@ if (goalActionForm) {
       ? targetGoal.currentAmount + amountVal
       : targetGoal.currentAmount - amountVal;
 
-    // Actualización inmediata en memoria y localStorage
+    // Actualización inmediata del ahorro en meta (sin contaminar ingresos/gastos corrientes)
     targetGoal.currentAmount = newAmount;
     localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
     renderSavingsGoals();
+    updateUI();
     showQuickToast(`🎯 ${action === 'deposit' ? 'Abono a' : 'Retiro de'} "${targetGoal.name}": ${formatCurrency(amountVal)}`);
 
-    // Registrar movimiento correlativo en transacciones
-    if (action === 'deposit') {
-      await addTransactionLocallyOrCloud({
-        type: 'expense',
-        description: `AHORRO EN META: ${targetGoal.name}`,
-        amount: amountVal,
-        category: 'OTROS',
-        paymentMethod: accountVal,
-        date: getTodayStr()
-      });
-    } else {
-      await addTransactionLocallyOrCloud({
-        type: 'income',
-        description: `RETIRO DE META: ${targetGoal.name}`,
-        amount: amountVal,
-        category: 'OTROS',
-        paymentMethod: accountVal,
-        date: getTodayStr()
-      });
-    }
-
-    if (targetGoal.id && !String(targetGoal.id).startsWith('goal_')) {
-      try {
-        await updateDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetGoal.id), {
-          currentAmount: newAmount
-        });
-      } catch (err) {
-        console.warn('Error actualizando meta en Firestore:', err);
-      }
+    try {
+      await setDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetGoal.id), {
+        vaultId: activeVaultId,
+        ...targetGoal,
+        currentAmount: newAmount
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Error actualizando meta en Firestore:', err);
     }
 
     goalActionModal.classList.add('hidden');
@@ -2109,30 +2238,46 @@ if (goalActionForm) {
 }
 
 window.deleteSavingsGoal = async function(idOrIndex) {
-  if (!confirm('¿Deseas eliminar esta meta de ahorro?')) return;
-  let targetId = null;
-  const idx = savingsGoals.findIndex(g => g.id === idOrIndex);
-  if (idx !== -1) {
-    targetId = savingsGoals[idx].id;
-    savingsGoals.splice(idx, 1);
-  } else {
-    const numIdx = parseInt(idOrIndex, 10);
-    if (!isNaN(numIdx) && savingsGoals[numIdx]) {
-      targetId = savingsGoals[numIdx].id;
-      savingsGoals.splice(numIdx, 1);
-    }
+  const strId = String(idOrIndex);
+  let targetGoal = savingsGoals.find(g => String(g.id) === strId || String(g.firestoreId) === strId);
+  if (!targetGoal && !isNaN(parseInt(idOrIndex, 10))) {
+    targetGoal = savingsGoals[parseInt(idOrIndex, 10)];
   }
-  localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-  renderSavingsGoals();
-  showQuickToast('🗑️ Meta eliminada');
+  if (!targetGoal) return;
 
-  if (targetId && typeof targetId === 'string' && !targetId.startsWith('goal_')) {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetId));
-    } catch (e) {
-      console.warn('Error eliminando meta de Firestore:', e);
+  const currentAmt = targetGoal.currentAmount || 0;
+  const msg = currentAmt > 0
+    ? `¿Deseas eliminar la meta "${targetGoal.name}"?\nLos $ ${formatCurrency(currentAmt)} ahorrados se liberarán de esta meta.`
+    : `¿Deseas eliminar la meta de ahorro "${targetGoal.name}"?`;
+
+  if (!confirm(msg)) return;
+
+  const idToDelete = targetGoal.id;
+  const firestoreIdToDelete = targetGoal.firestoreId || idToDelete;
+
+  recentlyDeletedGoalIds.add(String(idToDelete));
+  recentlyDeletedGoalIds.add(String(firestoreIdToDelete));
+
+  savingsGoals = savingsGoals.filter(g => g !== targetGoal);
+  localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+
+  // Limpiar cualquier movimiento legacy de esta meta para no duplicar datos
+  transactions = transactions.filter(t => !t.description || (!t.description.includes(`META: ${targetGoal.name}`) && !t.description.includes(`META ${targetGoal.name}`)));
+  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+
+  renderSavingsGoals();
+  updateUI();
+  showQuickToast(`🗑️ Meta "${targetGoal.name}" eliminada`);
+
+  try {
+    await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', idToDelete));
+    if (firestoreIdToDelete !== idToDelete) {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', firestoreIdToDelete));
     }
+  } catch (e) {
+    console.warn('Error eliminando meta de Firestore:', e);
   }
+  syncClientTotalsToServer();
 };
 
 // RENDER FINANZAS FIJAS & RECURRENTES (INGRESOS Y GASTOS FIJOS)
@@ -2173,10 +2318,10 @@ function renderRecurringPayments() {
   }
 
   recurringContainer.innerHTML = '';
-  filteredItems.forEach((r, idx) => {
+  filteredItems.forEach((r) => {
     const isIncome = r.type === 'income';
     const isPaidThisMonth = r.lastPaidMonth === currentYM;
-    const rIdentifier = currentUser ? `'${r.id}'` : idx;
+    const rIdentifier = `'${r.id}'`;
 
     const card = document.createElement('div');
     card.className = `recurring-card ${isPaidThisMonth ? 'paid' : 'pending'}`;
@@ -2227,7 +2372,11 @@ function renderRecurringPayments() {
 }
 
 window.quickPayRecurring = async function(idOrIndex) {
-  let targetR = recurringPayments.find(r => r.id === idOrIndex) || recurringPayments[parseInt(idOrIndex, 10)];
+  const strId = String(idOrIndex);
+  let targetR = recurringPayments.find(r => String(r.id) === strId || String(r.firestoreId) === strId);
+  if (!targetR && !isNaN(parseInt(idOrIndex, 10))) {
+    targetR = recurringPayments[parseInt(idOrIndex, 10)];
+  }
   if (!targetR) return;
 
   const currentYM = getCurrentYearMonth();
@@ -2243,59 +2392,68 @@ window.quickPayRecurring = async function(idOrIndex) {
     date: getTodayStr()
   });
 
-  // Marcar como pagado / cobrado este mes
+  // Marcar como pagado / cobrado este mes de forma permanente
   targetR.lastPaidMonth = currentYM;
   localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
   renderRecurringPayments();
 
-  if (targetR.id && !String(targetR.id).startsWith('rec_')) {
-    try {
-      await updateDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.id), {
-        lastPaidMonth: currentYM
-      });
-    } catch (e) {
-      console.warn('Error actualizando compromiso recurrente en Firestore:', e);
-    }
+  try {
+    const rRef = doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.id);
+    await setDoc(rRef, {
+      vaultId: activeVaultId,
+      ...targetR,
+      lastPaidMonth: currentYM
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Error actualizando compromiso recurrente en Firestore:', e);
   }
 
   showQuickToast(`⚡ ${isIncome ? 'Ingreso de' : 'Pago de'} "${targetR.name}" registrado`);
 };
 
 window.deleteRecurringPayment = async function(idOrIndex) {
-  if (!confirm('¿Deseas eliminar este compromiso recurrente?')) return;
-  let targetId = null;
-  const idx = recurringPayments.findIndex(r => r.id === idOrIndex);
-  if (idx !== -1) {
-    targetId = recurringPayments[idx].id;
-    recurringPayments.splice(idx, 1);
-  } else {
-    const numIdx = parseInt(idOrIndex, 10);
-    if (!isNaN(numIdx) && recurringPayments[numIdx]) {
-      targetId = recurringPayments[numIdx].id;
-      recurringPayments.splice(numIdx, 1);
-    }
+  const strId = String(idOrIndex);
+  let targetR = recurringPayments.find(r => String(r.id) === strId || String(r.firestoreId) === strId);
+  if (!targetR && !isNaN(parseInt(idOrIndex, 10))) {
+    targetR = recurringPayments[parseInt(idOrIndex, 10)];
   }
+  if (!targetR) return;
+
+  if (!confirm(`¿Deseas eliminar el compromiso recurrente "${targetR.name}"?`)) return;
+
+  const idToDelete = targetR.id;
+  const firestoreIdToDelete = targetR.firestoreId || idToDelete;
+
+  recentlyDeletedRecurringIds.add(String(idToDelete));
+  recentlyDeletedRecurringIds.add(String(firestoreIdToDelete));
+
+  recurringPayments = recurringPayments.filter(r => r !== targetR);
   localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
   renderRecurringPayments();
-  showQuickToast('🗑️ Registro recurrente eliminado');
+  showQuickToast(`🗑️ "${targetR.name}" eliminado`);
 
-  if (targetId && typeof targetId === 'string' && !targetId.startsWith('rec_')) {
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', targetId));
-    } catch (e) {
-      console.warn('Error eliminando pago recurrente de Firestore:', e);
+  try {
+    await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', idToDelete));
+    if (firestoreIdToDelete !== idToDelete) {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', firestoreIdToDelete));
     }
+  } catch (e) {
+    console.warn('Error eliminando pago recurrente de Firestore:', e);
   }
+  syncClientTotalsToServer();
 };
 
 // ABONAR A DEUDA
 window.payDebt = async function(idOrIndex) {
-  let targetDebt = debts.find(d => d.id === idOrIndex) || debts[parseInt(idOrIndex, 10)];
-  let debtId = idOrIndex;
+  const strId = String(idOrIndex);
+  let targetDebt = debts.find(d => String(d.id) === strId || String(d.firestoreId) === strId);
+  if (!targetDebt && !isNaN(parseInt(idOrIndex, 10))) {
+    targetDebt = debts[parseInt(idOrIndex, 10)];
+  }
 
   if (!targetDebt) return;
 
-  const inputEl = document.getElementById(`pay-input-${debtId}`);
+  const inputEl = document.getElementById(`pay-input-${targetDebt.id}`) || document.getElementById(`pay-input-${strId}`);
   if (!inputEl) return;
   const payAmount = parseAmount(inputEl.value);
 
@@ -2325,6 +2483,11 @@ window.payDebt = async function(idOrIndex) {
     amount: finalAbono
   });
 
+  targetDebt.paid = newPaid;
+  targetDebt.history = JSON.stringify(historyArr);
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+  updateUI();
+
   await addTransactionLocallyOrCloud({
     type: 'expense',
     date: getTodayStr(),
@@ -2334,24 +2497,16 @@ window.payDebt = async function(idOrIndex) {
     paymentMethod: 'BANCO'
   });
 
-  if (targetDebt.id && !String(targetDebt.id).startsWith('debt_')) {
-    try {
-      await updateDoc(doc(db, 'vaults', activeVaultId, 'debts', targetDebt.id), {
-        paid: newPaid,
-        history: JSON.stringify(historyArr)
-      });
-    } catch (e) {
-      console.warn('Error actualizando deuda:', e);
-      targetDebt.paid = newPaid;
-      targetDebt.history = JSON.stringify(historyArr);
-      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-      updateUI();
-    }
-  } else {
-    targetDebt.paid = newPaid;
-    targetDebt.history = JSON.stringify(historyArr);
-    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-    updateUI();
+  try {
+    const dRef = doc(db, 'vaults', activeVaultId, 'debts', targetDebt.id);
+    await setDoc(dRef, {
+      vaultId: activeVaultId,
+      ...targetDebt,
+      paid: newPaid,
+      history: JSON.stringify(historyArr)
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Error actualizando deuda en Firestore:', e);
   }
 
   syncClientTotalsToServer();
@@ -2359,29 +2514,57 @@ window.payDebt = async function(idOrIndex) {
 
 // ELIMINAR DEUDA
 window.removeDebt = async function(idOrIndex) {
-  if (!confirm('¿Deseas eliminar esta obligación de deuda?')) return;
-  let targetId = null;
-  const idx = debts.findIndex(d => d.id === idOrIndex);
-  if (idx !== -1) {
-    targetId = debts[idx].id;
-    debts.splice(idx, 1);
-  } else {
-    const numIdx = parseInt(idOrIndex, 10);
-    if (!isNaN(numIdx) && debts[numIdx]) {
-      targetId = debts[numIdx].id;
-      debts.splice(numIdx, 1);
-    }
+  const strId = String(idOrIndex);
+  let targetDebt = debts.find(d => String(d.id) === strId || String(d.firestoreId) === strId);
+  if (!targetDebt && !isNaN(parseInt(idOrIndex, 10))) {
+    targetDebt = debts[parseInt(idOrIndex, 10)];
   }
-  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-  updateUI();
-  showQuickToast('🗑️ Deuda eliminada');
+  if (!targetDebt) return;
 
-  if (targetId && typeof targetId === 'string' && !targetId.startsWith('debt_')) {
+  if (!confirm(`¿Deseas eliminar la deuda "${targetDebt.name}"?\n\nAl confirmar, también se eliminarán los registros de abonos asociados en gastos para no dejar gastos huérfanos en tu historial.`)) {
+    return;
+  }
+
+  const idToDelete = targetDebt.id;
+  const firestoreIdToDelete = targetDebt.firestoreId || idToDelete;
+
+  recentlyDeletedDebtIds.add(String(idToDelete));
+  recentlyDeletedDebtIds.add(String(firestoreIdToDelete));
+
+  debts = debts.filter(d => d !== targetDebt);
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+
+  // Eliminar abonos asociados registrados en gastos
+  const debtNameUpper = targetDebt.name.trim().toUpperCase();
+  const txsToDelete = transactions.filter(t => 
+    t.description && (
+      t.description.toUpperCase().includes(`ABONO A ${debtNameUpper}`) ||
+      t.description.toUpperCase().includes(`PAGO DE DEUDA: ${debtNameUpper}`) ||
+      t.description.toUpperCase().includes(`DEUDA: ${debtNameUpper}`)
+    )
+  );
+
+  for (const t of txsToDelete) {
+    recentlyDeletedTxIds.add(String(t.id));
+    if (t.firestoreId) recentlyDeletedTxIds.add(String(t.firestoreId));
     try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', targetId));
-    } catch (e) {
-      console.warn('Error eliminando deuda de Firestore:', e);
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', t.id));
+    } catch (e) {}
+  }
+
+  transactions = transactions.filter(t => !txsToDelete.includes(t));
+  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+
+  updateUI();
+  showQuickToast(`🗑️ Deuda "${targetDebt.name}" y sus abonos eliminados`);
+
+  try {
+    await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', idToDelete));
+    if (firestoreIdToDelete !== idToDelete) {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', firestoreIdToDelete));
     }
+  } catch (e) {
+    console.warn('Error eliminando deuda de Firestore:', e);
   }
   syncClientTotalsToServer();
 };
@@ -2541,7 +2724,8 @@ function updateUI() {
         expenseCount++;
       }
 
-      const deleteIdentifier = currentUser ? `'${t.id}'` : idx;
+      if (!t.id) t.id = 'tx_' + Math.random().toString(36).substr(2, 9);
+      const deleteIdentifier = `'${t.id}'`;
       const methodDisplay = t.paymentMethod || 'EFECTIVO';
       const isTransfer = t.category === 'TRANSFERENCIA INTERNA';
 
@@ -2696,7 +2880,8 @@ function updateUI() {
     const suggestedQuotaAmount = Math.round(totalWithInterest / totalInstallments);
     const accelerationHtml = renderAccelerationSuggestions(pending);
     const interestBadge = interestRate > 0 ? `<span class="tag-badge text-warning">+${interestRate}% INT.</span>` : '';
-    const debtIdentifier = currentUser ? `'${d.id}'` : idx;
+    if (!d.id) d.id = 'debt_' + Math.random().toString(36).substr(2, 9);
+    const debtIdentifier = `'${d.id}'`;
 
     const row = document.createElement('tr');
     row.innerHTML = `
@@ -2714,7 +2899,7 @@ function updateUI() {
       <td>
         ${pending > 0 ? `
           <div style="display: flex; gap: 4px; align-items: center;">
-            <input type="text" class="currency-input" id="pay-input-${currentUser ? d.id : idx}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 110px; padding: 4px 6px; font-size: 0.8rem;">
+            <input type="text" class="currency-input" id="pay-input-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 110px; padding: 4px 6px; font-size: 0.8rem;">
             <button class="btn-pay" onclick="payDebt(${debtIdentifier})">ABONAR</button>
           </div>
         ` : '<span class="text-success" style="font-weight: 700;">LIQUIDADA</span>'}

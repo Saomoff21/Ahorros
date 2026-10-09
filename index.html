@@ -994,9 +994,39 @@
                 </div>
               </div>
 
+              <!-- ENLACE DIRECTO LISTO EN 1 CLIC -->
+              <div class="api-box" style="border: 1px solid var(--primary-color); background: rgba(6, 182, 212, 0.08);">
+                <div class="api-box-label" style="color: var(--primary-color); font-weight: 800;">⚡ ENLACE DIRECTO LISTO (URL + CLAVE INCORPORADA):</div>
+                <div class="api-box-value">
+                  <span id="shortcut-direct-url" class="api-code" style="color: var(--primary-color);">Cargando enlace directo...</span>
+                  <div style="display: flex; gap: 6px;">
+                    <button id="btn-copy-direct-url" class="btn-copy" style="background: var(--primary-color); color: #000; font-weight: 800;">📋 Copiar Enlace Directo</button>
+                    <button id="btn-download-shortcut-guide" class="btn-copy" title="Descargar archivo de configuración">📥 Descargar Atajo</button>
+                  </div>
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 6px;">
+                  💡 Solo copia este enlace y pégalo en la acción <em>"Obtener contenido de URL"</em> de tu iPhone (Método GET o POST). ¡Funciona sin configuraciones complicadas!
+                </small>
+              </div>
+
               <!-- PASOS VISUALES -->
               <div style="margin-top: 18px;">
-                <h3 style="font-size: 0.82rem; font-weight: 700; margin-bottom: 10px;">CÓMO CREAR EL ATAJO EN TU IPHONE:</h3>
+                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid var(--success-color); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+                  <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--success-color); font-size: 0.88rem; margin-bottom: 6px;">
+                    ⚡ MÉTODO 1 RÁPIDO: CONFIGURACIÓN EN 1 MINUTO (MÉTODO GET)
+                  </div>
+                  <p style="font-size: 0.78rem; color: var(--text-color); line-height: 1.5; margin: 0 0 10px 0;">
+                    No necesitas configurar encabezados ni diccionarios JSON complejos. Solo copia tu enlace directo superior y pégalo en una sola acción de Atajos:
+                  </p>
+                  <ol style="margin: 0; padding-left: 18px; font-size: 0.76rem; color: var(--text-muted); line-height: 1.6;">
+                    <li>Abre <strong>Atajos</strong> en tu iPhone y crea un nuevo atajo llamado <em>"Registrar Gasto"</em>.</li>
+                    <li>Agrega la acción <strong>"Obtener contenido de URL"</strong> (Método: GET).</li>
+                    <li>Pega tu <strong>Enlace Directo</strong> (el botón azul superior).</li>
+                    <li>¡Listo! Toca el atajo o dile a Siri <em>"Oye Siri, Registrar Gasto"</em> para guardar tus movimientos.</li>
+                  </ol>
+                </div>
+
+                <h3 style="font-size: 0.82rem; font-weight: 700; margin-bottom: 10px;">MÉTODO 2: CONFIGURACIÓN COMPLETA CON PREGUNTAS (SIRI INTERACTIVA):</h3>
                 
                 <div class="shortcut-step">
                   <div class="step-num">1</div>

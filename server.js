@@ -80,10 +80,10 @@ function extractApiKey(req) {
 // --- API DE ATAJOS DE IPHONE (iOS SHORTCUTS) ---
 
 /**
- * POST /api/shortcut/transaction
- * Endpoint principal que llama el atajo de iOS "Obtener contenido de URL"
+ * ALL /api/shortcut/transaction
+ * Endpoint principal que llama el atajo de iOS "Obtener contenido de URL" (acepta GET y POST)
  */
-app.post('/api/shortcut/transaction', (req, res) => {
+app.all('/api/shortcut/transaction', (req, res) => {
   const apiKey = extractApiKey(req);
   if (!apiKey) {
     return res.status(401).json({
@@ -93,7 +93,8 @@ app.post('/api/shortcut/transaction', (req, res) => {
     });
   }
 
-  let { type, amount, description, category, date, paymentMethod, account } = req.body;
+  const payload = req.method === 'GET' ? req.query : (req.body || {});
+  let { type, amount, description, category, date, paymentMethod, account } = payload;
 
   // Normalizar y validar tipo
   const normalizedType = String(type || '').trim().toLowerCase();

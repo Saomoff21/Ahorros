@@ -35,6 +35,9 @@
   <link rel="stylesheet" href="styles.css">
   <!-- Chart.js para visualización de gráficos mensuales -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF & html2canvas para generación de Guía Visual en PDF de Atajos de iPhone -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -970,8 +973,38 @@
             </div>
             <div style="padding: 22px;">
               <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
-                Conecta la app oficial <strong>Atajos (Shortcuts)</strong> de tu iPhone o Apple Watch para dictarle gastos e ingresos a Siri o registrarlos al tocar tu tarjeta o widget de inicio.
+                Conecta la app oficial <strong>Atajos (Shortcuts)</strong> de tu iPhone o Apple Watch para dictarle <strong>gastos e ingresos</strong> a Siri o registrarlos al tocar un icono o widget en tu pantalla.
               </p>
+
+              <!-- SELECTOR DE MODO: GASTO VS INGRESO VS DUAL -->
+              <div class="shortcut-mode-switcher" style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
+                <button type="button" id="btn-mode-expense" class="shortcut-pill-btn active" style="flex: 1; padding: 10px; font-weight: 800; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.82rem; border: 1px solid var(--danger-color); background: rgba(239, 68, 68, 0.15); color: #fca5a5;">
+                  🔴 Registrar Gasto
+                </button>
+                <button type="button" id="btn-mode-income" class="shortcut-pill-btn" style="flex: 1; padding: 10px; font-weight: 800; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.82rem; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted);">
+                  🟢 Registrar Ingreso
+                </button>
+                <button type="button" id="btn-mode-dual" class="shortcut-pill-btn" style="flex: 1; padding: 10px; font-weight: 800; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.82rem; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted);">
+                  ⚡ Atajo Maestro (Ambos)
+                </button>
+              </div>
+
+              <!-- SELECTOR DE IDIOMA DE ACCIONES DE iOS -->
+              <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 0.76rem; font-weight: 800; color: var(--text-main); text-transform: uppercase;">
+                    🌐 Idioma de tu iPhone / App Atajos:
+                  </span>
+                  <select id="shortcut-lang-select" class="filter-select" style="font-size: 0.78rem; padding: 4px 10px;">
+                    <option value="latam" selected>🇲🇽 🇨🇴 Español (Latinoamérica)</option>
+                    <option value="spain">🇪🇸 Español (España)</option>
+                    <option value="english">🇺🇸 English (iOS System)</option>
+                  </select>
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; display: block;">
+                  💡 Los nombres de las acciones cambian según la región de tu iPhone. Selecciona tu idioma para ver los nombres idénticos a los que aparecen en tu pantalla.
+                </small>
+              </div>
 
               <!-- TU CLAVE DE ATAJO -->
               <div class="api-box">
@@ -987,87 +1020,110 @@
 
               <!-- TU URL DE WEBHOOK -->
               <div class="api-box">
-                <div class="api-box-label">URL DE ENLACE WEBHOOK (PARA LA ACCIÓN 'OBTENER CONTENIDO DE URL'):</div>
+                <div class="api-box-label">URL BASE DE WEBHOOK:</div>
                 <div class="api-box-value">
                   <span id="shortcut-webhook-url" class="api-code">https://.../api/shortcut/transaction</span>
                   <button id="btn-copy-url" class="btn-copy">Copiar URL</button>
                 </div>
               </div>
 
-              <!-- ENLACE DIRECTO LISTO EN 1 CLIC -->
+              <!-- ENLACE DIRECTO LISTO EN 1 CLIC (DINAMICO GASTO / INGRESO) -->
               <div class="api-box" style="border: 1px solid var(--primary-color); background: rgba(6, 182, 212, 0.08);">
-                <div class="api-box-label" style="color: var(--primary-color); font-weight: 800;">⚡ ENLACE DIRECTO LISTO (URL + CLAVE INCORPORADA):</div>
+                <div class="api-box-label" style="color: var(--primary-color); font-weight: 800;" id="shortcut-direct-label">
+                  ⚡ ENLACE DIRECTO LISTO (REGISTRAR GASTO):
+                </div>
                 <div class="api-box-value">
                   <span id="shortcut-direct-url" class="api-code" style="color: var(--primary-color);">Cargando enlace directo...</span>
-                  <div style="display: flex; gap: 6px;">
-                    <button id="btn-copy-direct-url" class="btn-copy" style="background: var(--primary-color); color: #000; font-weight: 800;">📋 Copiar Enlace Directo</button>
-                    <button id="btn-download-shortcut-guide" class="btn-copy" title="Descargar archivo de configuración">📥 Descargar Atajo</button>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button id="btn-copy-direct-url" class="btn-copy" style="background: var(--primary-color); color: #000; font-weight: 800;">📋 Copiar Enlace</button>
+                    <button id="btn-download-pdf-guide" class="btn-copy" style="background: linear-gradient(135deg, #06b6d4, #10b981); color: #000; font-weight: 800;" title="Descargar Guía en PDF Visual">📄 Descargar PDF Visual</button>
+                    <button id="btn-download-shortcut-guide" class="btn-copy" title="Descargar archivo .shortcut">📥 Descargar .shortcut</button>
                   </div>
                 </div>
-                <small style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 6px;">
-                  💡 Solo copia este enlace y pégalo en la acción <em>"Obtener contenido de URL"</em> de tu iPhone (Método GET o POST). ¡Funciona sin configuraciones complicadas!
+                <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 6px;" id="shortcut-direct-help">
+                  💡 Solo copia este enlace y pégalo en la acción <em id="action-name-url-help">"Obtener contenido de URL"</em> de tu iPhone. ¡Guarda al instante!
                 </small>
               </div>
 
-              <!-- PASOS VISUALES -->
-              <div style="margin-top: 18px;">
-                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid var(--success-color); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
-                  <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--success-color); font-size: 0.88rem; margin-bottom: 6px;">
-                    ⚡ MÉTODO 1 RÁPIDO: CONFIGURACIÓN EN 1 MINUTO (MÉTODO GET)
+              <!-- TABLA COMPARATIVA DE NOMBRES DE ACCIONES DE iOS -->
+              <div class="table-wrapper" style="margin-top: 18px; margin-bottom: 20px;">
+                <table style="font-size: 0.75rem;">
+                  <thead>
+                    <tr>
+                      <th>Paso</th>
+                      <th>Español (Latam)</th>
+                      <th>Español (España)</th>
+                      <th>English (iOS)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>1. Pedir Monto</strong></td>
+                      <td><span class="badge" style="background: rgba(6,182,212,0.15); color: var(--primary-color);">Solicitar entrada</span> (Número)</td>
+                      <td>Solicitar entrada</td>
+                      <td>Ask for Input</td>
+                    </tr>
+                    <tr>
+                      <td><strong>2. Pedir Detalle</strong></td>
+                      <td><span class="badge" style="background: rgba(6,182,212,0.15); color: var(--primary-color);">Solicitar entrada</span> (Texto)</td>
+                      <td>Solicitar entrada</td>
+                      <td>Ask for Input</td>
+                    </tr>
+                    <tr>
+                      <td><strong>3. Categoría</strong></td>
+                      <td><span class="badge" style="background: rgba(6,182,212,0.15); color: var(--primary-color);">Elegir de la lista</span></td>
+                      <td>Seleccionar del menú</td>
+                      <td>Choose from Menu</td>
+                    </tr>
+                    <tr>
+                      <td><strong>4. Llamar Webhook</strong></td>
+                      <td><span class="badge" style="background: rgba(6,182,212,0.15); color: var(--primary-color);">Obtener contenido de URL</span></td>
+                      <td>Obtener contenido de la URL</td>
+                      <td>Get Contents of URL</td>
+                    </tr>
+                    <tr>
+                      <td><strong>5. Notificación / Siri</strong></td>
+                      <td><span class="badge" style="background: rgba(6,182,212,0.15); color: var(--primary-color);">Mostrar notificación</span> / <span class="badge">Hablar texto</span></td>
+                      <td>Mostrar resultado / Leer con voz</td>
+                      <td>Show Result / Speak Text</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- PASOS VISUALES DINAMICOS -->
+              <div id="shortcut-steps-container" style="margin-top: 14px;">
+                <!-- Se actualiza dinámicamente según el modo seleccionado (Gasto / Ingreso / Dual) -->
+                <div class="shortcut-step">
+                  <div class="step-num" id="step-1-num">1</div>
+                  <div class="step-body">
+                    <h3 id="step-1-title">Crear Atajo en tu iPhone</h3>
+                    <p id="step-1-desc">Abre la app <strong>Atajos</strong> (Shortcuts), toca <strong>+</strong> y nómbralo <em>"Registrar Gasto"</em> o <em>"Registrar Ingreso"</em>.</p>
                   </div>
-                  <p style="font-size: 0.78rem; color: var(--text-color); line-height: 1.5; margin: 0 0 10px 0;">
-                    No necesitas configurar encabezados ni diccionarios JSON complejos. Solo copia tu enlace directo superior y pégalo en una sola acción de Atajos:
-                  </p>
-                  <ol style="margin: 0; padding-left: 18px; font-size: 0.76rem; color: var(--text-muted); line-height: 1.6;">
-                    <li>Abre <strong>Atajos</strong> en tu iPhone y crea un nuevo atajo llamado <em>"Registrar Gasto"</em>.</li>
-                    <li>Agrega la acción <strong>"Obtener contenido de URL"</strong> (Método: GET).</li>
-                    <li>Pega tu <strong>Enlace Directo</strong> (el botón azul superior).</li>
-                    <li>¡Listo! Toca el atajo o dile a Siri <em>"Oye Siri, Registrar Gasto"</em> para guardar tus movimientos.</li>
-                  </ol>
                 </div>
 
-                <h3 style="font-size: 0.82rem; font-weight: 700; margin-bottom: 10px;">MÉTODO 2: CONFIGURACIÓN COMPLETA CON PREGUNTAS (SIRI INTERACTIVA):</h3>
-                
                 <div class="shortcut-step">
-                  <div class="step-num">1</div>
+                  <div class="step-num" id="step-2-num">2</div>
                   <div class="step-body">
-                    <h3>Abre la app 'Atajos' en tu iPhone</h3>
-                    <p>Toca el botón <strong>+</strong> en la esquina superior derecha y nómbralo <em>"Registrar Gasto"</em>.</p>
+                    <h3 id="step-2-title">Acción: Solicitar Entrada (Monto)</h3>
+                    <p id="step-2-desc">Busca <code class="action-tag">Solicitar entrada</code> (o <code class="action-tag">Ask for Input</code>). Selecciona tipo: <strong>Número</strong>. Pregunta: <em>"¿Cuánto?"</em>.</p>
                   </div>
                 </div>
 
                 <div class="shortcut-step">
-                  <div class="step-num">2</div>
+                  <div class="step-num" id="step-3-num">3</div>
                   <div class="step-body">
-                    <h3>Agrega 'Solicitar entrada' (Monto)</h3>
-                    <p>Selecciona Tipo: <strong>Número</strong>. En la indicación escribe: <em>"¿Cuánto gastaste?"</em>.</p>
+                    <h3 id="step-3-title">Acción: Solicitar Entrada (Concepto)</h3>
+                    <p id="step-3-desc">Agrega otra <code class="action-tag">Solicitar entrada</code>. Tipo: <strong>Texto</strong>. Pregunta: <em>"¿En qué concepto o detalle?"</em>.</p>
                   </div>
                 </div>
 
                 <div class="shortcut-step">
-                  <div class="step-num">3</div>
+                  <div class="step-num" id="step-4-num">4</div>
                   <div class="step-body">
-                    <h3>Agrega 'Solicitar entrada' (Concepto)</h3>
-                    <p>Selecciona Tipo: <strong>Texto</strong>. En la indicación escribe: <em>"¿En qué concepto?"</em>.</p>
-                  </div>
-                </div>
-
-                <div class="shortcut-step">
-                  <div class="step-num">4</div>
-                  <div class="step-body">
-                    <h3>Agrega 'Elegir de la lista' (Categoría)</h3>
-                    <p>Agrega opciones: <em>ALIMENTACION, TRANSPORTE, VIVIENDA, SALUD, ENTRETENIMIENTO, OTROS</em>.</p>
-                  </div>
-                </div>
-
-                <div class="shortcut-step">
-                  <div class="step-num">5</div>
-                  <div class="step-body">
-                    <h3>Agrega 'Obtener contenido de URL'</h3>
-                    <p>
-                      - Método: <strong>POST</strong><br>
-                      - Encabezados: <code>Content-Type: application/json</code> y <code>x-api-key: TU_CLAVE</code><br>
-                      - Cuerpo: <strong>JSON</strong> con claves: <code>type</code> ("expense"), <code>amount</code> (Número), <code>description</code> (Texto), <code>category</code> (Elemento elegido), <code>paymentMethod</code> ("NEQUI" o "EFECTIVO").
+                    <h3 id="step-4-title">Acción: Obtener contenido de URL</h3>
+                    <p id="step-4-desc">
+                      Pega tu Enlace Directo superior (Método <strong>GET</strong>) o usa <strong>POST</strong> con JSON. ¡No requiere librerías adicionales!
                     </p>
                     <div class="step-code" id="shortcut-sample-json">
 {"type": "expense", "amount": 25000, "description": "Almuerzo", "category": "ALIMENTACION", "paymentMethod": "NEQUI"}
@@ -1077,14 +1133,15 @@
                 </div>
 
                 <div class="shortcut-step">
-                  <div class="step-num">6</div>
+                  <div class="step-num" id="step-5-num">5</div>
                   <div class="step-body">
-                    <h3>Siri te confirma el saldo</h3>
-                    <p>Agrega la acción <em>"Leer texto con la voz"</em> pasando el resultado del diccionario (campo <code>speech</code>) para que Siri te hable y confirme tu saldo.</p>
+                    <h3 id="step-5-title">Confirmación de Siri</h3>
+                    <p id="step-5-desc">Agrega <code class="action-tag">Hablar texto</code> pasando la respuesta del webhook para que Siri te confirme en voz alta tu nuevo saldo disponible.</p>
                   </div>
                 </div>
-
               </div>
+
+            </div>
 
             </div>
           </div>
@@ -1188,6 +1245,34 @@
     </section>
 
   </main>
+
+  <!-- BARRA DE NAVEGACIÓN INFERIOR NATIVA PARA MÓVILES (APPLE / ANDROID UX) -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Navegación Móvil">
+    <button type="button" class="mobile-nav-btn active" data-tab="tab-dashboard">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-label">Inicio</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-movements">
+      <span class="mobile-nav-icon">💰</span>
+      <span class="mobile-nav-label">Flujo</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-savings">
+      <span class="mobile-nav-icon">🎯</span>
+      <span class="mobile-nav-label">Metas</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-recurring">
+      <span class="mobile-nav-icon">🔄</span>
+      <span class="mobile-nav-label">Fijos</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-debts">
+      <span class="mobile-nav-icon">🗓️</span>
+      <span class="mobile-nav-label">Deudas</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-shortcuts">
+      <span class="mobile-nav-icon">📱</span>
+      <span class="mobile-nav-label">Atajos</span>
+    </button>
+  </nav>
 
   <!-- MODAL: GESTIONAR SALDO EN META DE AHORRO (ABONAR / RETIRAR) -->
   <div id="goal-action-modal" class="modal-overlay hidden">
@@ -1441,6 +1526,25 @@
             </button>
           </div>
         </div>
+
+        <!-- ZONA DE PELIGRO: ELIMINAR BÓVEDA DEFINITIVAMENTE -->
+        <div class="vault-section-box danger-zone-box" style="margin-top: 18px; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.06); padding: 14px; border-radius: 12px;">
+          <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; color: var(--danger-color); display: flex; align-items: center; gap: 6px;">
+            <span>⚠️</span> Zona de Peligro: Gestión y Limpieza de Bóveda
+          </h3>
+          <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.45;">
+            Si deseas borrar permanentemente todos los datos de esta bóveda o purgar bóvedas de prueba residuales creadas anteriormente en el sitio:
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button type="button" id="btn-delete-active-vault" class="btn btn-danger" style="font-size: 0.8rem; padding: 10px 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
+              <span>🗑️</span> Eliminar Esta Bóveda Definitivamente
+            </button>
+            <button type="button" id="btn-purge-test-vaults" class="btn btn-outline" style="font-size: 0.75rem; padding: 8px 12px; border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; width: 100%;" title="Limpia registros y bóvedas temporales de prueba">
+              <span>🧹</span> Purgar Bóvedas de Prueba Residuales
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

@@ -58,9 +58,9 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Helper to extract API key from request
+// Helper to extract API key or Vault Code from request
 function extractApiKey(req) {
-  const headerKey = req.headers['x-api-key'];
+  const headerKey = req.headers['x-api-key'] || req.headers['x-vault-id'];
   if (headerKey) return String(headerKey).trim();
 
   const authHeader = req.headers['authorization'];
@@ -68,16 +68,89 @@ function extractApiKey(req) {
     return authHeader.replace('Bearer ', '').trim();
   }
 
-  const queryKey = req.query.key || req.query.apiKey;
+  const queryKey = req.query.key || req.query.apiKey || req.query.token || req.query.clave || req.query.vaultId || req.query.vault || req.query.boveda;
   if (queryKey) return String(queryKey).trim();
 
-  const bodyKey = req.body && (req.body.key || req.body.apiKey);
+  const bodyKey = req.body && (req.body.key || req.body.apiKey || req.body.token || req.body.clave || req.body.vaultId || req.body.vault || req.body.boveda);
   if (bodyKey) return String(bodyKey).trim();
 
   return null;
 }
 
+// Resilient currency & number parser supporting both Latin American and US notations
+function parseNumericAmount(raw) {
+  if (typeof raw === 'number') {
+    return isNaN(raw) ? 0 : Math.abs(raw);
+  }
+  if (!raw) return 0;
+  let s = String(raw).trim();
+  // Eliminar signos monetarios y letras
+  s = s.replace(/[^\d.,]/g, '');
+  if (!s) return 0;
+
+  // Si contiene ambos '.' y ','
+  if (s.includes('.') && s.includes(',')) {
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // Formato Latinoamericano: 1.500.000,50 -> punto miles, coma decimal
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Formato US: 1,500,000.50 -> coma miles, punto decimal
+      s = s.replace(/,/g, '');
+    }
+    return Math.abs(parseFloat(s) || 0);
+  }
+
+  // Si solo contiene '.'
+  if (s.includes('.')) {
+    const parts = s.split('.');
+    if (parts.length > 2) {
+      // Múltiples puntos: 1.500.000 -> todos son separadores de miles
+      s = s.replace(/\./g, '');
+    } else {
+      // Un solo punto: si tiene exactamente 3 dígitos después, casi siempre es miles (ej: 25.000 COP)
+      if (parts[1].length === 3 && parseInt(parts[0], 10) > 0) {
+        s = parts[0] + parts[1];
+      } else {
+        // Es decimal: 25.5
+      }
+    }
+    return Math.abs(parseFloat(s) || 0);
+  }
+
+  // Si solo contiene ','
+  if (s.includes(',')) {
+    const parts = s.split(',');
+    if (parts.length > 2) {
+      s = s.replace(/,/g, '');
+    } else {
+      if (parts[1].length === 3 && parseInt(parts[0], 10) > 0) {
+        s = parts[0] + parts[1];
+      } else {
+        s = parts[0] + '.' + parts[1];
+      }
+    }
+    return Math.abs(parseFloat(s) || 0);
+  }
+
+  return Math.abs(parseFloat(s) || 0);
+}
+
 // --- API DE ATAJOS DE IPHONE (iOS SHORTCUTS) ---
+
+/**
+ * GET /api/shortcut/health
+ * Verificación rápida de estado de conexión desde iPhone / navegador
+ */
+app.get('/api/shortcut/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    message: 'Servidor de Atajos de iPhone funcionando correctamente'
+  });
+});
 
 /**
  * ALL /api/shortcut/transaction
@@ -88,61 +161,61 @@ app.all('/api/shortcut/transaction', (req, res) => {
   if (!apiKey) {
     return res.status(401).json({
       success: false,
-      error: 'Clave de Atajo requerida. Incluye el encabezado x-api-key o el parámetro key.',
-      speech: 'Error: Clave de atajo no proporcionada.'
+      error: 'Clave de Atajo requerida. Incluye el parámetro key=TU_CLAVE o clave=TU_CLAVE.',
+      speech: 'Error: Clave de atajo no proporcionada. Por favor verifica la configuración de tu atajo.'
     });
   }
 
   const payload = req.method === 'GET' ? req.query : (req.body || {});
-  let { type, amount, description, category, date, paymentMethod, account } = payload;
+  
+  // Parámetros flexibles para tolerar cualquier nombre usado en la app de Atajos de iOS
+  const rawType = payload.type || payload.tipo || '';
+  const rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : payload.value));
+  const rawDescription = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || '';
+  const rawCategory = payload.category || payload.categoria || payload.cat || '';
+  const rawDate = payload.date || payload.fecha || '';
+  const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || '';
 
-  // Normalizar y validar tipo
-  const normalizedType = String(type || '').trim().toLowerCase();
-  const validTypes = ['gasto', 'expense', 'egreso', 'ingreso', 'income'];
+  // Normalizar y validar tipo (gasto vs ingreso)
+  const normalizedType = String(rawType || '').trim().toLowerCase();
+  const validTypes = ['gasto', 'expense', 'egreso', 'salida', 'ingreso', 'income', 'entrada'];
   if (!validTypes.includes(normalizedType)) {
     return res.status(400).json({
       success: false,
-      error: "Tipo inválido. Usa 'expense' o 'gasto', o 'income' o 'ingreso'.",
-      speech: 'Error: Tipo de movimiento inválido.'
+      error: "Tipo inválido. Usa type=gasto o type=ingreso (o en inglés type=expense / type=income).",
+      speech: 'Error: Tipo de movimiento inválido. Especifica si es gasto o ingreso.'
     });
   }
 
-  const isIncome = normalizedType === 'income' || normalizedType === 'ingreso';
+  const isIncome = ['income', 'ingreso', 'entrada'].includes(normalizedType);
   const cleanType = isIncome ? 'income' : 'expense';
 
   // Normalizar monto
-  let numericAmount = 0;
-  if (typeof amount === 'number') {
-    numericAmount = Math.abs(amount);
-  } else if (typeof amount === 'string') {
-    const cleaned = amount.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(/,/g, '.');
-    numericAmount = Math.abs(parseFloat(cleaned) || 0);
-  }
-
+  const numericAmount = parseNumericAmount(rawAmount);
   if (!numericAmount || numericAmount <= 0) {
     return res.status(400).json({
       success: false,
-      error: 'El monto debe ser mayor a 0.',
-      speech: 'Error: El monto ingresado no es válido.'
+      error: 'El monto debe ser un número mayor a 0.',
+      speech: 'Error: El monto ingresado no es válido o está vacío.'
     });
   }
 
   // Normalizar concepto y categoría
-  const cleanDescription = (description || (isIncome ? 'INGRESO DESDE ATAJO' : 'GASTO DESDE ATAJO'))
+  const cleanDescription = (String(rawDescription || (isIncome ? 'INGRESO DESDE ATAJO' : 'GASTO DESDE ATAJO')))
     .trim()
     .toUpperCase();
-  const cleanCategory = (category || (isIncome ? 'OTROS' : 'ALIMENTACION'))
+  const cleanCategory = (String(rawCategory || (isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION')))
     .trim()
     .toUpperCase();
 
   // Fecha (YYYY-MM-DD)
-  let cleanDate = date;
+  let cleanDate = String(rawDate || '').trim();
   if (!cleanDate || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
     const now = new Date();
     cleanDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   }
 
-  const cleanPaymentMethod = (paymentMethod || account || 'NEQUI')
+  const cleanPaymentMethod = (String(rawMethod || 'NEQUI'))
     .trim()
     .toUpperCase();
 
@@ -189,7 +262,7 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const formattedAmount = formatCurrency(numericAmount);
   const typeLabel = isIncome ? 'Ingreso' : 'Gasto';
   const methodLabel = cleanPaymentMethod === 'EFECTIVO' ? 'en Efectivo físico' : `con ${cleanPaymentMethod}`;
-  const speechText = `${typeLabel} de ${formattedAmount} ${methodLabel} registrado en ${cleanCategory}. Tu saldo disponible es de ${formatCurrency(userStats.balance)}.`;
+  const speechText = `${typeLabel} de ${formattedAmount} ${methodLabel} registrado en ${cleanCategory}. Tu saldo estimado es de ${formatCurrency(userStats.balance)}.`;
 
   return res.json({
     success: true,
@@ -207,16 +280,24 @@ app.all('/api/shortcut/transaction', (req, res) => {
  */
 app.get('/api/shortcut/pending', (req, res) => {
   const apiKey = extractApiKey(req);
-  if (!apiKey) {
-    return res.status(401).json({ success: false, error: 'API key requerida' });
+  const vaultId = String(req.query.vault || req.query.vaultId || req.query.boveda || '').trim();
+
+  if (!apiKey && !vaultId) {
+    return res.status(401).json({ success: false, error: 'API key o Vault ID requeridos' });
   }
 
   const data = loadData();
-  const pending = data.transactions.filter(t => t.apiKey === apiKey && !t.syncedToCloud);
+  const pending = data.transactions.filter(t => {
+    if (t.syncedToCloud) return false;
+    if (apiKey && t.apiKey === apiKey) return true;
+    if (vaultId && (t.apiKey === vaultId || t.vaultId === vaultId)) return true;
+    return false;
+  });
 
   // Marcar como sincronizadas
   data.transactions = data.transactions.map(t => {
-    if (t.apiKey === apiKey && !t.syncedToCloud) {
+    const isTarget = (apiKey && t.apiKey === apiKey) || (vaultId && (t.apiKey === vaultId || t.vaultId === vaultId));
+    if (isTarget && !t.syncedToCloud) {
       return { ...t, syncedToCloud: true };
     }
     return t;

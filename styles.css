@@ -982,6 +982,11 @@ tbody tr:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 22px;
+  min-width: 0;
+}
+
+.shortcuts-grid > div {
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
@@ -994,6 +999,7 @@ tbody tr:hover {
   border-radius: var(--inner-radius);
   padding: 14px 16px;
   margin-bottom: 16px;
+  overflow: hidden;
 }
 
 .api-box-label {
@@ -1001,22 +1007,28 @@ tbody tr:hover {
   font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .api-box-value {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .api-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   word-break: break-all;
+  overflow-wrap: anywhere;
   user-select: all;
   color: var(--primary-color);
   font-weight: 700;
+  line-height: 1.45;
+  flex: 1 1 200px;
 }
 
 .btn-copy {
@@ -1030,6 +1042,9 @@ tbody tr:hover {
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-copy:hover {
@@ -2246,7 +2261,6 @@ body[data-device="desktop"] .goals-layout-grid {
   .main-container {
     padding-bottom: 90px !important;
   }
-  /* PREVENCIÓN ESTRICTA DE AUTO-ZOOM EN DISPOSITIVOS MÓVILES (iOS SAFARI & ANDROID) */
   input, select, textarea {
     font-size: 16px !important;
   }
@@ -2255,6 +2269,39 @@ body[data-device="desktop"] .goals-layout-grid {
   }
   .toolbar-filter {
     margin-bottom: 14px;
+  }
+
+  /* OPTIMIZACIÓN MÓVIL PARA ATAJOS DE IPHONE */
+  #tab-shortcuts .api-box {
+    padding: 12px;
+  }
+  #tab-shortcuts .api-box-value {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  #tab-shortcuts .api-box-value > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+  #tab-shortcuts .api-box-value .btn-copy {
+    flex: 1 1 auto;
+    padding: 9px 12px;
+    font-size: 0.76rem;
+  }
+  #tab-shortcuts .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+  }
+  #tab-shortcuts .table-wrapper table {
+    min-width: 460px;
+  }
+  #tab-shortcuts .shortcut-step {
+    gap: 10px;
+    padding: 10px 0;
   }
 }
 

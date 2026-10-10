@@ -1006,24 +1006,51 @@
                 </small>
               </div>
 
-              <!-- TU CLAVE DE ATAJO -->
-              <div class="api-box">
-                <div class="api-box-label">TU CLAVE SECRETA DE ATAJO (API KEY):</div>
-                <div class="api-box-value">
-                  <span id="shortcut-api-key" class="api-code">ahorros_key_cargando...</span>
-                  <div style="display: flex; gap: 6px;">
-                    <button id="btn-copy-key" class="btn-copy">Copiar Clave</button>
-                    <button id="btn-regen-key" class="btn-copy" title="Generar nueva">Nueva</button>
+              <!-- EXPLICACIÓN CLARA DE LA LLAVE / API KEY -->
+              <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <span style="font-size: 1.1rem; line-height: 1;">🔐</span>
+                  <div>
+                    <strong style="color: var(--primary-color); font-size: 0.8rem; display: block; margin-bottom: 2px;">
+                      ¿Qué es la Llave / Clave Secreta en tu Enlace?
+                    </strong>
+                    <p style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45; margin: 0;">
+                      Es el identificador privado único de tu bóveda (<strong style="color: var(--text-main);" id="shortcut-vault-tag">...</strong>). Permite que la app Atajos de tu iPhone registre movimientos en tu cuenta de forma 100% segura sin pedirte correo ni contraseña cada vez que le hables a Siri. Cada usuario tiene su propia llave personal.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <!-- TU URL DE WEBHOOK -->
+              <!-- CONFIGURACIÓN DE DOMINIO Y CLAVE -->
+              <div class="api-box">
+                <div class="api-box-label">DOMINIO / SERVIDOR DE TU APLICACIÓN:</div>
+                <div class="api-box-value">
+                  <input type="text" id="shortcut-custom-domain" placeholder="https://..." style="flex: 1; min-width: 180px; font-size: 0.82rem; font-family: monospace; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--primary-color);">
+                  <button type="button" id="btn-detect-domain" class="btn-copy">Detectar Actual</button>
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.68rem; display: block; margin-top: 4px;">
+                  Detecta automáticamente la URL activa donde abres el sistema.
+                </small>
+              </div>
+
+              <!-- TU CLAVE DE ATAJO -->
+              <div class="api-box">
+                <div class="api-box-label">TU CLAVE SECRETA DE BÓVEDA (API KEY):</div>
+                <div class="api-box-value">
+                  <span id="shortcut-api-key" class="api-code">ahorros_key_cargando...</span>
+                  <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                    <button id="btn-copy-key" class="btn-copy">Copiar Clave</button>
+                    <button id="btn-regen-key" class="btn-copy" title="Generar nueva clave">Nueva</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TU URL BASE DE WEBHOOK -->
               <div class="api-box">
                 <div class="api-box-label">URL BASE DE WEBHOOK:</div>
                 <div class="api-box-value">
                   <span id="shortcut-webhook-url" class="api-code">https://.../api/shortcut/transaction</span>
-                  <button id="btn-copy-url" class="btn-copy">Copiar URL</button>
+                  <button id="btn-copy-url" class="btn-copy" style="flex-shrink: 0;">Copiar URL</button>
                 </div>
               </div>
 
@@ -1093,7 +1120,6 @@
 
               <!-- PASOS VISUALES DINAMICOS -->
               <div id="shortcut-steps-container" style="margin-top: 14px;">
-                <!-- Se actualiza dinámicamente según el modo seleccionado (Gasto / Ingreso / Dual) -->
                 <div class="shortcut-step">
                   <div class="step-num" id="step-1-num">1</div>
                   <div class="step-body">
@@ -1140,8 +1166,6 @@
                   </div>
                 </div>
               </div>
-
-            </div>
 
             </div>
           </div>
@@ -1530,19 +1554,14 @@
         <!-- ZONA DE PELIGRO: ELIMINAR BÓVEDA DEFINITIVAMENTE -->
         <div class="vault-section-box danger-zone-box" style="margin-top: 18px; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.06); padding: 14px; border-radius: 12px;">
           <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; color: var(--danger-color); display: flex; align-items: center; gap: 6px;">
-            <span>⚠️</span> Zona de Peligro: Gestión y Limpieza de Bóveda
+            <span>⚠️</span> Zona de Peligro: Eliminar Mi Bóveda
           </h3>
           <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.45;">
-            Si deseas borrar permanentemente todos los datos de esta bóveda o purgar bóvedas de prueba residuales creadas anteriormente en el sitio:
+            Esta acción es irreversible y borrará permanentemente todos tus ingresos, gastos, deudas y metas asociados a este código de bóveda en todos tus dispositivos y en la nube:
           </p>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button type="button" id="btn-delete-active-vault" class="btn btn-danger" style="font-size: 0.8rem; padding: 10px 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
-              <span>🗑️</span> Eliminar Esta Bóveda Definitivamente
-            </button>
-            <button type="button" id="btn-purge-test-vaults" class="btn btn-outline" style="font-size: 0.75rem; padding: 8px 12px; border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; width: 100%;" title="Limpia registros y bóvedas temporales de prueba">
-              <span>🧹</span> Purgar Bóvedas de Prueba Residuales
-            </button>
-          </div>
+          <button type="button" id="btn-delete-active-vault" class="btn btn-danger" style="font-size: 0.8rem; padding: 10px 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
+            <span>🗑️</span> Eliminar Mi Bóveda Definitivamente
+          </button>
         </div>
 
       </div>

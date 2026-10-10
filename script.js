@@ -160,7 +160,30 @@ if (btnLogout) {
 
 // ESTADO GLOBAL DE LA APLICACION
 let currentUser = null;
-let userApiKey = localStorage.getItem('ahorros_shortcut_key') || generateApiKey();
+
+function getVaultApiKey(vaultId) {
+  const vId = String(vaultId || activeVaultId || 'DEFAULT').trim().toUpperCase();
+  const vaultKeyItem = localStorage.getItem('ahorros_shortcut_key_' + vId);
+  if (vaultKeyItem) return vaultKeyItem;
+  const legacyKey = localStorage.getItem('ahorros_shortcut_key');
+  if (legacyKey && !localStorage.getItem('ahorros_shortcut_key_migrated')) {
+    localStorage.setItem('ahorros_shortcut_key_' + vId, legacyKey);
+    localStorage.setItem('ahorros_shortcut_key_migrated', '1');
+    return legacyKey;
+  }
+  // Generar clave única para esta bóveda
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let rand = '';
+  for (let i = 0; i < 6; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const newKey = `AHO-SC-${rand}`;
+  localStorage.setItem('ahorros_shortcut_key_' + vId, newKey);
+  localStorage.setItem('ahorros_shortcut_key', newKey);
+  return newKey;
+}
+
+let userApiKey = getVaultApiKey(activeVaultId);
 let transactions = sortTransactionsByDate(JSON.parse(localStorage.getItem('finances_v10_trans')) || []);
 let debts = JSON.parse(localStorage.getItem('finances_v10_debts')) || [];
 let savingsGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
@@ -201,6 +224,7 @@ function generateApiKey() {
     rand += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   const key = `AHO-SC-${rand}`;
+  localStorage.setItem('ahorros_shortcut_key_' + activeVaultId, key);
   localStorage.setItem('ahorros_shortcut_key', key);
   return key;
 }
@@ -447,12 +471,19 @@ function updateVaultModalDirectUrl() {
   }
 }
 
-// URL COMPARTIDA LIMPIA
-const appOrigin = window.location.origin || 'https://ahorros-sa.netlify.app';
-const publicSharedOrigin = appOrigin;
-if (pwaShareUrlInput) pwaShareUrlInput.value = appOrigin;
+// URL COMPARTIDA LIMPIA Y CONFIGURABLE
+let storedCustomDomain = localStorage.getItem('ahorros_shortcut_custom_domain');
+let appOrigin = (storedCustomDomain && storedCustomDomain.trim()) || (window.location && window.location.origin && window.location.origin !== 'null' ? window.location.origin : '');
+if (!appOrigin || appOrigin.startsWith('file://')) {
+  appOrigin = window.location.protocol + '//' + window.location.host;
+}
+if (!appOrigin || appOrigin === 'null//null' || appOrigin.length < 5) {
+  appOrigin = 'https://ahorros-sa.netlify.app';
+}
+let publicSharedOrigin = appOrigin.replace(/\/+$/, '');
+if (pwaShareUrlInput) pwaShareUrlInput.value = publicSharedOrigin;
 if (pwaQrImg) {
-  pwaQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(appOrigin)}`;
+  pwaQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(publicSharedOrigin)}`;
 }
 
 // GESTIÓN DE EVENTO PWA BEFOREINSTALLPROMPT
@@ -844,6 +875,9 @@ const shortcutActionDict = {
 const shortcutDirectUrlEl = document.getElementById('shortcut-direct-url');
 const shortcutDirectLabel = document.getElementById('shortcut-direct-label');
 const shortcutDirectHelp = document.getElementById('shortcut-direct-help');
+const shortcutVaultTag = document.getElementById('shortcut-vault-tag');
+const shortcutCustomDomainInput = document.getElementById('shortcut-custom-domain');
+const btnDetectDomain = document.getElementById('btn-detect-domain');
 const btnCopyDirectUrl = document.getElementById('btn-copy-direct-url');
 const btnDownloadPdfGuide = document.getElementById('btn-download-pdf-guide');
 const btnDownloadShortcutGuide = document.getElementById('btn-download-shortcut-guide');
@@ -859,6 +893,11 @@ function updateShortcutCredentialsUI() {
   const webhookUrl = `${publicSharedOrigin}/api/shortcut/transaction`;
   let directUrl = '';
   const langObj = shortcutActionDict[currentShortcutLang] || shortcutActionDict.latam;
+
+  if (shortcutVaultTag) shortcutVaultTag.textContent = activeVaultId;
+  if (shortcutCustomDomainInput && document.activeElement !== shortcutCustomDomainInput) {
+    shortcutCustomDomainInput.value = publicSharedOrigin;
+  }
 
   if (currentShortcutMode === 'expense') {
     directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=25000&desc=Almuerzo&category=ALIMENTACION&account=NEQUI`;
@@ -931,6 +970,31 @@ function updateShortcutCredentialsUI() {
   }
 }
 updateShortcutCredentialsUI();
+
+// CONFIGURACIÓN DE DOMINIO PERSONALIZADO O DETECCIÓN AUTOMÁTICA
+if (shortcutCustomDomainInput) {
+  shortcutCustomDomainInput.addEventListener('input', (e) => {
+    let val = e.target.value.trim().replace(/\/+$/, '');
+    if (val) {
+      publicSharedOrigin = val;
+      localStorage.setItem('ahorros_shortcut_custom_domain', val);
+      updateShortcutCredentialsUI();
+    }
+  });
+}
+
+if (btnDetectDomain) {
+  btnDetectDomain.addEventListener('click', () => {
+    const detected = window.location.origin;
+    if (detected && detected !== 'null') {
+      publicSharedOrigin = detected;
+      localStorage.removeItem('ahorros_shortcut_custom_domain');
+      if (shortcutCustomDomainInput) shortcutCustomDomainInput.value = detected;
+      updateShortcutCredentialsUI();
+      showQuickToast(`🌐 Dominio actualizado a la URL actual: ${detected}`);
+    }
+  });
+}
 
 // Switchers de modo Gasto / Ingreso / Dual
 if (btnModeExpense) {
@@ -1010,7 +1074,7 @@ if (shortcutLangSelect) {
 btnCopyKey.addEventListener('click', () => {
   navigator.clipboard.writeText(userApiKey).then(() => {
     btnCopyKey.textContent = '¡COPIADO!';
-    setTimeout(() => { btnCopyKey.textContent = 'COPIAR CLAVE'; }, 2000);
+    setTimeout(() => { btnCopyKey.textContent = 'Copiar Clave'; }, 2000);
   });
 });
 
@@ -1018,7 +1082,7 @@ btnCopyUrl.addEventListener('click', () => {
   const webhookUrl = `${publicSharedOrigin}/api/shortcut/transaction`;
   navigator.clipboard.writeText(webhookUrl).then(() => {
     btnCopyUrl.textContent = '¡COPIADA!';
-    setTimeout(() => { btnCopyUrl.textContent = 'COPIAR URL'; }, 2000);
+    setTimeout(() => { btnCopyUrl.textContent = 'Copiar URL'; }, 2000);
   });
 });
 
@@ -1044,13 +1108,12 @@ if (btnCopySampleJson) {
   });
 }
 
-// GENERADOR DE PDF VISUAL Y ATRACTIVO (ESTILO GUIA OFICIAL FINTECH APPLE)
+// GENERADOR DE PDF VISUAL Y ATRACTIVO DE ALTA FIDELIDAD (2 PÁGINAS COMPLETAS, SIN CORTES)
 if (btnDownloadPdfGuide) {
   btnDownloadPdfGuide.addEventListener('click', () => {
-    showQuickToast('📄 Generando Guía Visual en PDF...');
+    showQuickToast('📄 Generando Guía Visual Pro en PDF...');
 
     if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
-      // Fallback a ventana de impresión formateada si jsPDF no está disponible
       window.print();
       return;
     }
@@ -1068,162 +1131,268 @@ if (btnDownloadPdfGuide) {
       const cardBg = [24, 28, 38];
       const emeraldGreen = [16, 185, 129];
       const crimsonRed = [239, 68, 68];
+      const goldAmber = [245, 158, 11];
       const textWhite = [255, 255, 255];
       const textMuted = [156, 163, 175];
 
-      // Fondo general
+      // ==========================================
+      // PÁGINA 1: GASTOS, INGRESOS Y ENLACES
+      // ==========================================
       doc.setFillColor(...darkBg);
       doc.rect(0, 0, 210, 297, 'F');
 
       // Banner Header Superior
       doc.setFillColor(20, 24, 34);
       doc.roundedRect(12, 12, 186, 32, 4, 4, 'F');
-
       doc.setDrawColor(...primaryCyan);
       doc.setLineWidth(0.8);
       doc.roundedRect(12, 12, 186, 32, 4, 4, 'D');
 
-      // Título
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
+      doc.setFontSize(15);
       doc.setTextColor(...primaryCyan);
-      doc.text('AHORROS SA  |  GUIA DE ATAJOS PARA IPHONE', 20, 24);
+      doc.text('AHORROS SA  |  GUIA OFICIAL DE ATAJOS PARA IPHONE & SIRI', 20, 24);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(...textMuted);
-      doc.text('SISTEMA AUTOMATICO DE CAPTURA POR VOZ CON SIRI, WIDGETS Y WEBHOOK EN LA NUBE', 20, 31);
-      doc.text(`BOVEDA ACTIVA: ${activeVaultId}   |   CLAVE API: ${userApiKey}`, 20, 38);
+      doc.text('SISTEMA AUTOMATICO DE CAPTURA POR VOZ CON SIRI, WIDGETS Y WEBHOOK', 20, 31);
+      doc.text(`BOVEDA ACTIVA: ${activeVaultId}   |   LLAVE SECRETA (API KEY): ${userApiKey}`, 20, 38);
 
-      let curY = 50;
+      let curY = 48;
+
+      // TARJETA DE EXPLICACIÓN DE LA LLAVE
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(12, curY, 186, 26, 3, 3, 'F');
+      doc.setDrawColor(6, 182, 212);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, curY, 186, 26, 3, 3, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...primaryCyan);
+      doc.text('¿QUE ES LA LLAVE (key) Y POR QUE ES UNICA PARA CADA USUARIO?', 18, curY + 7);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...textWhite);
+      const keyExplain = `La llave (key=${userApiKey}) es el token privado exclusivo de tu bóveda. Permite que Siri y tu iPhone guarden datos directamente en tu cuenta sin pedirte contraseña cada vez que realizas un gasto o cobro. Cada usuario tiene su propia llave personal para garantizar total privacidad y seguridad.`;
+      const keyLines = doc.splitTextToSize(keyExplain, 174);
+      doc.text(keyLines, 18, curY + 13);
+
+      curY += 30;
 
       // TARJETA 1: REGISTRAR GASTOS (ROJO)
       doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 48, 3, 3, 'F');
+      doc.roundedRect(12, curY, 186, 56, 3, 3, 'F');
       doc.setDrawColor(...crimsonRed);
       doc.setLineWidth(0.5);
-      doc.roundedRect(12, curY, 186, 48, 3, 3, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(...crimsonRed);
-      doc.text('1. COMO REGISTRAR GASTOS EN 1 MINUTO (METODO RAPIDO GET)', 18, curY + 8);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(...textWhite);
-      doc.text('Paso A: Abre la app "Atajos" en tu iPhone y crea un atajo llamado "Registrar Gasto".', 18, curY + 16);
-      doc.text('Paso B: Agrega la accion "Solicitar entrada" (Numero) -> Pregunta: "¿Cuanto gastaste?".', 18, curY + 22);
-      doc.text('Paso C: Agrega la accion "Solicitar entrada" (Texto) -> Pregunta: "¿En que concepto?".', 18, curY + 28);
-      doc.text('Paso D: Agrega "Obtener contenido de URL" (Metodo GET) con tu enlace directo de gastos:', 18, curY + 34);
-
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(6.8);
-      doc.setTextColor(...primaryCyan);
-      const expenseUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=gasto&amount=[Entrada1]&desc=[Entrada2]&category=ALIMENTACION&account=NEQUI`;
-      doc.text(expenseUrl.substring(0, 100), 18, curY + 41);
-
-      curY += 54;
-
-      // TARJETA 2: REGISTRAR INGRESOS (VERDE)
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 48, 3, 3, 'F');
-      doc.setDrawColor(...emeraldGreen);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(12, curY, 186, 48, 3, 3, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(...emeraldGreen);
-      doc.text('2. COMO REGISTRAR INGRESOS (SALARIOS, PAGOS, ENTRADAS)', 18, curY + 8);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(...textWhite);
-      doc.text('Paso A: Crea un atajo llamado "Registrar Ingreso" en la app oficial de Atajos.', 18, curY + 16);
-      doc.text('Paso B: Agrega la accion "Solicitar entrada" (Numero) -> Pregunta: "¿Cuanto dinero ingresas?".', 18, curY + 22);
-      doc.text('Paso C: Agrega "Solicitar entrada" (Texto) -> Pregunta: "¿Origen o cliente del ingreso?".', 18, curY + 28);
-      doc.text('Paso D: Agrega "Obtener contenido de URL" (Metodo GET) con tu enlace directo de ingresos:', 18, curY + 34);
-
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(6.8);
-      doc.setTextColor(...emeraldGreen);
-      const incomeUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=ingreso&amount=[Entrada1]&desc=[Entrada2]&category=SALARIO&account=BANCO`;
-      doc.text(incomeUrl.substring(0, 100), 18, curY + 41);
-
-      curY += 54;
-
-      // TARJETA 3: TABLA DE ACCIONES EN ESPAÑOL LATAM, ESPAÑA E INGLES
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 52, 3, 3, 'F');
-      doc.setDrawColor(...primaryCyan);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(12, curY, 186, 52, 3, 3, 'D');
+      doc.roundedRect(12, curY, 186, 56, 3, 3, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10.5);
-      doc.setTextColor(...primaryCyan);
-      doc.text('3. DICCIONARIO DE ACCIONES SEGUN EL IDIOMA DE TU IPHONE', 18, curY + 8);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...textMuted);
-      doc.text('ACCION EN IPHONE', 18, curY + 16);
-      doc.text('ESPAÑOL (LATINOAMERICA)', 65, curY + 16);
-      doc.text('ESPAÑOL (ESPAÑA)', 120, curY + 16);
-      doc.text('ENGLISH (IOS)', 165, curY + 16);
-
-      doc.setDrawColor(60, 65, 80);
-      doc.line(16, curY + 18, 194, curY + 18);
-
-      const tableRows = [
-        ['Llamar Webhook', 'Obtener contenido de URL', 'Obtener contenido de la URL', 'Get Contents of URL'],
-        ['Pedir Numero/Texto', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
-        ['Elegir Categoria', 'Elegir de la lista', 'Seleccionar del menú', 'Choose from Menu'],
-        ['Voz de Siri', 'Hablar texto', 'Leer texto con la voz', 'Speak Text'],
-        ['Notificacion', 'Mostrar notificación', 'Mostrar resultado', 'Show Notification']
-      ];
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...textWhite);
-
-      let rowY = curY + 24;
-      tableRows.forEach(r => {
-        doc.text(r[0], 18, rowY);
-        doc.text(r[1], 65, rowY);
-        doc.text(r[2], 120, rowY);
-        doc.text(r[3], 165, rowY);
-        rowY += 6;
-      });
-
-      curY += 58;
-
-      // TARJETA 4: TRUCOS CON SIRI Y DICTADO
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 30, 3, 3, 'F');
-      doc.setDrawColor(100, 116, 139);
-      doc.roundedRect(12, curY, 186, 30, 3, 3, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
-      doc.setTextColor(245, 158, 11);
-      doc.text('⚡ TRUCO PRO: ACTIVACION POR VOZ CON SIRI & APPLE WATCH', 18, curY + 8);
+      doc.setTextColor(...crimsonRed);
+      doc.text('1. COMO REGISTRAR GASTOS RAPIDOS (COMIDA, TRANSPORTE, SALIDAS)', 18, curY + 8);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.8);
       doc.setTextColor(...textWhite);
-      doc.text('1. Dile a tu celular: "Oye Siri, Registrar Gasto". Siri abrira el atajo y te preguntara el monto y concepto.', 18, curY + 16);
-      doc.text('2. Al finalizar el webhook, Siri te dira: "Gasto registrado. Saldo disponible restante: $ 850.000 COP".', 18, curY + 22);
+      doc.text('Paso A: Abre la app "Atajos" en tu iPhone, toca "+" y nombra el atajo "Registrar Gasto".', 18, curY + 15);
+      doc.text('Paso B: Agrega la accion "Solicitar entrada" -> Tipo: Numero -> Pregunta: "¿Cuanto gastaste?".', 18, curY + 21);
+      doc.text('Paso C: Agrega la accion "Solicitar entrada" -> Tipo: Texto -> Pregunta: "¿En que concepto o detalle?".', 18, curY + 27);
+      doc.text('Paso D: Agrega "Obtener contenido de URL" (Metodo GET) y pega tu enlace completo:', 18, curY + 33);
 
-      // Pie de Pagina
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(252, 165, 165);
+      const expenseFullUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=gasto&amount=[Entrada1]&desc=[Entrada2]&category=ALIMENTACION&account=NEQUI`;
+      const expLines = doc.splitTextToSize(expenseFullUrl, 172);
+      doc.text(expLines, 18, curY + 40);
+
+      curY += 60;
+
+      // TARJETA 2: REGISTRAR INGRESOS (VERDE)
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(12, curY, 186, 56, 3, 3, 'F');
+      doc.setDrawColor(...emeraldGreen);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(12, curY, 186, 56, 3, 3, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(...emeraldGreen);
+      doc.text('2. COMO REGISTRAR INGRESOS (SALARIO, HONORARIOS, PAGOS RECIBIDOS)', 18, curY + 8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.8);
+      doc.setTextColor(...textWhite);
+      doc.text('Paso A: En la app Atajos crea un nuevo atajo y nombra el atajo "Registrar Ingreso".', 18, curY + 15);
+      doc.text('Paso B: Agrega la accion "Solicitar entrada" -> Tipo: Numero -> Pregunta: "¿Cuanto dinero ingresas?".', 18, curY + 21);
+      doc.text('Paso C: Agrega la accion "Solicitar entrada" -> Tipo: Texto -> Pregunta: "¿Origen o cliente?".', 18, curY + 27);
+      doc.text('Paso D: Agrega "Obtener contenido de URL" (Metodo GET) y pega tu enlace completo:', 18, curY + 33);
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(134, 239, 172);
+      const incomeFullUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=ingreso&amount=[Entrada1]&desc=[Entrada2]&category=SALARIO&account=BANCO`;
+      const incLines = doc.splitTextToSize(incomeFullUrl, 172);
+      doc.text(incLines, 18, curY + 40);
+
+      curY += 60;
+
+      // TARJETA 3: VOZ CON SIRI Y DICTADO
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(12, curY, 186, 36, 3, 3, 'F');
+      doc.setDrawColor(...goldAmber);
+      doc.roundedRect(12, curY, 186, 36, 3, 3, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...goldAmber);
+      doc.text('3. ACTIVACION POR VOZ CON SIRI & APPLE WATCH', 18, curY + 8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.6);
+      doc.setTextColor(...textWhite);
+      doc.text('1. Solo di: "Oye Siri, Registrar Gasto" o "Oye Siri, Registrar Ingreso".', 18, curY + 16);
+      doc.text('2. Siri te respondera pidiendote el monto y concepto sin necesidad de tocar la pantalla.', 18, curY + 22);
+      doc.text('3. Agrega la accion "Hablar texto" al final para que Siri te diga en voz alta tu saldo actualizado.', 18, curY + 28);
+
+      // Pie de Pagina Página 1
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(...textMuted);
-      doc.text('AHORROS SA - SISTEMA FINANCIERO CON PERSISTENCIA NUBE Y ATAJOS DE IPHONE', 48, 290);
+      doc.text('PAGINA 1/2   |   AHORROS SA - SISTEMA CON PERSISTENCIA NUBE Y ATAJOS DE IPHONE', 40, 290);
 
-      doc.save(`Guia_Visual_Atajos_iPhone_AhorrosSA_${activeVaultId}.pdf`);
-      showQuickToast('✅ Guía visual en PDF descargada');
+      // ==========================================
+      // PÁGINA 2: DICCIONARIO TRILINGÜE & ATAJO MAESTRO
+      // ==========================================
+      doc.addPage();
+      doc.setFillColor(...darkBg);
+      doc.rect(0, 0, 210, 297, 'F');
+
+      // Banner Header Superior Página 2
+      doc.setFillColor(20, 24, 34);
+      doc.roundedRect(12, 12, 186, 26, 4, 4, 'F');
+      doc.setDrawColor(...primaryCyan);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(12, 12, 186, 26, 4, 4, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(...primaryCyan);
+      doc.text('DICCIONARIO DE ACCIONES SEGUN EL IDIOMA DE TU IPHONE', 20, 24);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...textMuted);
+      doc.text('ENCUENTRA LA ACCION EXACTA EN ESPAÑOL LATAM, ESPAÑOL ESPAÑA O ENGLISH (iOS)', 20, 31);
+
+      let p2Y = 44;
+
+      // TABLA DE ACCIONES TRILINGÜE
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(12, p2Y, 186, 76, 3, 3, 'F');
+      doc.setDrawColor(60, 65, 80);
+      doc.roundedRect(12, p2Y, 186, 76, 3, 3, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...primaryCyan);
+      doc.text('PASO / FUNCION', 18, p2Y + 8);
+      doc.text('ESPAÑOL (LATAM)', 62, p2Y + 8);
+      doc.text('ESPAÑOL (ESPAÑA)', 114, p2Y + 8);
+      doc.text('ENGLISH (iOS)', 162, p2Y + 8);
+
+      doc.setDrawColor(60, 65, 80);
+      doc.line(16, p2Y + 11, 194, p2Y + 11);
+
+      const trilingualRows = [
+        ['1. Enviar datos al servidor', 'Obtener contenido de URL', 'Obtener contenido de la URL', 'Get Contents of URL'],
+        ['2. Pedir Monto (Numero)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
+        ['3. Pedir Concepto (Texto)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
+        ['4. Elegir Categoria / Tipo', 'Elegir de la lista', 'Seleccionar del menú', 'Choose from Menu'],
+        ['5. Voz de Siri (Confirmar)', 'Hablar texto', 'Leer texto con la voz', 'Speak Text'],
+        ['6. Notificacion visual', 'Mostrar notificación', 'Mostrar resultado', 'Show Notification'],
+        ['7. Crear estructura JSON', 'Diccionario', 'Diccionario', 'Dictionary'],
+        ['8. Leer campo de respuesta', 'Obtener valor de dicc.', 'Obtener valor de dicc.', 'Get Dictionary Value']
+      ];
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.2);
+      doc.setTextColor(...textWhite);
+
+      let rY = p2Y + 18;
+      trilingualRows.forEach(row => {
+        doc.text(row[0], 18, rY);
+        doc.text(row[1], 62, rY);
+        doc.text(row[2], 114, rY);
+        doc.text(row[3], 162, rY);
+        rY += 7;
+      });
+
+      p2Y += 82;
+
+      // TARJETA: ATAJO MAESTRO DUAL (UN SOLO BOTÓN PARA AMBOS)
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(12, p2Y, 186, 68, 3, 3, 'F');
+      doc.setDrawColor(...primaryCyan);
+      doc.roundedRect(12, p2Y, 186, 68, 3, 3, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(...primaryCyan);
+      doc.text('4. ATAJO MAESTRO DUAL: REGISTRAR GASTO O INGRESO EN 1 SOLO ATAJO', 18, p2Y + 8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.6);
+      doc.setTextColor(...textWhite);
+      doc.text('Si prefieres tener un único botón en tu pantalla de inicio o widget que sirva para todo:', 18, p2Y + 15);
+      doc.text('Paso 1: Agrega la accion "Elegir de la lista" o "Seleccionar del menu" con dos opciones: "Gasto" e "Ingreso".', 18, p2Y + 21);
+      doc.text('Paso 2: Si elige Gasto, llama al webhook con type=gasto. Si elige Ingreso, llama con type=ingreso.', 18, p2Y + 27);
+      doc.text('Paso 3: URL Parametrizada del Atajo Maestro:', 18, p2Y + 33);
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(...primaryCyan);
+      const masterUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=[TipoElegido]&amount=[Monto]&desc=[Concepto]&account=NEQUI`;
+      const masterLines = doc.splitTextToSize(masterUrl, 172);
+      doc.text(masterLines, 18, p2Y + 40);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.4);
+      doc.setTextColor(...textMuted);
+      doc.text('Parámetros opcionales soportados: &category=ALIMENTACION, &account=NEQUI, &date=YYYY-MM-DD', 18, p2Y + 54);
+      doc.text('El servidor tolera parámetros en español (monto, concepto, tipo) e inglés (amount, desc, type).', 18, p2Y + 60);
+
+      p2Y += 74;
+
+      // TARJETA DE VERIFICACIÓN EN VIVO
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(12, p2Y, 186, 34, 3, 3, 'F');
+      doc.setDrawColor(...emeraldGreen);
+      doc.roundedRect(12, p2Y, 186, 34, 3, 3, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...emeraldGreen);
+      doc.text('5. VERIFICACION EN VIVO Y RESOLUCION DE DUDAS', 18, p2Y + 8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.6);
+      doc.setTextColor(...textWhite);
+      doc.text('• Puedes probar que tu webhook este vivo abriendo en Safari la URL:', 18, p2Y + 15);
+      doc.text(`${publicSharedOrigin}/api/shortcut/health`, 22, p2Y + 21);
+      doc.text('• En la pestaña "Atajos de iPhone" de la web tienes un simulador para enviar una prueba antes de configurar tu celular.', 18, p2Y + 27);
+
+      // Pie de Pagina Página 2
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...textMuted);
+      doc.text('PAGINA 2/2   |   AHORROS SA - GUIA OFICIAL PRO   |   FINANZAS EN TIEMPO REAL', 38, 290);
+
+      doc.save(`Guia_Oficial_Atajos_iPhone_AhorrosSA_${activeVaultId}.pdf`);
+      showQuickToast('✅ Guía visual en PDF de 2 páginas descargada con éxito');
     } catch (pdfErr) {
       console.error('Error generando PDF:', pdfErr);
       showQuickToast('⚠️ Error generando PDF. Abriendo versión para imprimir...');
@@ -1346,41 +1515,36 @@ if (btnDeleteActiveVault) {
   });
 }
 
-// BOTÓN PARA PURGAR BÓVEDAS DE PRUEBA RESIDUALES
-const btnPurgeTestVaults = document.getElementById('btn-purge-test-vaults');
-if (btnPurgeTestVaults) {
-  btnPurgeTestVaults.addEventListener('click', async () => {
-    if (!confirm('¿Deseas purgar todas las bóvedas temporales de prueba que se hayan creado en el sitio? Tu bóveda actual activa NO se verá afectada.')) return;
-
-    showQuickToast('🧹 Purgando bóvedas de prueba en la nube...');
-    let purgedCount = 0;
-
-    try {
-      const vColl = collection(db, 'vaults');
-      const vSnap = await getDocs(vColl);
-
-      for (const vDoc of vSnap.docs) {
-        const vId = vDoc.id;
-        // Si no es la bóveda actual del usuario y tiene formato de prueba o usuario previo
-        if (vId !== activeVaultId && (vId.startsWith('USR-') || vId.startsWith('AHO-') || vId.startsWith('TEST-'))) {
-          for (const sub of ['transactions', 'debts', 'savingsGoals', 'recurringPayments']) {
-            try {
-              const subSnap = await getDocs(collection(db, 'vaults', vId, sub));
-              for (const sd of subSnap.docs) await deleteDoc(sd.ref);
-            } catch (se) {}
-          }
-          await deleteDoc(vDoc.ref);
-          purgedCount++;
+// COMANDO EXCLUSIVO DE CONSOLA PARA EL CREADOR DE LA APP (NO ACCESIBLE PARA USUARIOS COMUNES)
+window.ahorrosCreatorPurgeResidualTestVaults = async function(confirmationWord) {
+  if (confirmationWord !== 'PURGAR_PRUEBAS_CREADOR') {
+    console.warn('Acceso restringido. Uso exclusivo del desarrollador/creador.');
+    return 'Acceso denegado';
+  }
+  let purgedCount = 0;
+  try {
+    const vColl = collection(db, 'vaults');
+    const vSnap = await getDocs(vColl);
+    for (const vDoc of vSnap.docs) {
+      const vId = vDoc.id;
+      if (vId !== activeVaultId && (vId.startsWith('USR-') || vId.startsWith('AHO-') || vId.startsWith('TEST-'))) {
+        for (const sub of ['transactions', 'debts', 'savingsGoals', 'recurringPayments']) {
+          try {
+            const subSnap = await getDocs(collection(db, 'vaults', vId, sub));
+            for (const sd of subSnap.docs) await deleteDoc(sd.ref);
+          } catch (se) {}
         }
+        await deleteDoc(vDoc.ref);
+        purgedCount++;
       }
-
-      showQuickToast(`🧹 Se purgaron exitosamente ${purgedCount} bóvedas de prueba.`);
-    } catch (err) {
-      console.warn('Nota purgando bóvedas:', err);
-      showQuickToast('🧹 Base de datos purgada');
     }
-  });
-}
+    console.log(`🧹 Purgadas ${purgedCount} bóvedas de prueba residuales.`);
+    return `Exito: ${purgedCount} eliminadas`;
+  } catch (err) {
+    console.error('Error purgando:', err);
+    return err.message;
+  }
+};
 
 btnRegenKey.addEventListener('click', async () => {
   if (confirm('¿Deseas generar una nueva clave de Atajo? Deberás actualizarla en tu iPhone.')) {
@@ -2224,16 +2388,16 @@ window.removeTransaction = async function(idOrIndex) {
   showQuickToast('🗑️ Movimiento eliminado');
 
   // Sincronización automática con Compromisos Fijos / Recurrentes:
-  // Si el movimiento provenía de un PAGO FIJO o INGRESO FIJO, volver a ponerlo como pendiente
+  // Si el movimiento provenía de un PAGO FIJO o INGRESO FIJO, volver a ponerlo como pendiente de inmediato
   if (targetTx) {
     const isFixed = targetTx.recurringId ||
-      (targetTx.description && (targetTx.description.startsWith('PAGO FIJO:') || targetTx.description.startsWith('INGRESO FIJO:')));
+      (targetTx.description && (targetTx.description.toUpperCase().includes('PAGO FIJO') || targetTx.description.toUpperCase().includes('INGRESO FIJO')));
 
     if (isFixed) {
       const fixedName = targetTx.recurringName || targetTx.description.replace(/^(PAGO FIJO:|INGRESO FIJO:)\s*/i, '').trim();
       const recItem = recurringPayments.find(r =>
         (targetTx.recurringId && (String(r.id) === String(targetTx.recurringId) || String(r.firestoreId) === String(targetTx.recurringId))) ||
-        (r.name && r.name.toLowerCase() === fixedName.toLowerCase())
+        (r.name && (r.name.toLowerCase() === fixedName.toLowerCase() || fixedName.toLowerCase().includes(r.name.toLowerCase()) || r.name.toLowerCase().includes(fixedName.toLowerCase())))
       );
       if (recItem) {
         recItem.lastPaidMonth = null;
@@ -2863,14 +3027,21 @@ function renderRecurringPayments() {
   recurringContainer.innerHTML = '';
   filteredItems.forEach((r) => {
     const isIncome = r.type === 'income';
-    // Determinar si fue saldado este mes verificando la marca o la presencia de la transacción activa en el mes
+    // Determinar si fue saldado este mes verificando la presencia real de la transacción activa en el mes
     const hasMatchingTxThisMonth = transactions.some(t => {
       if (!t.date || !t.date.startsWith(currentYM)) return false;
       if (t.recurringId && (String(t.recurringId) === String(r.id) || String(t.recurringId) === String(r.firestoreId))) return true;
       const expectedDesc = `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${r.name}`.toLowerCase();
-      return (t.description || '').toLowerCase() === expectedDesc;
+      const desc = (t.description || '').toLowerCase();
+      return desc === expectedDesc || (r.name && desc.includes(r.name.toLowerCase()) && (desc.includes('fijo') || desc.includes('recurrente')));
     });
-    const isPaidThisMonth = (r.lastPaidMonth === currentYM) || hasMatchingTxThisMonth;
+
+    // La transacción activa en el mes es la verdad absoluta. Si el usuario la eliminó en Ingresos y Gastos,
+    // el compromiso debe volver de inmediato a 'Pendiente este mes' y no quedarse marcado como pagado.
+    const isPaidThisMonth = hasMatchingTxThisMonth;
+    if (!hasMatchingTxThisMonth && r.lastPaidMonth === currentYM) {
+      r.lastPaidMonth = null;
+    }
     const rIdentifier = `'${r.id}'`;
 
     const card = document.createElement('div');

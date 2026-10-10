@@ -1,0 +1,3 @@
+/api/shortcut/transaction  /.netlify/functions/transaction  200
+/api/shortcut/*  /.netlify/functions/transaction  200
+/*  /index.html  200

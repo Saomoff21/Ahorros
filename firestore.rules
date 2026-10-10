@@ -95,5 +95,10 @@ service cloud.firestore {
     match /users_index/{lookupKey} {
       allow read, write: if true;
     }
+
+    // Fast Shortcut Keys Lookup Index for iOS Webhooks
+    match /shortcut_keys/{key} {
+      allow read, write: if true;
+    }
   }
 }

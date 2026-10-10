@@ -216,6 +216,7 @@ let unsubscribeTransactions = null;
 let unsubscribeDebts = null;
 let unsubscribeGoals = null;
 let unsubscribeRecurring = null;
+let unsubscribeVaultMeta = null;
 
 function generateApiKey() {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -1852,6 +1853,29 @@ if (btnVaultGoogleLogin) {
 async function loadVaultFromCloud(vaultId) {
   if (!vaultId) return;
   try {
+    // Sincronizar clave secreta de atajo de la bóveda
+    try {
+      const vDocRef = doc(db, 'vaults', vaultId);
+      const vDocSnap = await getDoc(vDocRef);
+      if (vDocSnap.exists()) {
+        const vData = vDocSnap.data();
+        if (vData.shortcutApiKey) {
+          userApiKey = vData.shortcutApiKey;
+          localStorage.setItem('ahorros_shortcut_key_' + vaultId, userApiKey);
+          localStorage.setItem('ahorros_shortcut_key', userApiKey);
+          updateShortcutCredentialsUI();
+        } else {
+          await setDoc(vDocRef, { shortcutApiKey: userApiKey }, { merge: true });
+        }
+      } else {
+        await setDoc(vDocRef, { code: vaultId, shortcutApiKey: userApiKey, createdAt: new Date().toISOString() }, { merge: true });
+      }
+      // Registrar índice para búsqueda de webhooks
+      await setDoc(doc(db, 'shortcut_keys', userApiKey), { vaultId: vaultId }, { merge: true });
+    } catch (kErr) {
+      console.warn('Nota sincronizando clave de bóveda:', kErr);
+    }
+
     const txColl = collection(db, 'vaults', vaultId, 'transactions');
     const txSnap = await getDocs(txColl);
     if (!txSnap.empty) {

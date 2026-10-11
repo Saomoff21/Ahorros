@@ -1,4 +1,27 @@
 {
-  "users": {},
-  "transactions": []
+  "users": {
+    "AHO-SC-TEST1": {
+      "apiKey": "AHO-SC-TEST1",
+      "balance": -12000,
+      "totalIncome": 0,
+      "totalExpense": 12000,
+      "lastUpdated": "2026-10-11T15:43:38.292Z"
+    }
+  },
+  "transactions": [
+    {
+      "id": "tx_sc_1791733418292_6dut7u",
+      "apiKey": "AHO-SC-TEST1",
+      "type": "expense",
+      "amount": 12000,
+      "description": "TAXI AEROPUERTO",
+      "category": "TRANSPORTE",
+      "paymentMethod": "DAVIPLATA",
+      "date": "2026-10-11",
+      "time": "03:43:38 p. m.",
+      "createdAt": "2026-10-11T15:43:38.242Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": false
+    }
+  ]
 }

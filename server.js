@@ -174,7 +174,7 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const rawDescription = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || '';
   const rawCategory = payload.category || payload.categoria || payload.cat || '';
   const rawDate = payload.date || payload.fecha || '';
-  const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || '';
+  const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || '';
 
   // Normalizar y validar tipo (gasto vs ingreso)
   const normalizedType = String(rawType || '').trim().toLowerCase();
@@ -200,24 +200,52 @@ app.all('/api/shortcut/transaction', (req, res) => {
     });
   }
 
-  // Normalizar concepto y categoría
-  const cleanDescription = (String(rawDescription || (isIncome ? 'INGRESO DESDE ATAJO' : 'GASTO DESDE ATAJO')))
-    .trim()
-    .toUpperCase();
-  const cleanCategory = (String(rawCategory || (isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION')))
+  // Normalizar categoría
+  let cleanCategory = (String(rawCategory || (isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION')))
     .trim()
     .toUpperCase();
 
-  // Fecha (YYYY-MM-DD)
-  let cleanDate = String(rawDate || '').trim();
-  if (!cleanDate || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
-    const now = new Date();
-    cleanDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Si no se pasó categoría pero viene en mayúsculas o estándar
+  if (!cleanCategory) {
+    cleanCategory = isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION';
   }
 
-  const cleanPaymentMethod = (String(rawMethod || 'NEQUI'))
-    .trim()
-    .toUpperCase();
+  // Normalizar concepto / detalle
+  let cleanDescription = String(rawDescription || '').trim().toUpperCase();
+  if (!cleanDescription || cleanDescription === 'UNDEFINED' || cleanDescription === 'NULL' || cleanDescription === '[ENTRADA]' || cleanDescription === '[ENTRADA2]') {
+    cleanDescription = cleanCategory;
+  }
+
+  // Fecha (YYYY-MM-DD) y hora exacta
+  const now = new Date();
+  let cleanDate = String(rawDate || '').trim();
+  if (!cleanDate || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+    cleanDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+  const cleanTime = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+  // Normalizar método de pago
+  let rawMUpper = String(rawMethod || '').trim().toUpperCase();
+  let cleanPaymentMethod = 'NEQUI';
+  if (rawMUpper.includes('EFECT') || rawMUpper.includes('CASH') || rawMUpper.includes('MANO')) {
+    cleanPaymentMethod = 'EFECTIVO';
+  } else if (rawMUpper.includes('DAVI')) {
+    cleanPaymentMethod = 'DAVIPLATA';
+  } else if (rawMUpper.includes('BANCOLOMBIA') || rawMUpper.includes('BANCO')) {
+    cleanPaymentMethod = 'BANCO';
+  } else if (rawMUpper.includes('CREDIT') || rawMUpper.includes('CRÉDIT')) {
+    cleanPaymentMethod = 'TARJETA_CREDITO';
+  } else if (rawMUpper.includes('DEBIT') || rawMUpper.includes('DÉBIT')) {
+    cleanPaymentMethod = 'TARJETA_DEBITO';
+  } else if (rawMUpper.includes('OTRO')) {
+    cleanPaymentMethod = 'OTRO';
+  } else if (rawMUpper.includes('NEQUI')) {
+    cleanPaymentMethod = 'NEQUI';
+  } else if (rawMUpper) {
+    cleanPaymentMethod = rawMUpper;
+  } else {
+    cleanPaymentMethod = isIncome ? 'BANCO' : 'NEQUI';
+  }
 
   const newTx = {
     id: 'tx_sc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
@@ -228,7 +256,8 @@ app.all('/api/shortcut/transaction', (req, res) => {
     category: cleanCategory,
     paymentMethod: cleanPaymentMethod,
     date: cleanDate,
-    createdAt: new Date().toISOString(),
+    time: cleanTime,
+    createdAt: now.toISOString(),
     source: 'iphone_shortcut',
     syncedToCloud: false
   };

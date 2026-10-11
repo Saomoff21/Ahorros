@@ -2272,8 +2272,20 @@ body[data-device="desktop"] .goals-layout-grid {
   }
 
   /* OPTIMIZACIÓN MÓVIL PARA ATAJOS DE IPHONE */
+  #tab-shortcuts {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  #tab-shortcuts .shortcuts-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    width: 100%;
+  }
   #tab-shortcuts .api-box {
     padding: 12px;
+    max-width: 100%;
+    overflow: hidden;
   }
   #tab-shortcuts .api-box-value {
     flex-direction: column;
@@ -2295,13 +2307,66 @@ body[data-device="desktop"] .goals-layout-grid {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 10px;
+    max-width: 100%;
   }
   #tab-shortcuts .table-wrapper table {
-    min-width: 460px;
+    min-width: 100%;
   }
-  #tab-shortcuts .shortcut-step {
-    gap: 10px;
-    padding: 10px 0;
+}
+
+/* BOTON DE TOGGLE DE HORA EXACTA */
+.btn-toggle-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: var(--btn-radius);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.btn-toggle-time:hover {
+  background: var(--surface-secondary);
+  color: var(--text-main);
+  border-color: var(--primary-color);
+}
+.btn-toggle-time.active {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+/* EVITAR QUE ELEMENTOS O BADGES EXTERNOS (EJ: NETLIFY) TAPEN LA BARRA DE NAVEGACIÓN MÓVIL */
+[class*="netlify"], [id*="netlify"], div[data-netlify], iframe[title*="Netlify"], a[href*="netlify.com"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+/* ANTI-SOLAPAMIENTO EN MÓVILES Y ZOOM */
+@media (max-width: 768px) {
+  .app-header {
+    position: relative !important;
+    top: auto !important;
   }
+  .header-actions {
+    position: relative;
+    z-index: 10;
+  }
+}
+body[data-device="mobile"] .app-header {
+  position: relative !important;
+  top: auto !important;
 }
 

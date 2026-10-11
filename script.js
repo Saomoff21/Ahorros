@@ -925,9 +925,9 @@ function updateShortcutCredentialsUI() {
   }
 
   if (currentShortcutMode === 'expense') {
-    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]`;
+    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
     if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO LISTO (REGISTRAR GASTO):';
-    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 En Atajos de iOS, reemplaza cada [Variable] tocando la barra de Variables Mágicas sobre el teclado para guardar montos y cuentas dinámicamente.`;
+    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Con <code>&format=text</code> tu iPhone recibe directamente la frase de confirmación en español lista para 'Hablar texto' o 'Mostrar notificación'. Reemplaza cada <code>[Variable]</code> tocando la barra azul sobre el teclado en la app Atajos.`;
     if (shortcutSampleJsonEl) {
       shortcutSampleJsonEl.textContent = JSON.stringify({
         type: "expense",
@@ -938,9 +938,9 @@ function updateShortcutCredentialsUI() {
       }, null, 2);
     }
   } else if (currentShortcutMode === 'income') {
-    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=ingreso&amount=[Variable_Monto]&account=[Variable_Cuenta]&category=[Variable_Categoria]&desc=[Variable_Detalle]`;
+    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=ingreso&amount=[Variable_Monto]&account=[Variable_Cuenta]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
     if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO LISTO (REGISTRAR INGRESO):';
-    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 En Atajos de iOS, inserta la variable mágica en cada parámetro para capturar monto, cuenta y concepto en tiempo real.`;
+    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Con <code>&format=text</code> tu iPhone recibe la confirmación hablada directa para 'Hablar texto' o notificación. Inserta cada variable mágica tocando el teclado en Atajos.`;
     if (shortcutSampleJsonEl) {
       shortcutSampleJsonEl.textContent = JSON.stringify({
         type: "income",
@@ -952,9 +952,9 @@ function updateShortcutCredentialsUI() {
     }
   } else {
     // Modo Dual / Maestro
-    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=[Variable_Tipo]&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]`;
+    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=[Variable_Tipo]&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
     if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO MAESTRO (GASTO O INGRESO):';
-    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 En Atajos usa un menú para preguntar si es Gasto o Ingreso y envía el tipo en el parámetro type=[Variable_Tipo].`;
+    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 En Atajos usa un menú para preguntar si es Gasto o Ingreso y envía el tipo en el parámetro <code>type=[Variable_Tipo]</code>.`;
     if (shortcutSampleJsonEl) {
       shortcutSampleJsonEl.textContent = JSON.stringify({
         type: "gasto",
@@ -1268,9 +1268,9 @@ if (btnDownloadPdfGuide) {
       doc.setFillColor(15, 17, 24);
       doc.roundedRect(16, curY + 54, 178, 18, 2, 2, 'F');
       doc.setFont('courier', 'bold');
-      doc.setFontSize(6.4);
+      doc.setFontSize(6.2);
       doc.setTextColor(252, 165, 165);
-      const dynamicExpenseUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=gasto&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]`;
+      const dynamicExpenseUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=gasto&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]&format=text`;
       const urlLines = doc.splitTextToSize(dynamicExpenseUrl, 172);
       doc.text(urlLines, 19, curY + 61);
 
@@ -1299,7 +1299,7 @@ if (btnDownloadPdfGuide) {
       doc.text('• PASO 6 (Respuesta de Siri):', 18, curY + 116);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Hablar texto" o "Mostrar notificacion" pasando el resultado de la URL anterior.', 58, curY + 116);
+      doc.text('Agrega la accion "Hablar texto" o "Mostrar notificacion" pasando la salida de la URL (con &format=text Siri respondera en voz alta tu gasto y nuevo saldo sin JSON).', 58, curY + 116);
 
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...emeraldGreen);
@@ -1384,7 +1384,7 @@ if (btnDownloadPdfGuide) {
       doc.setFont('courier', 'bold');
       doc.setFontSize(6.4);
       doc.setTextColor(134, 239, 172);
-      const dynamicIncomeUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=ingreso&amount=[Monto]&account=[Cuenta]&category=SALARIO&desc=[Detalle]`;
+      const dynamicIncomeUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=ingreso&amount=[Monto]&account=[Cuenta]&category=SALARIO&desc=[Detalle]&format=text`;
       doc.text(dynamicIncomeUrl, 18, p2Y + 45);
 
       p2Y += 56;
@@ -1409,9 +1409,9 @@ if (btnDownloadPdfGuide) {
       doc.text('3. URL Maestra con type=[Variable_Tipo]:', 18, p2Y + 32);
 
       doc.setFont('courier', 'bold');
-      doc.setFontSize(6.4);
+      doc.setFontSize(6.2);
       doc.setTextColor(...primaryCyan);
-      const masterUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=[TipoElegido]&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]`;
+      const masterUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=[TipoElegido]&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]&format=text`;
       doc.text(masterUrl, 18, p2Y + 39);
 
       doc.setFont('helvetica', 'normal');
@@ -1902,7 +1902,7 @@ function renderShortcutEvents() {
 // POLLING DE ATAJOS PENDIENTES DESDE EL SERVIDOR
 async function pollPendingShortcuts() {
   try {
-    const res = await fetch(`/api/shortcut/pending?key=${encodeURIComponent(userApiKey)}`);
+    const res = await fetch(`/api/shortcut/pending?key=${encodeURIComponent(userApiKey)}&vault=${encodeURIComponent(activeVaultId)}`);
     if (!res.ok) return;
     const data = await res.json();
     if (data.success && data.transactions && data.transactions.length > 0) {
@@ -2439,6 +2439,8 @@ if (btnToggleShowTime) {
     localStorage.setItem('finances_show_time', String(showExactTime));
     updateTimeToggleUI();
     updateUI();
+    renderSavingsGoals();
+    renderRecurringPayments();
     renderShortcutEvents();
     showQuickToast(showExactTime ? '🕒 Visualización de hora exacta activada' : '🕒 Hora exacta oculta');
   });
@@ -2516,6 +2518,7 @@ function updateActivePeriodLabel() {
 async function addTransactionLocallyOrCloud(txData) {
   const now = new Date();
   const timeStr = txData.time || now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  const localId = txData.id || ('tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
   const cleanTx = {
     id: localId,
     type: txData.type,
@@ -2525,7 +2528,9 @@ async function addTransactionLocallyOrCloud(txData) {
     paymentMethod: txData.paymentMethod || 'EFECTIVO',
     date: txData.date,
     time: timeStr,
-    createdAt: txData.createdAt || now.toISOString()
+    createdAt: txData.createdAt || now.toISOString(),
+    ...(txData.recurringId ? { recurringId: txData.recurringId } : {}),
+    ...(txData.recurringName ? { recurringName: txData.recurringName } : {})
   };
 
   // 1. Guardar localmente y actualizar interfaz INMEDIATAMENTE

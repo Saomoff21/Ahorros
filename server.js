@@ -169,50 +169,69 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const payload = req.method === 'GET' ? req.query : (req.body || {});
   
   // Parámetros flexibles para tolerar cualquier nombre usado en la app de Atajos de iOS
-  const rawType = payload.type || payload.tipo || '';
-  const rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : payload.value));
-  const rawDescription = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || '';
-  const rawCategory = payload.category || payload.categoria || payload.cat || '';
+  const rawType = payload.type || payload.tipo || req.forcedType || '';
+  const rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : (payload.precio !== undefined ? payload.precio : (payload.total !== undefined ? payload.total : payload.value))));
+  const rawDescription = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || payload.nombre || payload.motivo || payload.nota || '';
+  const rawCategory = payload.category || payload.categoria || payload.cat || payload.rubro || '';
   const rawDate = payload.date || payload.fecha || '';
-  const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || '';
+  const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || payload.formaPago || '';
+  const returnFormat = String(payload.format || payload.modo || (payload.text ? 'text' : '')).toLowerCase();
 
-  // Normalizar y validar tipo (gasto vs ingreso)
-  const normalizedType = String(rawType || '').trim().toLowerCase();
-  const validTypes = ['gasto', 'expense', 'egreso', 'salida', 'ingreso', 'income', 'entrada'];
-  if (!validTypes.includes(normalizedType)) {
-    return res.status(400).json({
-      success: false,
-      error: "Tipo inválido. Usa type=gasto o type=ingreso (o en inglés type=expense / type=income).",
-      speech: 'Error: Tipo de movimiento inválido. Especifica si es gasto o ingreso.'
-    });
+  // Normalizar y validar tipo (si no se especifica, por defecto es 'gasto')
+  let normalizedType = String(rawType || '').trim().toLowerCase();
+  if (!normalizedType) {
+    normalizedType = 'gasto';
   }
-
-  const isIncome = ['income', 'ingreso', 'entrada'].includes(normalizedType);
+  
+  const isIncome = ['income', 'ingreso', 'entrada', 'sueldo', 'cobro'].includes(normalizedType);
   const cleanType = isIncome ? 'income' : 'expense';
 
   // Normalizar monto
   const numericAmount = parseNumericAmount(rawAmount);
   if (!numericAmount || numericAmount <= 0) {
+    const errorMsg = 'El monto debe ser un número mayor a 0.';
+    if (returnFormat === 'text') return res.status(400).type('text/plain').send('Error: ' + errorMsg);
     return res.status(400).json({
       success: false,
-      error: 'El monto debe ser un número mayor a 0.',
+      error: errorMsg,
       speech: 'Error: El monto ingresado no es válido o está vacío.'
     });
   }
 
-  // Normalizar categoría
-  let cleanCategory = (String(rawCategory || (isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION')))
-    .trim()
-    .toUpperCase();
+  // Quitar acentos a strings
+  const removeAccents = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  // Si no se pasó categoría pero viene en mayúsculas o estándar
-  if (!cleanCategory) {
-    cleanCategory = isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION';
+  // Normalizar descripción preliminar
+  let cleanDescription = String(rawDescription || '').trim();
+  if (['UNDEFINED', 'NULL', '[ENTRADA]', '[ENTRADA2]', '[DETALLE]', '[CONCEPTO]'].includes(cleanDescription.toUpperCase())) {
+    cleanDescription = '';
   }
 
-  // Normalizar concepto / detalle
-  let cleanDescription = String(rawDescription || '').trim().toUpperCase();
-  if (!cleanDescription || cleanDescription === 'UNDEFINED' || cleanDescription === 'NULL' || cleanDescription === '[ENTRADA]' || cleanDescription === '[ENTRADA2]') {
+  // Normalizar categoría
+  let cleanCategory = removeAccents(rawCategory || '').trim().toUpperCase();
+
+  // Auto-detección inteligente de categoría basada en concepto si no viene o viene por defecto
+  const descLower = cleanDescription.toLowerCase();
+  if (!cleanCategory || cleanCategory === 'ALIMENTACION' || cleanCategory === 'OTROS') {
+    if (descLower.includes('uber') || descLower.includes('didi') || descLower.includes('taxi') || descLower.includes('gasolina') || descLower.includes('transmilenio') || descLower.includes('pasaje') || descLower.includes('bus') || descLower.includes('peaje')) {
+      cleanCategory = 'TRANSPORTE';
+    } else if (descLower.includes('arriendo') || descLower.includes('alquiler') || descLower.includes('luz') || descLower.includes('agua') || descLower.includes('gas') || descLower.includes('internet') || descLower.includes('claro') || descLower.includes('tigo') || descLower.includes('servicios') || descLower.includes('condominio')) {
+      cleanCategory = 'VIVIENDA Y SERVICIOS';
+    } else if (descLower.includes('medico') || descLower.includes('medicina') || descLower.includes('farmacia') || descLower.includes('drogueria') || descLower.includes('salud') || descLower.includes('cita') || descLower.includes('doctor')) {
+      cleanCategory = 'SALUD Y BIENESTAR';
+    } else if (descLower.includes('cine') || descLower.includes('concierto') || descLower.includes('fiesta') || descLower.includes('bar') || descLower.includes('cerveza') || descLower.includes('videojuego') || descLower.includes('ocio')) {
+      cleanCategory = 'ENTRETENIMIENTO Y OCIO';
+    } else if (descLower.includes('salario') || descLower.includes('sueldo') || descLower.includes('nomina') || descLower.includes('honorarios') || descLower.includes('quincena') || descLower.includes('trabajo')) {
+      cleanCategory = 'SALARIO / TRABAJO';
+    } else if (descLower.includes('almuerzo') || descLower.includes('cena') || descLower.includes('desayuno') || descLower.includes('mercado') || descLower.includes('restaurante') || descLower.includes('hamburguesa') || descLower.includes('comida')) {
+      cleanCategory = 'ALIMENTACION';
+    } else if (!cleanCategory) {
+      cleanCategory = isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION';
+    }
+  }
+
+  // Si no se proporcionó concepto pero sí categoría, usar la categoría como concepto
+  if (!cleanDescription) {
     cleanDescription = cleanCategory;
   }
 
@@ -225,22 +244,22 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const cleanTime = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
   // Normalizar método de pago
-  let rawMUpper = String(rawMethod || '').trim().toUpperCase();
+  let rawMUpper = removeAccents(rawMethod).trim().toUpperCase();
   let cleanPaymentMethod = 'NEQUI';
-  if (rawMUpper.includes('EFECT') || rawMUpper.includes('CASH') || rawMUpper.includes('MANO')) {
+  if (rawMUpper.includes('EFECT') || rawMUpper.includes('CASH') || rawMUpper.includes('MANO') || rawMUpper.includes('FISIC')) {
     cleanPaymentMethod = 'EFECTIVO';
   } else if (rawMUpper.includes('DAVI')) {
     cleanPaymentMethod = 'DAVIPLATA';
-  } else if (rawMUpper.includes('BANCOLOMBIA') || rawMUpper.includes('BANCO')) {
+  } else if (rawMUpper.includes('BANCOLOMBIA') || rawMUpper.includes('BANCO') || rawMUpper.includes('PSE') || rawMUpper.includes('AHORRO')) {
     cleanPaymentMethod = 'BANCO';
-  } else if (rawMUpper.includes('CREDIT') || rawMUpper.includes('CRÉDIT')) {
+  } else if (rawMUpper.includes('CREDIT')) {
     cleanPaymentMethod = 'TARJETA_CREDITO';
-  } else if (rawMUpper.includes('DEBIT') || rawMUpper.includes('DÉBIT')) {
+  } else if (rawMUpper.includes('DEBIT')) {
     cleanPaymentMethod = 'TARJETA_DEBITO';
-  } else if (rawMUpper.includes('OTRO')) {
-    cleanPaymentMethod = 'OTRO';
   } else if (rawMUpper.includes('NEQUI')) {
     cleanPaymentMethod = 'NEQUI';
+  } else if (rawMUpper.includes('OTRO')) {
+    cleanPaymentMethod = 'OTRO';
   } else if (rawMUpper) {
     cleanPaymentMethod = rawMUpper;
   } else {
@@ -293,6 +312,11 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const methodLabel = cleanPaymentMethod === 'EFECTIVO' ? 'en Efectivo físico' : `con ${cleanPaymentMethod}`;
   const speechText = `${typeLabel} de ${formattedAmount} ${methodLabel} registrado en ${cleanCategory}. Tu saldo estimado es de ${formatCurrency(userStats.balance)}.`;
 
+  // Soporte para respuestas de texto plano directo para Atajos de iOS
+  if (returnFormat === 'text' || req.headers.accept === 'text/plain') {
+    return res.type('text/plain').send(speechText);
+  }
+
   return res.json({
     success: true,
     message: speechText,
@@ -301,6 +325,21 @@ app.all('/api/shortcut/transaction', (req, res) => {
     userBalance: userStats.balance,
     formattedBalance: formatCurrency(userStats.balance)
   });
+});
+
+/**
+ * Endpoints dedicados directos (alias para atajos de iOS)
+ */
+app.all('/api/shortcut/gasto', (req, res, next) => {
+  req.forcedType = 'gasto';
+  req.url = '/api/shortcut/transaction';
+  return app._router.handle(req, res, next);
+});
+
+app.all('/api/shortcut/ingreso', (req, res, next) => {
+  req.forcedType = 'ingreso';
+  req.url = '/api/shortcut/transaction';
+  return app._router.handle(req, res, next);
 });
 
 /**

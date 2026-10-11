@@ -2,10 +2,26 @@
   "users": {
     "AHO-SC-TEST1": {
       "apiKey": "AHO-SC-TEST1",
-      "balance": -12000,
+      "balance": -62000,
       "totalIncome": 0,
-      "totalExpense": 12000,
-      "lastUpdated": "2026-10-11T15:43:38.292Z"
+      "totalExpense": 62000,
+      "lastUpdated": "2026-10-11T18:08:00.403Z"
+    },
+    "AHO-SC-JRZFUZ": {
+      "apiKey": "AHO-SC-JRZFUZ",
+      "balance": 0,
+      "totalIncome": 0,
+      "totalExpense": 0,
+      "pendingDebts": 0,
+      "lastUpdated": "2026-10-11T16:23:39.547Z"
+    },
+    "AHO-SC-N385BY": {
+      "apiKey": "AHO-SC-N385BY",
+      "balance": 0,
+      "totalIncome": 0,
+      "totalExpense": 0,
+      "pendingDebts": 1212000,
+      "lastUpdated": "2026-10-11T17:52:29.820Z"
     }
   },
   "transactions": [
@@ -21,7 +37,35 @@
       "time": "03:43:38 p. m.",
       "createdAt": "2026-10-11T15:43:38.242Z",
       "source": "iphone_shortcut",
-      "syncedToCloud": false
+      "syncedToCloud": true
+    },
+    {
+      "id": "tx_sc_1791742067715_uuytwc",
+      "apiKey": "AHO-SC-TEST1",
+      "type": "expense",
+      "amount": 35000,
+      "description": "Almuerzo",
+      "category": "ALIMENTACION",
+      "paymentMethod": "BANCO",
+      "date": "2026-10-11",
+      "time": "06:07:47 p. m.",
+      "createdAt": "2026-10-11T18:07:47.685Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": true
+    },
+    {
+      "id": "tx_sc_1791742080402_3n7ujh",
+      "apiKey": "AHO-SC-TEST1",
+      "type": "expense",
+      "amount": 15000,
+      "description": "Taxi",
+      "category": "TRANSPORTE",
+      "paymentMethod": "EFECTIVO",
+      "date": "2026-10-11",
+      "time": "06:08:00 p. m.",
+      "createdAt": "2026-10-11T18:08:00.402Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": true
     }
   ]
 }

@@ -168,13 +168,24 @@ app.all('/api/shortcut/transaction', (req, res) => {
 
   const payload = req.method === 'GET' ? req.query : (req.body || {});
   
+  // Decodificador seguro para tolerar acentos y caracteres especiales de iOS Shortcuts
+  const safeDecode = (val) => {
+    if (!val) return '';
+    const s = String(val).trim();
+    try {
+      return decodeURIComponent(s.replace(/\+/g, ' '));
+    } catch(e) {
+      return s;
+    }
+  };
+
   // Parámetros flexibles para tolerar cualquier nombre usado en la app de Atajos de iOS
-  const rawType = payload.type || payload.tipo || req.forcedType || '';
+  const rawType = safeDecode(payload.type || payload.tipo || req.forcedType || '');
   const rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : (payload.precio !== undefined ? payload.precio : (payload.total !== undefined ? payload.total : payload.value))));
-  const rawDescription = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || payload.nombre || payload.motivo || payload.nota || '';
-  const rawCategory = payload.category || payload.categoria || payload.cat || payload.rubro || '';
-  const rawDate = payload.date || payload.fecha || '';
-  const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || payload.formaPago || '';
+  const rawDescription = safeDecode(payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || payload.nombre || payload.motivo || payload.nota || '');
+  const rawCategory = safeDecode(payload.category || payload.categoria || payload.cat || payload.rubro || '');
+  const rawDate = safeDecode(payload.date || payload.fecha || '');
+  const rawMethod = safeDecode(payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || payload.formaPago || '');
   const returnFormat = String(payload.format || payload.modo || (payload.text ? 'text' : '')).toLowerCase();
 
   // Normalizar y validar tipo (si no se especifica, por defecto es 'gasto')
@@ -198,7 +209,7 @@ app.all('/api/shortcut/transaction', (req, res) => {
     });
   }
 
-  // Quitar acentos a strings
+  // Quitar acentos a strings para normalización interna
   const removeAccents = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
   // Normalizar descripción preliminar
@@ -311,6 +322,7 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const typeLabel = isIncome ? 'Ingreso' : 'Gasto';
   const methodLabel = cleanPaymentMethod === 'EFECTIVO' ? 'en Efectivo físico' : `con ${cleanPaymentMethod}`;
   const speechText = `${typeLabel} de ${formattedAmount} ${methodLabel} registrado en ${cleanCategory}. Tu saldo estimado es de ${formatCurrency(userStats.balance)}.`;
+  console.log(`[SHORTCUT SUCCESS] ${typeLabel} $${numericAmount} "${cleanDescription}" via ${cleanPaymentMethod} (${apiKey})`);
 
   // Soporte para respuestas de texto plano directo para Atajos de iOS
   if (returnFormat === 'text' || req.headers.accept === 'text/plain') {

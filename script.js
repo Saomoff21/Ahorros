@@ -560,17 +560,39 @@ if (btnPwaDirectInstall) {
   });
 }
 
+const btnPwaDismiss = document.getElementById('btn-pwa-dismiss');
+if (btnPwaDismiss) {
+  btnPwaDismiss.addEventListener('click', () => {
+    localStorage.setItem('ahorros_welcome_guide_dismissed', 'true');
+    if (pwaInstallModal) pwaInstallModal.classList.add('hidden');
+    showQuickToast('✨ ¡Bienvenido a Ahorros SA! Puedes probar y usar la app libremente.');
+  });
+}
+
 if (btnClosePwaModal) {
   btnClosePwaModal.addEventListener('click', () => {
+    localStorage.setItem('ahorros_welcome_guide_dismissed', 'true');
     if (pwaInstallModal) pwaInstallModal.classList.add('hidden');
   });
 }
 
 if (pwaInstallModal) {
   pwaInstallModal.addEventListener('click', (e) => {
-    if (e.target === pwaInstallModal) pwaInstallModal.classList.add('hidden');
+    if (e.target === pwaInstallModal) {
+      localStorage.setItem('ahorros_welcome_guide_dismissed', 'true');
+      pwaInstallModal.classList.add('hidden');
+    }
   });
 }
+
+// CERRAR CUALQUIER MODAL CON TECLA ESCAPE
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.classList.add('hidden');
+    });
+  }
+});
 
 if (btnCopyPwaUrl && pwaShareUrlInput) {
   btnCopyPwaUrl.addEventListener('click', () => {

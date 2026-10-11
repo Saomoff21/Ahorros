@@ -1088,6 +1088,70 @@
                     </p>
                   </div>
                 </div>
+              <!-- PASO A PASO VISUAL Y ESTRUCTURA DEL ATAJO DE IPHONE -->
+              <div style="margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <h3 style="font-size: 0.92rem; font-weight: 800; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                  <span>📱</span> Pasos Exactos para Crear tu Atajo en la App de iOS
+                </h3>
+
+                <div class="shortcut-steps-container" style="display: flex; flex-direction: column; gap: 10px;">
+                  
+                  <!-- PASO 1 -->
+                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">1</span>
+                      <strong style="font-size: 0.82rem; color: var(--text-main);">Crear Atajo Nuevo</strong>
+                    </div>
+                    <div id="step-1-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
+                      Abre la app <strong>Atajos</strong> (Shortcuts), toca <strong>+</strong> y nómbralo <em>"Registrar Gasto"</em>.
+                    </div>
+                  </div>
+
+                  <!-- PASO 2 -->
+                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">2</span>
+                      <strong style="font-size: 0.82rem; color: var(--text-main);">Pedir el Monto Gastado</strong>
+                    </div>
+                    <div id="step-2-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
+                      Agrega la acción <strong>"Solicitar entrada"</strong> (Ask for Input). Tipo: <strong>Número</strong>. Pregunta: <em>"¿Cuánto gastaste?"</em>.
+                    </div>
+                  </div>
+
+                  <!-- PASO 3 -->
+                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">3</span>
+                      <strong style="font-size: 0.82rem; color: var(--text-main);">Pedir el Concepto / Detalle</strong>
+                    </div>
+                    <div id="step-3-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
+                      Agrega otra acción <strong>"Solicitar entrada"</strong>. Tipo: <strong>Texto</strong>. Pregunta: <em>"¿En qué gastaste?"</em>.
+                    </div>
+                  </div>
+
+                  <!-- PASO 4 -->
+                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">4</span>
+                      <strong style="font-size: 0.82rem; color: var(--text-main);">Conectar con Ahorros SA</strong>
+                    </div>
+                    <div id="step-4-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
+                      Agrega <strong>"Obtener contenido de URL"</strong>. Pega tu <strong>Enlace Directo</strong> copiado arriba (con método GET) o configura una llamada POST con JSON.
+                    </div>
+                  </div>
+
+                  <!-- PASO 5 -->
+                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">5</span>
+                      <strong style="font-size: 0.82rem; color: var(--text-main);">Confirmación de Siri o Notificación</strong>
+                    </div>
+                    <div id="step-5-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
+                      Agrega <strong>"Hablar texto"</strong> (Speak Text) o <strong>"Mostrar notificación"</strong> y selecciona como entrada el resultado del paso 4. Siri te dirá el saldo y gasto registrado.
+                    </div>
+                  </div>
+
+                </div>
               </div>
 
             </div>
@@ -1546,6 +1610,13 @@
             <input type="text" id="pwa-share-url-input" readonly style="flex: 1; font-size: 0.72rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-main);">
             <button id="btn-copy-pwa-url" class="btn-copy">Copiar Link</button>
           </div>
+        </div>
+
+        <!-- BOTÓN PRINCIPAL PARA CERRAR Y PROBAR LA APLICACIÓN -->
+        <div style="margin-top: 18px;">
+          <button type="button" id="btn-pwa-dismiss" class="btn btn-primary" style="width: 100%; padding: 13px; font-weight: 800; font-size: 0.95rem; justify-content: center; box-shadow: 0 4px 14px var(--primary-glow); border-radius: 12px; cursor: pointer;">
+            🚀 ¡Entendido! Entrar y Probar la Aplicación
+          </button>
         </div>
       </div>
     </div>

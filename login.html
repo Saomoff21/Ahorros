@@ -2,7 +2,7 @@
 <html lang="es" data-theme="carbon">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Acceso Seguro - AHORROS SA</title>
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -363,6 +363,12 @@
         <button type="submit" id="btn-login-submit" class="btn-submit">
           <span>Ingresar a Mis Finanzas</span> ➔
         </button>
+
+        <div style="margin-top: 12px; text-align: center;">
+          <button type="button" id="btn-demo-access" style="background: rgba(255,255,255,0.05); border: 1px dashed var(--input-border); color: var(--text-muted); font-size: 0.78rem; font-weight: 700; padding: 10px 14px; border-radius: 10px; width: 100%; cursor: pointer; transition: all 0.2s;">
+            ⚡ Probar Modo Invitado / Acceso Inmediato
+          </button>
+        </div>
       </form>
 
       <!-- FORMULARIO DE REGISTRO DE CUENTA -->
@@ -478,6 +484,20 @@
       e.preventDefault();
       localStorage.removeItem('ahorros_current_user');
       document.getElementById('active-session-banner').style.display = 'none';
+    });
+
+    document.getElementById('btn-demo-access')?.addEventListener('click', () => {
+      const demoCode = 'USR-INVITADO';
+      const demoUser = {
+        uid: 'usr_invitado',
+        username: 'Invitado',
+        email: 'invitado@ahorros.app',
+        userCode: demoCode
+      };
+      localStorage.setItem('ahorros_current_user', JSON.stringify(demoUser));
+      localStorage.setItem('ahorros_active_vault', demoCode);
+      localStorage.setItem('ahorros_boveda_code', demoCode);
+      window.location.replace('index.html');
     });
 
     // PESTAÑAS LOGIN / REGISTRO

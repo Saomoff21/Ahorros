@@ -17,11 +17,11 @@
     },
     "AHO-SC-N385BY": {
       "apiKey": "AHO-SC-N385BY",
-      "balance": 0,
+      "balance": -68000,
       "totalIncome": 0,
-      "totalExpense": 0,
+      "totalExpense": 68000,
       "pendingDebts": 1212000,
-      "lastUpdated": "2026-10-11T17:52:29.820Z"
+      "lastUpdated": "2026-10-11T18:28:21.961Z"
     }
   },
   "transactions": [
@@ -64,6 +64,48 @@
       "date": "2026-10-11",
       "time": "06:08:00 p. m.",
       "createdAt": "2026-10-11T18:08:00.402Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": true
+    },
+    {
+      "id": "tx_sc_1791743283906_71bv30",
+      "apiKey": "AHO-SC-N385BY",
+      "type": "expense",
+      "amount": 25000,
+      "description": "Almuerzo del dia",
+      "category": "ALIMENTACION",
+      "paymentMethod": "NEQUI",
+      "date": "2026-10-11",
+      "time": "06:28:03 p. m.",
+      "createdAt": "2026-10-11T18:28:03.885Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": true
+    },
+    {
+      "id": "tx_sc_1791743297960_vkaxtk",
+      "apiKey": "AHO-SC-N385BY",
+      "type": "expense",
+      "amount": 25000,
+      "description": "Almuerzo del dia",
+      "category": "ALIMENTACION",
+      "paymentMethod": "NEQUI",
+      "date": "2026-10-11",
+      "time": "06:28:17 p. m.",
+      "createdAt": "2026-10-11T18:28:17.941Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": true
+    },
+    {
+      "id": "tx_sc_1791743301961_h6qqlz",
+      "apiKey": "AHO-SC-N385BY",
+      "type": "expense",
+      "amount": 18000,
+      "description": "Taxi al centro",
+      "category": "TRANSPORTE",
+      "paymentMethod": "DAVIPLATA",
+      "date": "2026-10-11",
+      "time": "06:28:21 p. m.",
+      "createdAt": "2026-10-11T18:28:21.960Z",
       "source": "iphone_shortcut",
       "syncedToCloud": true
     }

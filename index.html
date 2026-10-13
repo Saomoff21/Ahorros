@@ -1001,323 +1001,102 @@
 
     <!-- PESTAÑA 7: ATAJOS DE IPHONE (iOS SHORTCUTS) -->
     <section id="tab-shortcuts" class="tab-content">
-      <div class="shortcuts-grid">
+      <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px;">
         
-        <!-- PANEL DE CREDENCIALES Y CONFIGURACION DEL ATAJO -->
-        <div>
-          <div class="panel-card border-primary">
-            <div class="panel-header">
-              <h2>Configuración de tu Atajo de iPhone</h2>
-              <span class="tag-badge text-success">Webhook Activo</span>
-            </div>
-            <div style="padding: 22px;">
-              <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
-                Conecta la app oficial <strong>Atajos (Shortcuts)</strong> de tu iPhone o Apple Watch para dictarle <strong>gastos e ingresos</strong> a Siri o registrarlos al tocar un icono o widget en tu pantalla.
-              </p>
-
-              <!-- SELECTOR DE MODO: GASTO VS INGRESO VS DUAL -->
-              <div class="shortcut-mode-switcher" style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
-                <button type="button" id="btn-mode-expense" class="shortcut-pill-btn active" style="flex: 1; padding: 10px; font-weight: 800; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.82rem; border: 1px solid var(--danger-color); background: rgba(239, 68, 68, 0.15); color: #fca5a5;">
-                  🔴 Registrar Gasto
-                </button>
-                <button type="button" id="btn-mode-income" class="shortcut-pill-btn" style="flex: 1; padding: 10px; font-weight: 800; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.82rem; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted);">
-                  🟢 Registrar Ingreso
-                </button>
-                <button type="button" id="btn-mode-dual" class="shortcut-pill-btn" style="flex: 1; padding: 10px; font-weight: 800; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.82rem; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted);">
-                  ⚡ Atajo Maestro (Ambos)
-                </button>
-              </div>
-
-              <!-- SELECTOR DE IDIOMA DE ACCIONES DE iOS -->
-              <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
-                  <span style="font-size: 0.76rem; font-weight: 800; color: var(--text-main); text-transform: uppercase;">
-                    🌐 Idioma de tu iPhone / App Atajos:
-                  </span>
-                  <select id="shortcut-lang-select" class="filter-select" style="font-size: 0.78rem; padding: 4px 10px;">
-                    <option value="latam" selected>🇲🇽 🇨🇴 Español (Latinoamérica)</option>
-                    <option value="spain">🇪🇸 Español (España)</option>
-                    <option value="english">🇺🇸 English (iOS System)</option>
-                  </select>
-                </div>
-                <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; display: block;">
-                  💡 Los nombres de las acciones cambian según la región de tu iPhone. Selecciona tu idioma para ver los nombres idénticos a los que aparecen en tu pantalla.
-                </small>
-              </div>
-
-              <!-- EXPLICACIÓN CLARA DE LA LLAVE / API KEY -->
-              <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;">
-                <div style="display: flex; align-items: flex-start; gap: 8px;">
-                  <span style="font-size: 1.1rem; line-height: 1;">🔐</span>
-                  <div>
-                    <strong style="color: var(--primary-color); font-size: 0.8rem; display: block; margin-bottom: 2px;">
-                      ¿Qué es la Llave / Clave Secreta en tu Enlace?
-                    </strong>
-                    <p style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45; margin: 0;">
-                      Es el identificador privado único de tu bóveda (<strong style="color: var(--text-main);" id="shortcut-vault-tag">...</strong>). Permite que la app Atajos de tu iPhone registre movimientos en tu cuenta de forma 100% segura sin pedirte correo ni contraseña cada vez que le hables a Siri. Cada usuario tiene su propia llave personal.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- CONFIGURACIÓN DE DOMINIO Y CLAVE -->
-              <div class="api-box">
-                <div class="api-box-label">DOMINIO / SERVIDOR DE TU APLICACIÓN:</div>
-                <div class="api-box-value">
-                  <input type="text" id="shortcut-custom-domain" placeholder="https://..." style="flex: 1; min-width: 180px; font-size: 0.82rem; font-family: monospace; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--primary-color);">
-                  <button type="button" id="btn-detect-domain" class="btn-copy">Detectar Actual</button>
-                </div>
-                <small style="color: var(--text-muted); font-size: 0.68rem; display: block; margin-top: 4px;">
-                  Detecta automáticamente la URL activa donde abres el sistema.
-                </small>
-              </div>
-
-              <!-- TU CLAVE DE ATAJO -->
-              <div class="api-box">
-                <div class="api-box-label">TU CLAVE SECRETA DE BÓVEDA (API KEY):</div>
-                <div class="api-box-value">
-                  <span id="shortcut-api-key" class="api-code">ahorros_key_cargando...</span>
-                  <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                    <button id="btn-copy-key" class="btn-copy">Copiar Clave</button>
-                    <button id="btn-regen-key" class="btn-copy" title="Generar nueva clave">Nueva</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- TU URL BASE DE WEBHOOK -->
-              <div class="api-box">
-                <div class="api-box-label">URL BASE DE WEBHOOK:</div>
-                <div class="api-box-value">
-                  <span id="shortcut-webhook-url" class="api-code">https://.../api/shortcut/transaction</span>
-                  <button id="btn-copy-url" class="btn-copy" style="flex-shrink: 0;">Copiar URL</button>
-                </div>
-              </div>
-
-              <!-- SELECTOR DE TIPO DE ENLACE (2 PASOS VS 4 PASOS) -->
-              <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                <button type="button" id="btn-complexity-simple" class="btn-account-action active" style="flex: 1; padding: 8px; font-size: 0.76rem; font-weight: 800; border-radius: 8px; border: 1px solid var(--primary-color); background: rgba(6, 182, 212, 0.15); color: var(--primary-color); cursor: pointer;">
-                  ⚡ Atajo Rápido (2 Preguntas: Monto y Detalle)
-                </button>
-                <button type="button" id="btn-complexity-full" class="btn-account-action" style="flex: 1; padding: 8px; font-size: 0.76rem; font-weight: 800; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted); cursor: pointer;">
-                  🎯 Atajo Completo (4 Preguntas: Método y Categoría)
-                </button>
-              </div>
-
-              <!-- ENLACE DIRECTO LISTO EN 1 CLIC (DINAMICO GASTO / INGRESO / DUAL) -->
-              <div class="api-box" style="border: 1px solid var(--primary-color); background: rgba(6, 182, 212, 0.08);">
-                <div class="api-box-label" style="color: var(--primary-color); font-weight: 800;" id="shortcut-direct-label">
-                  ⚡ ENLACE DIRECTO LISTO (REGISTRAR GASTO):
-                </div>
-                <div class="api-box-value">
-                  <span id="shortcut-direct-url" class="api-code" style="color: var(--primary-color);">Cargando enlace directo...</span>
-                  <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 8px;">
-                    <button id="btn-copy-direct-url" class="btn-copy" style="background: var(--primary-color); color: #000; font-weight: 800; flex: 1 1 140px;">📋 Copiar Enlace</button>
-                    <button id="btn-download-pdf-guide" class="btn-copy" style="background: linear-gradient(135deg, #06b6d4, #10b981); color: #000; font-weight: 800; flex: 1 1 180px;" title="Descargar Guía en PDF Visual">📄 Descargar Guía en PDF</button>
-                  </div>
-                </div>
-                <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 8px;" id="shortcut-direct-help">
-                  💡 Este enlace ya incluye tu clave personal y los parámetros listos para conectar con la acción <em>"Obtener contenido de URL"</em>.
-                </small>
-              </div>
-
-              <!-- ALERTA VISUAL: SOLUCIÓN EXACTA AL ERROR "EL MONTO DEBE SER MAYOR A 0" -->
-              <div style="background: rgba(239, 68, 68, 0.08); border: 1.5px solid var(--danger-color); border-radius: 12px; padding: 14px 16px; margin-top: 14px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
-                  <span style="font-size: 1.4rem; line-height: 1;">💡</span>
-                  <div>
-                    <strong style="color: #fca5a5; font-size: 0.85rem; display: block;">
-                      ¿Te sale el mensaje: <em>"El monto ingresado debe ser mayor a 0"</em>?
-                    </strong>
-                    <p style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.45; margin: 4px 0 0;">
-                      Esto ocurre porque en la app <strong>Atajos</strong> quedó pegado el texto literal <code style="color: #f87171; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 4px;">[Variable_Monto]</code> en lugar de la variable azul dinámica.
-                    </p>
-                  </div>
-                </div>
-                <div style="background: var(--surface-color); border-radius: 8px; padding: 10px 12px; border: 1px solid var(--border-color); font-size: 0.73rem; line-height: 1.5;">
-                  <strong style="color: var(--primary-color); display: block; margin-bottom: 4px;">Solución en 3 toques dentro de la app Atajos de tu iPhone:</strong>
-                  <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <div>1️⃣ En la acción <strong>"Obtener contenido de URL"</strong>, borra las letras <code style="text-decoration: line-through; color: #f87171;">[Variable_Monto]</code>.</div>
-                    <div>2️⃣ Mira <strong>justo arriba del teclado</strong> de tu iPhone: verás una barra con burbujas azules. Toca la burbuja <span style="background: #2563eb; color: #fff; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 0.7rem;">¿Cuánto gastaste?</span> (o <em>"Respuesta provista"</em>).</div>
-                    <div>3️⃣ En la URL aparecerá una cajita azul redondeada. Haz lo mismo con <code style="text-decoration: line-through; color: #f87171;">[Variable_Detalle]</code> seleccionando la burbuja <span style="background: #2563eb; color: #fff; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 0.7rem;">¿En qué concepto o detalle?</span>. ¡Y listo!</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- BANNER DE GUÍA COMPLETA EN PDF -->
-              <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 14px 16px; margin-top: 14px; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-                  <div style="flex: 1 1 240px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                      <span style="font-size: 1.2rem;">📖</span>
-                      <strong style="color: var(--success-color); font-size: 0.85rem;">Guía Oficial Paso a Paso en PDF</strong>
-                    </div>
-                    <p style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.45; margin: 0;">
-                      Todo el tutorial con capturas, acciones de iOS para elegir método de pago (Nequi, Bancolombia, etc.), lista de categorías y cómo insertar las variables mágicas sin datos quemados está en tu PDF descargable.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <!-- PASO A PASO VISUAL Y ESTRUCTURA DEL ATAJO DE IPHONE -->
-              <div style="margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                <h3 style="font-size: 0.92rem; font-weight: 800; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                  <span>📱</span> Pasos Exactos para Crear tu Atajo en la App de iOS
-                </h3>
-
-                <div class="shortcut-steps-container" style="display: flex; flex-direction: column; gap: 10px;">
-                  
-                  <!-- PASO 1 -->
-                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">1</span>
-                      <strong style="font-size: 0.82rem; color: var(--text-main);">Crear Atajo Nuevo</strong>
-                    </div>
-                    <div id="step-1-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
-                      Abre la app <strong>Atajos</strong> (Shortcuts), toca <strong>+</strong> y nómbralo <em>"Registrar Gasto"</em>.
-                    </div>
-                  </div>
-
-                  <!-- PASO 2 -->
-                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">2</span>
-                      <strong style="font-size: 0.82rem; color: var(--text-main);">Pedir el Monto Gastado</strong>
-                    </div>
-                    <div id="step-2-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
-                      Agrega la acción <strong>"Solicitar entrada"</strong> (Ask for Input). Tipo: <strong>Número</strong>. Pregunta: <em>"¿Cuánto gastaste?"</em>.
-                    </div>
-                  </div>
-
-                  <!-- PASO 3 -->
-                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">3</span>
-                      <strong style="font-size: 0.82rem; color: var(--text-main);">Pedir el Concepto / Detalle</strong>
-                    </div>
-                    <div id="step-3-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
-                      Agrega otra acción <strong>"Solicitar entrada"</strong>. Tipo: <strong>Texto</strong>. Pregunta: <em>"¿En qué gastaste?"</em>.
-                    </div>
-                  </div>
-
-                  <!-- PASO 4 -->
-                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">4</span>
-                      <strong style="font-size: 0.82rem; color: var(--text-main);">Conectar con Ahorros SA</strong>
-                    </div>
-                    <div id="step-4-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
-                      Agrega <strong>"Obtener contenido de URL"</strong>. Pega tu <strong>Enlace Directo</strong> copiado arriba (con método GET) o configura una llamada POST con JSON.
-                    </div>
-                  </div>
-
-                  <!-- PASO 5 -->
-                  <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                      <span style="background: var(--primary-color); color: #000; font-weight: 900; font-size: 0.72rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">5</span>
-                      <strong style="font-size: 0.82rem; color: var(--text-main);">Confirmación de Siri o Notificación</strong>
-                    </div>
-                    <div id="step-5-desc" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; padding-left: 30px;">
-                      Agrega <strong>"Hablar texto"</strong> (Speak Text) o <strong>"Mostrar notificación"</strong> y selecciona como entrada el resultado del paso 4. Siri te dirá el saldo y gasto registrado.
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-            </div>
+        <!-- PANEL PRINCIPAL DE CREDENCIALES Y ACCESO -->
+        <div class="panel-card border-primary">
+          <div class="panel-header">
+            <h2>Atajos de iPhone & Siri</h2>
+            <span class="tag-badge text-success">Webhook Activo</span>
           </div>
-        </div>
+          <div style="padding: 22px;">
+            <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
+              Dicta tus gastos e ingresos a <strong>Siri</strong> o regístralos con 1 toque desde la app oficial <strong>Atajos (Shortcuts)</strong> o un widget en tu pantalla de inicio.
+            </p>
 
-        <!-- SIMULADOR Y PROBADOR DEL ATAJO EN VIVO -->
-        <div>
-          <div class="panel-card border-success">
-            <div class="panel-header">
-              <h2>Probador / Simulador de Atajo en Vivo</h2>
-              <span class="tag-badge text-success">Test de Conexión</span>
-            </div>
-            <div style="padding: 22px;">
-              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
-                Simula aquí exactamente cómo responderá tu iPhone cuando ejecutes el atajo desde Siri o un widget:
-              </p>
-
-              <form id="shortcut-tester-form" class="app-form" style="padding: 0;">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="test-type">Tipo de Movimiento</label>
-                    <select id="test-type">
-                      <option value="expense">Gasto (Salida)</option>
-                      <option value="income">Ingreso (Entrada)</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label for="test-amount">Monto ($ COP)</label>
-                    <input type="text" id="test-amount" class="currency-input" placeholder="Ej: 35.000" value="35.000" required>
-                  </div>
-                </div>
-
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="test-description">Concepto</label>
-                    <input type="text" id="test-description" placeholder="Ej: Almuerzo ejecutivo" value="Almuerzo ejecutivo" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="test-method">Método / Cuenta</label>
-                    <select id="test-method">
-                      <option value="NEQUI">📱 NEQUI</option>
-                      <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                      <option value="EFECTIVO">💵 EFECTIVO</option>
-                      <option value="BANCO">🏦 BANCO</option>
-                      <option value="TARJETA_CREDITO">💳 TARJETA CRÉDITO</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="test-category">Categoría</label>
-                  <select id="test-category">
-                    <option value="ALIMENTACION">ALIMENTACION</option>
-                    <option value="TRANSPORTE">TRANSPORTE</option>
-                    <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
-                    <option value="SALUD Y BIENESTAR">SALUD Y BIENESTAR</option>
-                    <option value="ENTRETENIMIENTO Y OCIO">ENTRETENIMIENTO Y OCIO</option>
-                    <option value="SALARIO / TRABAJO">SALARIO / TRABAJO</option>
-                    <option value="OTROS">OTROS</option>
-                  </select>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="margin-top: 6px;">Simular Ejecución de Atajo</button>
-              </form>
-
-              <!-- RESPUESTA DEL SIMULADOR -->
-              <div id="test-response-box" class="api-box hidden" style="margin-top: 16px;">
-                <div class="api-box-label">RESPUESTA DEVUELTA AL IPHONE (JSON):</div>
-                <pre id="test-response-text" class="api-code" style="font-size: 0.75rem; white-space: pre-wrap; margin: 0;"></pre>
+            <!-- BOVEDA ACTIVA -->
+            <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block;">Bóveda Vinculada:</span>
+                <strong style="color: var(--primary-color); font-size: 1.05rem;" id="shortcut-vault-tag">AHO-XXXX</strong>
               </div>
+              <span class="tag-badge text-primary" style="font-size: 0.72rem;">Sincronización en la Nube</span>
+            </div>
 
-              <!-- REGISTRO DE EVENTOS RECIBIDOS POR ATAJOS -->
-              <div style="margin-top: 22px;">
-                <h3 style="font-size: 0.82rem; font-weight: 700; margin-bottom: 10px;">Historial de Transacciones Recibidas por Atajos:</h3>
-                <div class="table-wrapper" style="max-height: 240px;">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Fecha/Hora</th>
-                        <th>Tipo</th>
-                        <th>Concepto</th>
-                        <th>Cuenta</th>
-                        <th>Monto</th>
-                        <th>Origen</th>
-                      </tr>
-                    </thead>
-                    <tbody id="shortcut-events-list">
-                      <tr>
-                        <td colspan="6" style="text-align: center; color: var(--text-muted);">Sin transacciones recientes de atajos.</td>
-                      </tr>
-                    </tbody>
-                  </table>
+            <!-- TU CLAVE DE ATAJO (API KEY) -->
+            <div class="api-box">
+              <div class="api-box-label">TU CLAVE SECRETA DE ATAJO (API KEY):</div>
+              <div class="api-box-value">
+                <span id="shortcut-api-key" class="api-code">ahorros_key_cargando...</span>
+                <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                  <button id="btn-copy-key" class="btn-copy">📋 Copiar Clave</button>
+                  <button id="btn-regen-key" class="btn-copy" title="Generar nueva clave">🔄 Nueva</button>
                 </div>
               </div>
-
+              <small style="color: var(--text-muted); font-size: 0.68rem; display: block; margin-top: 4px;">
+                Identifica tu cuenta de forma exclusiva y segura sin pedirte contraseñas cada vez que le hables a Siri.
+              </small>
             </div>
+
+            <!-- URL BASE DE WEBHOOK (LIMPIA Y 100% VÁLIDA EN iOS) -->
+            <div class="api-box" style="border: 1px solid var(--border-color);">
+              <div class="api-box-label">URL DE WEBHOOK PARA TU IPHONE:</div>
+              <div class="api-box-value">
+                <span id="shortcut-webhook-url" class="api-code" style="color: var(--primary-color);">https://.../api/shortcut/transaction</span>
+                <button id="btn-copy-url" class="btn-copy" style="flex-shrink: 0;">📋 Copiar URL</button>
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.68rem; display: block; margin-top: 4px;">
+                URL oficial limpia y válida para la acción <em>"Obtener contenido de URL"</em> en iOS Shortcuts.
+              </small>
+            </div>
+
+            <!-- BANNER PRINCIPAL DE DESCARGA DE LA GUÍA OFICIAL EN PDF -->
+            <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(16, 185, 129, 0.12)); border: 1.5px solid var(--primary-color); border-radius: 14px; padding: 18px 20px; margin-top: 20px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                <div style="flex: 1 1 280px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 1.4rem;">📖</span>
+                    <strong style="color: var(--text-main); font-size: 0.95rem;">Guía Oficial en PDF (Paso a Paso)</strong>
+                  </div>
+                  <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; margin: 0;">
+                    Descarga el manual completo con la configuración exacta para tu iPhone, cómo insertar las variables mágicas sin errores de sintaxis, activación por voz con Siri y solución a posibles fallas.
+                  </p>
+                </div>
+                <button id="btn-download-pdf-guide" class="btn-copy" style="background: linear-gradient(135deg, #06b6d4, #10b981); color: #000; font-weight: 800; padding: 12px 18px; font-size: 0.84rem; border-radius: 10px; box-shadow: 0 4px 14px var(--primary-glow); cursor: pointer;" title="Descargar Guía en PDF Visual">
+                  📄 Descargar Guía Oficial en PDF
+                </button>
+              </div>
+            </div>
+
+            <!-- HISTORIAL DE EVENTOS RECIBIDOS EN TIEMPO REAL -->
+            <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 18px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <h3 style="font-size: 0.84rem; font-weight: 700; color: var(--text-main);">
+                  📡 Últimos Movimientos Recibidos desde tu iPhone:
+                </h3>
+                <span class="tag-badge text-muted" style="font-size: 0.68rem;">Tiempo Real</span>
+              </div>
+              <div class="table-wrapper" style="max-height: 220px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fecha/Hora</th>
+                      <th>Tipo</th>
+                      <th>Concepto</th>
+                      <th>Cuenta</th>
+                      <th>Monto</th>
+                      <th>Origen</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shortcut-events-list">
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Sin transacciones recientes desde atajos.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         </div>
 

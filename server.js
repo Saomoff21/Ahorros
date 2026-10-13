@@ -220,17 +220,17 @@ app.all('/api/shortcut/transaction', (req, res) => {
 
   if (!numericAmount || numericAmount <= 0) {
     if (hasAmountPlaceholder) {
-      const errorMsg = 'En tu iPhone dejaste el texto [Variable_Monto] en vez de la variable azul. En la app Atajos, toca donde dice [Variable_Monto], bórralo y selecciona la burbuja azul "¿Cuánto gastaste?" que aparece directamente arriba de tu teclado.';
-      if (returnFormat === 'text') return res.status(400).type('text/plain').send('Error: ' + errorMsg);
+      const errorMsg = 'En tu iPhone dejaste el texto [Monto] en vez de la variable azul. En la app Atajos, toca donde dice [Monto], bórralo y selecciona la burbuja azul "¿Cuánto gastaste?" que aparece directamente arriba de tu teclado.';
+      if (returnFormat === 'text') return res.status(200).type('text/plain').send('Atención: ' + errorMsg);
       return res.status(400).json({
         success: false,
         error: errorMsg,
-        speech: 'Atención: En tu iPhone debes vincular la variable azul ¿Cuánto gastaste? sobre el teclado en lugar del texto escrito Variable Monto.'
+        speech: 'Atención: En tu iPhone debes vincular la variable azul ¿Cuánto gastaste? sobre el teclado en lugar del texto escrito Monto.'
       });
     }
 
     const errorMsg = 'El monto debe ser un número mayor a 0.';
-    if (returnFormat === 'text') return res.status(400).type('text/plain').send('Error: ' + errorMsg);
+    if (returnFormat === 'text') return res.status(200).type('text/plain').send('Atención: ' + errorMsg);
     return res.status(400).json({
       success: false,
       error: errorMsg,
@@ -312,6 +312,7 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const newTx = {
     id: 'tx_sc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
     apiKey,
+    vaultId: String(payload.vaultId || payload.vault || payload.boveda || '').trim(),
     type: cleanType,
     amount: numericAmount,
     description: cleanDescription,

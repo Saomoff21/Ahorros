@@ -216,6 +216,63 @@ body {
   pointer-events: none !important;
 }
 
+/* BANNER DE INVITADO Y MODO PRUEBA LIBRE */
+.guest-welcome-banner {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.14), rgba(16, 185, 129, 0.12));
+  border-bottom: 1px solid rgba(6, 182, 212, 0.35);
+  padding: 10px 20px;
+  position: relative;
+  z-index: 105;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.guest-banner-content {
+  max-width: 1540px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.btn-banner-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.btn-banner-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text-main);
+}
+
+/* ETIQUETAS DE PERIODO / MES EN HISTORIALES */
+.history-period-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* MODAL DE CONFIRMACIÓN IN-APP DE ALTA PRIORIDAD */
+#app-confirm-modal {
+  z-index: 100000 !important;
+}
+#app-confirm-modal .modal-card {
+  max-width: 420px !important;
+  width: 90% !important;
+  margin: auto !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(239, 68, 68, 0.45) !important;
+}
+
 /* HEADER FLOTANTE / MODERNO */
 .app-header {
   background: var(--surface-color);
@@ -851,23 +908,30 @@ tbody tr:hover {
 .btn-delete {
   background: transparent;
   color: var(--danger-color);
-  border: 1px solid rgba(244, 63, 94, 0.3);
-  width: 26px;
-  height: 26px;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   border-radius: 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.76rem;
+  font-weight: 800;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.btn-delete:hover {
+.btn-delete:hover,
+.btn-delete:active {
   background: var(--danger-color);
   color: #fff;
   border-color: var(--danger-color);
+  transform: scale(1.08);
 }
 
 .btn-pay {
@@ -2425,7 +2489,7 @@ body[data-device="desktop"] .goals-layout-grid {
 
   table {
     width: 100% !important;
-    min-width: 440px !important; /* Mantenido solo dentro del wrapper scrolleable */
+    min-width: 480px !important;
   }
 
   th, td {
@@ -2434,11 +2498,47 @@ body[data-device="desktop"] .goals-layout-grid {
     white-space: nowrap;
   }
 
+  /* Columna de eliminar fija a la derecha en móviles para acceso táctil instantáneo */
+  tbody tr:not(.month-divider-row) td:last-child:not([colspan]),
+  thead th:last-child {
+    text-align: center;
+    position: sticky;
+    right: 0;
+    background: var(--surface-color);
+    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.35);
+    z-index: 5;
+  }
+
+  /* Filas de cabecera de mes y estados vacíos ocupan el ancho natural sin distorsión sticky */
+  tbody tr.month-divider-row td,
+  tbody tr td[colspan] {
+    position: static !important;
+    box-shadow: none !important;
+    white-space: normal !important;
+  }
+
+  tbody tr:hover td:last-child:not([colspan]),
+  tbody tr:active td:last-child:not([colspan]) {
+    background: var(--surface-secondary);
+  }
+
+  .btn-delete {
+    min-width: 32px !important;
+    min-height: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10;
+    touch-action: manipulation;
+  }
+
   /* MODALES ESTILO BOTTOM SHEET CON ÁREA SEGURA */
   .modal-overlay {
     padding: 8px !important;
     align-items: flex-end !important;
-    z-index: 99999 !important;
+    z-index: 100000 !important;
   }
 
   .modal-overlay.hidden {
@@ -2518,6 +2618,21 @@ body[data-device="desktop"] .goals-layout-grid {
   }
   .tabs-nav {
     display: none !important;
+  }
+
+  .main-container {
+    padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #app-confirm-modal {
+    align-items: center !important;
+    z-index: 100000 !important;
+  }
+  #app-confirm-modal .modal-card {
+    border-radius: 20px !important;
+    margin: auto !important;
+    max-width: 92% !important;
+    max-height: 80vh !important;
   }
 
   input, select, textarea {

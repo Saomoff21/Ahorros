@@ -22,27 +22,32 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// CARGA DE CONFIGURACION DE FIREBASE
+// CARGA DE CONFIGURACION DE FIREBASE (PROYECTO AHORROS-SA)
 let firebaseConfig = {
-  projectId: "gen-lang-client-0791489226",
-  appId: "1:444846324805:web:84aae995b6c52346beb72c",
-  apiKey: "AIzaSyAEAlepremteHWQAZGao8OqVJqMgJvEREA",
-  authDomain: "gen-lang-client-0791489226.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-ahorros-d1309347-2e5b-4342-ae0c-d494bd27f1c4"
+  projectId: "ahorros-sa",
+  appId: "1:161318086592:web:f795e936d14ea7cc6d4a25",
+  apiKey: "AIzaSyASRcR-3pV6LUcdbN4YwzGRF235z5PNb54",
+  authDomain: "ahorros-sa.firebaseapp.com",
+  storageBucket: "ahorros-sa.firebasestorage.app",
+  messagingSenderId: "161318086592",
+  measurementId: "G-FVK1SHVFFY"
 };
 
 try {
   const configResponse = await fetch('./firebase-applet-config.json');
   if (configResponse.ok) {
-    firebaseConfig = await configResponse.json();
+    const fetched = await configResponse.json();
+    if (fetched && fetched.projectId) {
+      firebaseConfig = { ...firebaseConfig, ...fetched };
+    }
   }
 } catch (e) {
-  console.warn('Using bundled Firebase config');
+  console.warn('Usando configuración bundled de Firebase (ahorros-sa)');
 }
 
 // INICIALIZACION DE FIREBASE
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
@@ -94,10 +99,18 @@ function generateVaultCode() {
 function sortTransactionsByDate(list) {
   if (!Array.isArray(list)) return [];
   return list.sort((a, b) => {
+    // 1. Prioridad: Fecha del movimiento (YYYY-MM-DD)
     const da = a.date || '';
     const db = b.date || '';
     if (da !== db) return db.localeCompare(da);
-    return (b.createdAt || '').localeCompare(a.createdAt || '');
+    // 2. Si la fecha es igual, ordenar por hora exacta
+    const ta = a.time || '';
+    const tb = b.time || '';
+    if (ta && tb && ta !== tb) return tb.localeCompare(ta);
+    // 3. Si no hay hora, ordenar por fecha de creación (createdAt)
+    const ca = a.createdAt || '';
+    const cb = b.createdAt || '';
+    return cb.localeCompare(ca);
   });
 }
 
@@ -112,9 +125,35 @@ if (savedSessionRaw) {
   }
 }
 
-// Si no hay sesión válida registrada, redirigir a la pantalla de login
+// Si no hay sesión válida registrada, crear sesión local de invitado para permitir probar la app libremente
 if (!savedUserSession || !savedUserSession.userCode) {
-  window.location.replace('login.html');
+  const demoCode = 'USR-INVITADO';
+  savedUserSession = {
+    uid: 'usr_invitado',
+    username: 'Invitado',
+    email: '',
+    userCode: demoCode,
+    isGuest: true
+  };
+  localStorage.setItem('ahorros_current_user', JSON.stringify(savedUserSession));
+  localStorage.setItem('ahorros_active_vault', demoCode);
+  localStorage.setItem('ahorros_boveda_code', demoCode);
+}
+
+// Banner de bienvenida e información de modo libre / invitado
+const guestBanner = document.getElementById('guest-welcome-banner');
+const btnCloseGuestBanner = document.getElementById('btn-close-guest-banner');
+if (guestBanner) {
+  const isDismissed = sessionStorage.getItem('ahorros_guest_banner_dismissed') === 'true';
+  if (savedUserSession && savedUserSession.isGuest && !isDismissed) {
+    guestBanner.classList.remove('hidden');
+  }
+}
+if (btnCloseGuestBanner && guestBanner) {
+  btnCloseGuestBanner.addEventListener('click', () => {
+    guestBanner.classList.add('hidden');
+    sessionStorage.setItem('ahorros_guest_banner_dismissed', 'true');
+  });
 }
 
 // Comprobar parámetros de URL (?boveda=... o ?code=... o ?vault=...)
@@ -145,10 +184,81 @@ if (userBadgeCode && savedUserSession) {
   userBadgeCode.textContent = savedUserSession.userCode;
 }
 
+// MODAL DE CONFIRMACIÓN IN-APP (REEMPLAZO SEGURO Y UNIVERSAL DE WINDOW.CONFIRM)
+function appConfirm(message, options = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('app-confirm-modal');
+    const msgEl = document.getElementById('confirm-modal-message');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const iconEl = document.getElementById('confirm-modal-icon');
+    const btnOk = document.getElementById('btn-confirm-ok');
+    const btnCancel = document.getElementById('btn-confirm-cancel');
+
+    if (!modal || !btnOk || !btnCancel) {
+      resolve(true);
+      return;
+    }
+
+    if (msgEl) msgEl.textContent = message;
+    if (titleEl) titleEl.textContent = options.title || 'Confirmar Acción';
+    if (iconEl) iconEl.textContent = options.icon || (options.isDanger === false ? '❓' : '🗑️');
+    if (btnOk) {
+      btnOk.textContent = options.okText || (options.isDanger === false ? 'Aceptar' : 'Eliminar');
+      btnOk.className = options.isDanger === false ? 'btn btn-primary' : 'btn btn-danger';
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    let isDone = false;
+    const cleanup = () => {
+      if (isDone) return;
+      isDone = true;
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+    };
+
+    const onOk = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      cleanup();
+      resolve(false);
+    };
+
+    const onBackdrop = (e) => {
+      if (e.target === modal) {
+        e?.preventDefault?.();
+        cleanup();
+        resolve(false);
+      }
+    };
+
+    btnOk.addEventListener('click', onOk, { once: true });
+    btnCancel.addEventListener('click', onCancel, { once: true });
+    modal.addEventListener('click', onBackdrop);
+  });
+}
+
 const btnLogout = document.getElementById('btn-logout');
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
-    if (confirm('¿Deseas cerrar tu sesión? Tus finanzas permanecen seguras y sincronizadas en tu bóveda.')) {
+    const confirmed = await appConfirm('¿Deseas cerrar tu sesión? Tus finanzas permanecen seguras y sincronizadas en tu bóveda.', {
+      title: 'Cerrar Sesión Segura',
+      icon: '🚪',
+      okText: 'Cerrar Sesión',
+      isDanger: false
+    });
+    if (confirmed) {
       localStorage.removeItem('ahorros_current_user');
       if (auth) {
         try { await signOut(auth); } catch (e) {}
@@ -195,6 +305,37 @@ const recentlyDeletedTxIds = new Set();
 const recentlyDeletedDebtIds = new Set();
 const recentlyDeletedGoalIds = new Set();
 const recentlyDeletedRecurringIds = new Set();
+
+// Persistencia en localStorage (y sessionStorage) para sobrevivir recargas y multi-pestaña
+function loadRecentlyDeletedIds() {
+  try {
+    const raw = localStorage.getItem('ahorros_tombstones') || sessionStorage.getItem('ahorros_tombstones');
+    if (raw) {
+      const data = JSON.parse(raw);
+      (data.tx || []).forEach(id => recentlyDeletedTxIds.add(String(id)));
+      (data.debt || []).forEach(id => recentlyDeletedDebtIds.add(String(id)));
+      (data.goal || []).forEach(id => recentlyDeletedGoalIds.add(String(id)));
+      (data.recurring || []).forEach(id => recentlyDeletedRecurringIds.add(String(id)));
+    }
+  } catch (e) {}
+}
+loadRecentlyDeletedIds();
+
+function saveRecentlyDeletedId(type, id) {
+  if (!id) return;
+  try {
+    const raw = localStorage.getItem('ahorros_tombstones') || sessionStorage.getItem('ahorros_tombstones');
+    const data = raw ? JSON.parse(raw) : { tx: [], debt: [], goal: [], recurring: [] };
+    if (!data[type]) data[type] = [];
+    const strId = String(id);
+    if (!data[type].includes(strId)) {
+      data[type].push(strId);
+      if (data[type].length > 300) data[type].shift();
+    }
+    localStorage.setItem('ahorros_tombstones', JSON.stringify(data));
+    sessionStorage.setItem('ahorros_tombstones', JSON.stringify(data));
+  } catch (e) {}
+}
 
 const initDateObj = new Date();
 let activeYear = String(initDateObj.getFullYear());
@@ -703,7 +844,13 @@ if (btnTestCloudVault) {
 
 if (btnNewVault) {
   btnNewVault.addEventListener('click', async () => {
-    if (confirm('¿Deseas crear una nueva Bóveda en blanco con código independiente? Tu bóveda actual no se borrará y podrás volver a ella en cualquier momento con su código.')) {
+    const confirmed = await appConfirm('¿Deseas crear una nueva Bóveda en blanco con código independiente? Tu bóveda actual no se borrará y podrás volver a ella en cualquier momento con su código.', {
+      title: 'Crear Nueva Bóveda',
+      icon: '➕',
+      okText: 'Crear Bóveda',
+      isDanger: false
+    });
+    if (confirmed) {
       const newCode = generateVaultCode();
       await switchVault(newCode, true);
     }
@@ -749,6 +896,11 @@ function showQuickToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, 3200);
 }
+
+// Reemplazo seguro de window.alert para entornos sandboxed / iFrame
+window.alert = function(msg) {
+  showQuickToast(String(msg || ''), 'warning');
+};
 
 // SELECTOR DE EMOJIS DE METAS DE AHORRO
 const goalEmojiPicker = document.getElementById('goal-emoji-picker');
@@ -1173,347 +1325,334 @@ if (btnDownloadPdfGuide) {
         format: 'a4'
       });
 
-      const primaryCyan = [6, 182, 212];
-      const darkBg = [15, 17, 24];
-      const cardBg = [24, 28, 38];
-      const emeraldGreen = [16, 185, 129];
-      const crimsonRed = [239, 68, 68];
-      const goldAmber = [245, 158, 11];
-      const textWhite = [255, 255, 255];
-      const textMuted = [156, 163, 175];
+      // Paleta Corporativa Limpia y de Alta Legibilidad (Fondo Claro para Imprimir y Leer)
+      const cPrimary = [2, 132, 199];      // Cyan / Azul primario (#0284c7)
+      const cEmerald = [5, 150, 105];      // Verde Esmeralda (#059669)
+      const cCrimson = [220, 38, 38];      // Rojo Alerta (#dc2626)
+      const cAmber = [217, 119, 6];        // Ámbar (#d97706)
+      const cDark = [15, 23, 42];          // Slate oscuro texto principal (#0f172a)
+      const cBody = [51, 65, 85];          // Slate cuerpo de texto (#334155)
+      const cMuted = [100, 116, 139];      // Slate atenuado (#64748b)
+      const cBorder = [226, 232, 240];     // Borde suave (#e2e8f0)
+      const cBgCard = [248, 250, 252];     // Fondo tarjeta (#f8fafc)
+      const cBgBox = [241, 245, 249];      // Fondo caja de código (#f1f5f9)
 
-      // ==========================================
-      // PÁGINA 1: GASTOS DETALLADOS Y VARIABLES MÁGICAS
-      // ==========================================
-      doc.setFillColor(...darkBg);
+      // =========================================================================
+      // PÁGINA 1: GUÍA DE GASTOS DINÁMICOS, VARIABLES MÁGICAS Y SIRI
+      // =========================================================================
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, 210, 297, 'F');
 
       // Banner Header Superior
-      doc.setFillColor(20, 24, 34);
-      doc.roundedRect(12, 10, 186, 28, 4, 4, 'F');
-      doc.setDrawColor(...primaryCyan);
-      doc.setLineWidth(0.8);
-      doc.roundedRect(12, 10, 186, 28, 4, 4, 'D');
+      doc.setFillColor(240, 249, 255);
+      doc.roundedRect(12, 10, 186, 24, 3, 3, 'F');
+      doc.setDrawColor(...cPrimary);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(12, 10, 186, 24, 3, 3, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
-      doc.setTextColor(...primaryCyan);
-      doc.text('AHORROS SA  |  GUIA OFICIAL DE ATAJOS PARA IPHONE & SIRI', 18, 20);
+      doc.setTextColor(...cPrimary);
+      doc.text('AHORROS SA  |  GUÍA OFICIAL DE ATAJOS PARA IPHONE & SIRI', 18, 19);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...textMuted);
-      doc.text('CAPTURA INSTANTANEA POR VOZ CON SIRI, WIDGETS Y BOTONES RAPIDOS', 18, 26);
-      doc.text(`BOVEDA: ${activeVaultId}   |   LLAVE SECRETA (API KEY): ${userApiKey}`, 18, 32);
+      doc.setFontSize(8.2);
+      doc.setTextColor(...cBody);
+      doc.text('Configuración paso a paso para registro instantáneo por voz, widgets y botones rápidos', 18, 25);
+      doc.text(`Bóveda Activa: ${activeVaultId}   |   Clave API: ${userApiKey}`, 18, 30);
 
-      let curY = 42;
-
-      // TARJETA DE EXPLICACIÓN DE LA LLAVE & SINCRONIZACIÓN EN TIEMPO REAL
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 24, 3, 3, 'F');
-      doc.setDrawColor(...primaryCyan);
+      // Tarjeta: Llave Secreta y Sincronización
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, 38, 186, 21, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cBorder);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, curY, 186, 24, 3, 3, 'D');
+      doc.roundedRect(12, 38, 186, 21, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.setTextColor(...primaryCyan);
-      doc.text('🔐 TU LLAVE SECRETA PERSONAL & SINCRONIZACION EN LA NUBE', 18, curY + 6);
+      doc.setTextColor(...cPrimary);
+      doc.text('TÚ LLAVE SECRETA PERSONAL & SINCRONIZACIÓN EN LA NUBE', 18, 44);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.2);
-      doc.setTextColor(...textWhite);
-      const keyExplain = `Tu clave secreta (key=${userApiKey}) identifica de forma exclusiva tu bóveda (${activeVaultId}). Permite que tu iPhone registre gastos e ingresos directamente en tu saldo sin pedirte usuario ni contraseña cada vez. Si generas una "Nueva" clave desde la web o el celular, se sincroniza en tiempo real en todos tus dispositivos.`;
+      doc.setFontSize(7.8);
+      doc.setTextColor(...cBody);
+      const keyExplain = `Tu clave identifica exclusivamente tu bóveda (${activeVaultId}). Permite que tu iPhone registre gastos e ingresos directamente sin pedir contraseña cada vez. Si generas una clave nueva desde la web o el celular, se sincroniza en la nube automáticamente en todos tus dispositivos.`;
       const keyLines = doc.splitTextToSize(keyExplain, 174);
-      doc.text(keyLines, 18, curY + 12);
+      doc.text(keyLines, 18, 49);
 
-      curY += 28;
-
-      // TARJETA 1: REGISTRAR GASTOS PASO A PASO (SIN DATOS QUEMADOS)
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 150, 3, 3, 'F');
-      doc.setDrawColor(...crimsonRed);
-      doc.setLineWidth(0.6);
-      doc.roundedRect(12, curY, 186, 150, 3, 3, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
-      doc.setTextColor(...crimsonRed);
-      doc.text('1. COMO REGISTRAR GASTOS DINAMICOS (METODO DE PAGO + CATEGORIA)', 18, curY + 8);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.4);
-      doc.setTextColor(...textWhite);
-      doc.text('Abre la app "Atajos" en tu iPhone, toca "+" en la esquina superior y nombra el atajo "Registrar Gasto".', 18, curY + 15);
-
-      // Paso 1
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryCyan);
-      doc.text('• PASO 1 (Monto):', 18, curY + 22);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Solicitar entrada" -> Tipo: Numero -> Pregunta: "¿Cuanto gastaste?".', 48, curY + 22);
-
-      // Paso 2
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryCyan);
-      doc.text('• PASO 2 (Metodo):', 18, curY + 29);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Elegir de la lista" con las opciones: NEQUI, BANCOLOMBIA, DAVIPLATA, EFECTIVO, TARJETA.', 48, curY + 29);
-
-      // Paso 3
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryCyan);
-      doc.text('• PASO 3 (Categoria):', 18, curY + 36);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Elegir de la lista" con opciones: ALIMENTACION, TRANSPORTE, VIVIENDA, SERVICIOS, OTROS.', 48, curY + 36);
-
-      // Paso 4
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryCyan);
-      doc.text('• PASO 4 (Detalle):', 18, curY + 43);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Solicitar entrada" -> Tipo: Texto -> Pregunta: "¿Concepto o detalle? (Opcional)".', 48, curY + 43);
-
-      // Paso 5
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryCyan);
-      doc.text('• PASO 5 (Enviar):', 18, curY + 50);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Obtener contenido de URL" (Metodo GET) con el siguiente enlace:', 48, curY + 50);
-
-      // Cuadro de URL con Variables Mágicas
-      doc.setFillColor(15, 17, 24);
-      doc.roundedRect(16, curY + 54, 178, 18, 2, 2, 'F');
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(6.2);
-      doc.setTextColor(252, 165, 165);
-      const dynamicExpenseUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=gasto&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]&format=text`;
-      const urlLines = doc.splitTextToSize(dynamicExpenseUrl, 172);
-      doc.text(urlLines, 19, curY + 61);
-
-      // ALERTA DE DATOS QUEMADOS (DESTACADO)
-      doc.setFillColor(45, 20, 20);
-      doc.roundedRect(16, curY + 76, 178, 34, 2, 2, 'F');
-      doc.setDrawColor(...crimsonRed);
-      doc.roundedRect(16, curY + 76, 178, 34, 2, 2, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.6);
-      doc.setTextColor(254, 202, 202);
-      doc.text('⚠️ ATENCION CRITICA: ¡COMO EVITAR QUE QUEDEN DATOS QUEMADOS (25000 O NEQUI FIJOS)!', 20, curY + 83);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.8);
-      doc.setTextColor(...textWhite);
-      const ruleText = 'Al escribir el enlace en la accion de tu iPhone, NO escribas numeros como "25000" ni palabras como "NEQUI" o "Almuerzo" a mano. En el teclado de tu celular, toca la barra de Variables Magicas que aparece directamente arriba del teclado (o manten presionado el texto y toca "Insertar Variable") y selecciona la cajita azul del paso correspondiente. De este modo, cada vez que uses el atajo se guardara exactamente lo que ingreses en pantalla.';
-      const ruleLines = doc.splitTextToSize(ruleText, 170);
-      doc.text(ruleLines, 20, curY + 89);
-
-      // Paso 6 y 7
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.4);
-      doc.setTextColor(...primaryCyan);
-      doc.text('• PASO 6 (Respuesta de Siri):', 18, curY + 116);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('Agrega la accion "Hablar texto" o "Mostrar notificacion" pasando la salida de la URL (con &format=text Siri respondera en voz alta tu gasto y nuevo saldo sin JSON).', 58, curY + 116);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...emeraldGreen);
-      doc.text('• PASO 7 (Listo):', 18, curY + 124);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textWhite);
-      doc.text('¡Presiona Listo! Puedes agregar el icono a tu pantalla de inicio o widget para registrar con 1 toque.', 48, curY + 124);
-
-      curY += 156;
-
-      // TARJETA 2: ACTIVACIÓN POR VOZ CON SIRI
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, curY, 186, 40, 3, 3, 'F');
-      doc.setDrawColor(...goldAmber);
+      // Tarjeta Principal: Registro de Gastos Paso a Paso
+      let curY = 63;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, curY, 186, 142, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cCrimson);
       doc.setLineWidth(0.5);
-      doc.roundedRect(12, curY, 186, 40, 3, 3, 'D');
+      doc.roundedRect(12, curY, 186, 142, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.5);
-      doc.setTextColor(...goldAmber);
-      doc.text('🎙️ ACTIVACION POR VOZ CON SIRI & APPLE WATCH', 18, curY + 8);
+      doc.setTextColor(...cCrimson);
+      doc.text('1. CÓMO REGISTRAR GASTOS DINÁMICOS (MÉTODO + CATEGORÍA + DETALLE)', 18, curY + 7);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.4);
-      doc.setTextColor(...textWhite);
-      doc.text('1. Di: "Oye Siri, Registrar Gasto". Siri te preguntara en voz alta el monto, metodo y concepto.', 18, curY + 16);
-      doc.text('2. Respondele con tu voz (ej: "Cuarenta y cinco mil", "Nequi", "Almuerzo") y quedara guardado.', 18, curY + 23);
-      doc.text('3. Siri te confirmara con su propia voz tu saldo actualizado en la nube al terminar.', 18, curY + 30);
+      doc.setFontSize(8);
+      doc.setTextColor(...cBody);
+      doc.text('Abre la app "Atajos" en tu iPhone, pulsa "+" arriba a la derecha y nombra el atajo "Registrar Gasto":', 18, curY + 13);
 
-      // Pie de Pagina Página 1
-      doc.setFont('helvetica', 'normal');
+      // Pasos enumerados
+      const expenseSteps = [
+        ['Paso 1 (Monto):', 'Acción "Solicitar entrada" -> Tipo: Número -> Pregunta: "¿Cuánto gastaste?".'],
+        ['Paso 2 (Método):', 'Acción "Elegir de la lista" -> Opciones: NEQUI, BANCOLOMBIA, DAVIPLATA, EFECTIVO, TARJETA.'],
+        ['Paso 3 (Categoría):', 'Acción "Elegir de la lista" -> Opciones: ALIMENTACIÓN, TRANSPORTE, VIVIENDA, SERVICIOS, OTROS.'],
+        ['Paso 4 (Detalle):', 'Acción "Solicitar entrada" -> Tipo: Texto -> Pregunta: "¿Concepto o detalle? (Opcional)".'],
+        ['Paso 5 (URL):', 'Acción "Obtener contenido de URL" (Método GET) con el siguiente enlace:']
+      ];
+
+      let sY = curY + 20;
+      expenseSteps.forEach(([label, desc]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...cPrimary);
+        doc.text(label, 18, sY);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...cDark);
+        doc.text(desc, 48, sY);
+        sY += 6.5;
+      });
+
+      // Caja de URL Dinámica
+      doc.setFillColor(...cBgBox);
+      doc.roundedRect(18, sY - 1, 174, 15, 2, 2, 'F');
+      doc.setDrawColor(...cBorder);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(18, sY - 1, 174, 15, 2, 2, 'D');
+
+      doc.setFont('courier', 'bold');
       doc.setFontSize(7.2);
-      doc.setTextColor(...textMuted);
-      doc.text('PAGINA 1/2   |   AHORROS SA - SISTEMA CON PERSISTENCIA NUBE Y ATAJOS DE IPHONE', 38, 290);
+      doc.setTextColor(...cCrimson);
+      const dynamicExpenseUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=gasto&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]&format=text`;
+      const urlLines = doc.splitTextToSize(dynamicExpenseUrl, 168);
+      doc.text(urlLines, 21, sY + 5);
 
-      // ==========================================
-      // PÁGINA 2: INGRESOS, ATAJO MAESTRO Y DICCIONARIO
-      // ==========================================
+      sY += 19;
+
+      // Caja Destacada: Atención con las Variables Mágicas
+      doc.setFillColor(254, 242, 242);
+      doc.roundedRect(18, sY, 174, 28, 2, 2, 'F');
+      doc.setDrawColor(...cCrimson);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(18, sY, 174, 28, 2, 2, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.2);
+      doc.setTextColor(...cCrimson);
+      doc.text('⚠️ ATENCIÓN: ¡CÓMO EVITAR DATOS QUEMADOS (25.000 O NEQUI FIJOS)!', 22, sY + 6);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.6);
+      doc.setTextColor(...cDark);
+      const ruleText = 'Al escribir el enlace en la acción de tu iPhone, NO escribas números como "25000" ni palabras como "NEQUI" a mano. En el teclado de tu iPhone, pulsa la barra de "Variables Mágicas" que aparece justo arriba del teclado (o mantén presionado el campo y pulsa "Insertar Variable") y selecciona la cajita azul correspondiente a cada paso anterior. Así cada uso registrará exactamente lo que ingreses.';
+      const ruleLines = doc.splitTextToSize(ruleText, 166);
+      doc.text(ruleLines, 22, sY + 12);
+
+      sY += 33;
+
+      // Pasos finales 6 y 7
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...cPrimary);
+      doc.text('Paso 6 (Siri):', 18, sY);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...cDark);
+      doc.text('Acción "Hablar texto" pasando el resultado de la URL. Con &format=text Siri responderá tu saldo en voz alta.', 48, sY);
+
+      sY += 6.5;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...cEmerald);
+      doc.text('Paso 7 (Listo):', 18, sY);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...cDark);
+      doc.text('¡Presiona Listo! Puedes agregar el ícono a tu pantalla de inicio o widget para registrar con 1 toque.', 48, sY);
+
+      // Tarjeta de Activación por Voz con Siri
+      let siriY = 210;
+      doc.setFillColor(254, 252, 232);
+      doc.roundedRect(12, siriY, 186, 30, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cAmber);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, siriY, 186, 30, 2.5, 2.5, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...cAmber);
+      doc.text('ACTIVACIÓN POR VOZ CON SIRI & APPLE WATCH', 18, siriY + 7);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.8);
+      doc.setTextColor(...cDark);
+      doc.text('1. Di: "Oye Siri, Registrar Gasto". Siri te preguntará de inmediato el monto, método y concepto.', 18, siriY + 14);
+      doc.text('2. Respóndele con tu voz (ej: "Cuarenta y cinco mil", "Nequi", "Almuerzo") y quedará guardado en la nube.', 18, siriY + 20);
+      doc.text('3. Siri te confirmará con su propia voz tu nuevo saldo actualizado en tiempo real.', 18, siriY + 26);
+
+      // Pie de Página 1
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...cMuted);
+      doc.text('PÁGINA 1/2   |   AHORROS SA - GUÍA OFICIAL PRO   |   FINANZAS EN TIEMPO REAL', 42, 285);
+
+      // =========================================================================
+      // PÁGINA 2: REGISTRO DE INGRESOS, ATAJO MAESTRO Y DICCIONARIO
+      // =========================================================================
       doc.addPage();
-      doc.setFillColor(...darkBg);
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, 210, 297, 'F');
 
       // Banner Header Superior Página 2
-      doc.setFillColor(20, 24, 34);
-      doc.roundedRect(12, 10, 186, 24, 4, 4, 'F');
-      doc.setDrawColor(...emeraldGreen);
+      doc.setFillColor(236, 253, 245);
+      doc.roundedRect(12, 10, 186, 22, 3, 3, 'F');
+      doc.setDrawColor(...cEmerald);
       doc.setLineWidth(0.6);
-      doc.roundedRect(12, 10, 186, 24, 4, 4, 'D');
+      doc.roundedRect(12, 10, 186, 22, 3, 3, 'D');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12.5);
-      doc.setTextColor(...emeraldGreen);
-      doc.text('2. REGISTRAR INGRESOS, ATAJO MAESTRO Y DICCIONARIO TRILINGÜE', 18, 20);
+      doc.setFontSize(12);
+      doc.setTextColor(...cEmerald);
+      doc.text('2. REGISTRAR INGRESOS, ATAJO MAESTRO Y DICCIONARIO DE ACCIONES', 18, 19);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...textMuted);
-      doc.text('OPCIONES AVANZADAS DE AUTOMATIZACION Y RESOLUCION DE DUDAS', 18, 27);
+      doc.setFontSize(8);
+      doc.setTextColor(...cBody);
+      doc.text('Automatizaciones avanzadas y referencia trilingüe de acciones para cualquier iPhone', 18, 26);
 
-      let p2Y = 38;
-
-      // TARJETA 1: REGISTRAR INGRESOS
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, p2Y, 186, 52, 3, 3, 'F');
-      doc.setDrawColor(...emeraldGreen);
-      doc.roundedRect(12, p2Y, 186, 52, 3, 3, 'D');
+      // Tarjeta 1: Registro de Ingresos
+      let p2Y = 36;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, p2Y, 186, 50, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cEmerald);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, p2Y, 186, 50, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
-      doc.setTextColor(...emeraldGreen);
-      doc.text('COMO REGISTRAR INGRESOS (SALARIO, HONORARIOS, VENTAS)', 18, p2Y + 7);
+      doc.setFontSize(9);
+      doc.setTextColor(...cEmerald);
+      doc.text('CÓMO REGISTRAR INGRESOS (SALARIO, HONORARIOS, VENTAS)', 18, p2Y + 7);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
-      doc.setTextColor(...textWhite);
-      doc.text('Paso A: Crea un nuevo atajo y nombralo "Registrar Ingreso".', 18, p2Y + 14);
-      doc.text('Paso B: Agrega "Solicitar entrada" (Numero) -> "¿Cuanto dinero ingresas?". [Variable Monto]', 18, p2Y + 20);
+      doc.setFontSize(7.8);
+      doc.setTextColor(...cDark);
+      doc.text('Paso A: Crea un nuevo atajo y nómbralo "Registrar Ingreso".', 18, p2Y + 14);
+      doc.text('Paso B: Agrega "Solicitar entrada" (Número) -> "¿Cuánto dinero ingresas?". [Variable Monto]', 18, p2Y + 20);
       doc.text('Paso C: Agrega "Elegir de la lista" -> Opciones: BANCO, NEQUI, DAVIPLATA, EFECTIVO. [Variable Cuenta]', 18, p2Y + 26);
       doc.text('Paso D: Agrega "Solicitar entrada" (Texto) -> "¿Origen o concepto? (ej: Salario, Pago cliente)". [Variable Detalle]', 18, p2Y + 32);
-      doc.text('Paso E: Agrega "Obtener contenido de URL" (Metodo GET) con type=ingreso:', 18, p2Y + 38);
+      doc.text('Paso E: Agrega "Obtener contenido de URL" (Método GET) con type=ingreso:', 18, p2Y + 38);
 
+      doc.setFillColor(...cBgBox);
+      doc.roundedRect(18, p2Y + 41, 174, 7, 1.5, 1.5, 'F');
       doc.setFont('courier', 'bold');
-      doc.setFontSize(6.4);
-      doc.setTextColor(134, 239, 172);
+      doc.setFontSize(6.8);
+      doc.setTextColor(...cEmerald);
       const dynamicIncomeUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=ingreso&amount=[Monto]&account=[Cuenta]&category=SALARIO&desc=[Detalle]&format=text`;
-      doc.text(dynamicIncomeUrl, 18, p2Y + 45);
+      doc.text(dynamicIncomeUrl, 21, p2Y + 46);
 
-      p2Y += 56;
-
-      // TARJETA 2: ATAJO MAESTRO DUAL (UN SOLO BOTÓN PARA AMBOS)
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, p2Y, 186, 52, 3, 3, 'F');
-      doc.setDrawColor(...primaryCyan);
-      doc.roundedRect(12, p2Y, 186, 52, 3, 3, 'D');
+      // Tarjeta 2: Atajo Maestro Dual
+      p2Y += 55;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, p2Y, 186, 48, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cPrimary);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, p2Y, 186, 48, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
-      doc.setTextColor(...primaryCyan);
-      doc.text('ATAJO MAESTRO DUAL: UN SOLO ICONO PARA GASTOS E INGRESOS', 18, p2Y + 7);
+      doc.setFontSize(9);
+      doc.setTextColor(...cPrimary);
+      doc.text('ATAJO MAESTRO DUAL: UN SOLO ÍCONO PARA GASTOS E INGRESOS', 18, p2Y + 7);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
-      doc.setTextColor(...textWhite);
-      doc.text('Si prefieres tener un único botón en tu pantalla que sirva para registrar cualquier movimiento:', 18, p2Y + 14);
-      doc.text('1. Agrega como primera accion "Elegir de la lista" con 2 opciones: "Gasto" e "Ingreso".', 18, p2Y + 20);
-      doc.text('2. Si elige Gasto, ejecuta el bloque de gasto. Si elige Ingreso, ejecuta el bloque de ingreso.', 18, p2Y + 26);
-      doc.text('3. URL Maestra con type=[Variable_Tipo]:', 18, p2Y + 32);
+      doc.setFontSize(7.8);
+      doc.setTextColor(...cDark);
+      doc.text('Si prefieres tener un único botón en tu pantalla de inicio que sirva para registrar cualquier movimiento:', 18, p2Y + 14);
+      doc.text('1. Agrega como primera acción "Elegir de la lista" con 2 opciones: "Gasto" e "Ingreso".', 18, p2Y + 20);
+      doc.text('2. Si el usuario elige Gasto, ejecuta el bloque de gasto. Si elige Ingreso, ejecuta el bloque de ingreso.', 18, p2Y + 26);
+      doc.text('3. Enlace unificado utilizando type=[Variable_Tipo]:', 18, p2Y + 32);
 
+      doc.setFillColor(...cBgBox);
+      doc.roundedRect(18, p2Y + 35, 174, 7, 1.5, 1.5, 'F');
       doc.setFont('courier', 'bold');
-      doc.setFontSize(6.2);
-      doc.setTextColor(...primaryCyan);
+      doc.setFontSize(6.8);
+      doc.setTextColor(...cPrimary);
       const masterUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${userApiKey}&type=[TipoElegido]&amount=[Monto]&account=[Metodo]&category=[Categoria]&desc=[Detalle]&format=text`;
-      doc.text(masterUrl, 18, p2Y + 39);
+      doc.text(masterUrl, 21, p2Y + 40);
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.1);
-      doc.setTextColor(...textMuted);
-      doc.text('El servidor tolera parametros en espanol (monto, tipo, cuenta, categoria) e ingles (amount, type, account, category).', 18, p2Y + 47);
-
-      p2Y += 56;
-
-      // TARJETA 3: DICCIONARIO TRILINGÜE DE ACCIONES DE iOS
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, p2Y, 186, 68, 3, 3, 'F');
-      doc.setDrawColor(60, 65, 80);
-      doc.roundedRect(12, p2Y, 186, 68, 3, 3, 'D');
+      // Tarjeta 3: Diccionario Trilingüe de Acciones de iOS
+      p2Y += 53;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, p2Y, 186, 68, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cBorder);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, p2Y, 186, 68, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(...primaryCyan);
-      doc.text('DICCIONARIO DE ACCIONES SEGUN EL IDIOMA DE TU IPHONE', 18, p2Y + 7);
+      doc.setFontSize(9);
+      doc.setTextColor(...cPrimary);
+      doc.text('DICCIONARIO DE ACCIONES SEGÚN EL IDIOMA DE TU IPHONE', 18, p2Y + 7);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.2);
-      doc.setTextColor(...primaryCyan);
-      doc.text('FUNCION EN EL ATAJO', 18, p2Y + 14);
-      doc.text('ESPAÑOL (LATAM)', 64, p2Y + 14);
-      doc.text('ESPAÑOL (ESPAÑA)', 116, p2Y + 14);
-      doc.text('ENGLISH (iOS)', 164, p2Y + 14);
+      doc.setFontSize(7.4);
+      doc.setTextColor(...cBody);
+      doc.text('FUNCIÓN EN EL ATAJO', 18, p2Y + 14);
+      doc.text('ESPAÑOL (LATAM)', 65, p2Y + 14);
+      doc.text('ESPAÑOL (ESPAÑA)', 115, p2Y + 14);
+      doc.text('ENGLISH (iOS)', 162, p2Y + 14);
 
-      doc.setDrawColor(60, 65, 80);
+      doc.setDrawColor(...cBorder);
+      doc.setLineWidth(0.3);
       doc.line(16, p2Y + 16, 194, p2Y + 16);
 
       const trilingualRows = [
-        ['1. Pedir Monto (Numero)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
-        ['2. Elegir Metodo / Categoria', 'Elegir de la lista', 'Seleccionar del menú', 'Choose from Menu'],
+        ['1. Pedir Monto (Número)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
+        ['2. Elegir Método / Categoría', 'Elegir de la lista', 'Seleccionar del menú', 'Choose from Menu'],
         ['3. Pedir Detalle (Texto)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
         ['4. Enviar datos al servidor', 'Obtener contenido de URL', 'Obtener contenido de la URL', 'Get Contents of URL'],
         ['5. Voz de Siri (Confirmar)', 'Hablar texto', 'Leer texto con la voz', 'Speak Text'],
-        ['6. Notificacion visual', 'Mostrar notificación', 'Mostrar resultado', 'Show Notification'],
+        ['6. Notificación visual', 'Mostrar notificación', 'Mostrar resultado', 'Show Notification'],
         ['7. Leer campo de respuesta', 'Obtener valor de dicc.', 'Obtener valor de dicc.', 'Get Dictionary Value']
       ];
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(...textWhite);
+      doc.setFontSize(7.3);
+      doc.setTextColor(...cDark);
 
       let rY = p2Y + 22;
       trilingualRows.forEach(row => {
         doc.text(row[0], 18, rY);
-        doc.text(row[1], 64, rY);
-        doc.text(row[2], 116, rY);
-        doc.text(row[3], 164, rY);
+        doc.text(row[1], 65, rY);
+        doc.text(row[2], 115, rY);
+        doc.text(row[3], 162, rY);
         rY += 6.5;
       });
 
+      // Tarjeta 4: Preguntas Frecuentes y Solución de Dudas
       p2Y += 72;
-
-      // TARJETA 4: RESOLUCIÓN DE PREGUNTAS Y ERRORES FRECUENTES
-      doc.setFillColor(...cardBg);
-      doc.roundedRect(12, p2Y, 186, 42, 3, 3, 'F');
-      doc.setDrawColor(...goldAmber);
-      doc.roundedRect(12, p2Y, 186, 42, 3, 3, 'D');
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, p2Y, 186, 32, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cAmber);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, p2Y, 186, 32, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.setTextColor(...goldAmber);
-      doc.text('PREGUNTAS FRECUENTES Y SOLUCION DE PROBLEMAS', 18, p2Y + 7);
+      doc.setTextColor(...cAmber);
+      doc.text('PREGUNTAS FRECUENTES Y SOLUCIÓN DE PROBLEMAS', 18, p2Y + 6);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.8);
-      doc.setTextColor(...textWhite);
-      doc.text('• ¿Por que siempre se guardaba 25.000? Porque se escribio "25000" como texto fijo en la URL en vez de la variable azul.', 18, p2Y + 14);
-      doc.text('• ¿Por que solo se guardaba Nequi o Alimentacion? Porque faltaba la accion "Elegir de la lista" para seleccionar cuentas.', 18, p2Y + 21);
-      doc.text('• ¿Como actualizo la clave? Si generas una "Nueva" en la web o celular, se sincroniza en la nube automaticamente.', 18, p2Y + 28);
-      doc.text(`• ¿Error 404 Page not found? Asegurate de usar el dominio activo: ${publicSharedOrigin}`, 18, p2Y + 35);
+      doc.setFontSize(7.3);
+      doc.setTextColor(...cDark);
+      doc.text('• ¿Por qué siempre se guardaba 25.000? Porque se escribió "25000" como texto fijo en lugar de la variable azul.', 18, p2Y + 12);
+      doc.text('• ¿Por qué solo se guardaba Nequi? Porque faltaba la acción "Elegir de la lista" para seleccionar la cuenta.', 18, p2Y + 18);
+      doc.text('• ¿Cómo actualizo la clave? Si generas una "Nueva" en la web o celular, se sincroniza en la nube automáticamente.', 18, p2Y + 24);
 
-      // Pie de Pagina Página 2
+      // Pie de Página 2
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.2);
-      doc.setTextColor(...textMuted);
-      doc.text('PAGINA 2/2   |   AHORROS SA - GUIA OFICIAL PRO   |   FINANZAS EN TIEMPO REAL', 38, 290);
+      doc.setFontSize(7.5);
+      doc.setTextColor(...cMuted);
+      doc.text('PÁGINA 2/2   |   AHORROS SA - GUÍA OFICIAL PRO   |   FINANZAS EN TIEMPO REAL', 42, 285);
 
       doc.save(`Guia_Oficial_Atajos_iPhone_AhorrosSA_${activeVaultId}.pdf`);
       showQuickToast('✅ Guía visual en PDF de 2 páginas descargada con éxito');
@@ -1558,13 +1697,17 @@ if (btnDownloadShortcutGuide) {
 const btnDeleteActiveVault = document.getElementById('btn-delete-active-vault');
 if (btnDeleteActiveVault) {
   btnDeleteActiveVault.addEventListener('click', async () => {
-    const inputVal = prompt(
-      `⚠️ ADVERTENCIA CRÍTICA:\nEsta acción ELIMINARÁ DEFINITIVAMENTE la Bóveda (${activeVaultId}) y TODOS sus datos (ingresos, gastos, deudas, metas y finanzas fijas) tanto de este dispositivo como de Firebase Firestore en la nube.\n\nPara confirmar, escribe en mayúsculas la palabra: ELIMINAR`
+    const confirmed = await appConfirm(
+      `⚠️ ADVERTENCIA CRÍTICA:\nEsta acción ELIMINARÁ DEFINITIVAMENTE la Bóveda (${activeVaultId}) y TODOS sus datos (ingresos, gastos, deudas, metas y finanzas fijas) tanto de este dispositivo como de la nube.\n\n¿Estás completamente seguro de borrar todo?`,
+      {
+        title: 'Eliminar Bóveda Definitivamente',
+        icon: '⚠️',
+        okText: 'Sí, Eliminar Todo',
+        isDanger: true
+      }
     );
 
-    if (!inputVal || inputVal.trim() !== 'ELIMINAR') {
-      return alert('Acción cancelada. La bóveda permanece segura.');
-    }
+    if (!confirmed) return;
 
     showQuickToast('⏳ Eliminando permanentemente todos los datos de la bóveda...');
 
@@ -1671,7 +1814,13 @@ window.ahorrosCreatorPurgeResidualTestVaults = async function(confirmationWord) 
 };
 
 btnRegenKey.addEventListener('click', async () => {
-  if (confirm('¿Deseas generar una nueva clave secreta de Atajo? Se sincronizará inmediatamente entre tu celular y computador.')) {
+  const confirmed = await appConfirm('¿Deseas generar una nueva clave secreta de Atajo? Se sincronizará inmediatamente entre tu celular y computador.', {
+    title: 'Renovar Clave de Atajo',
+    icon: '🔑',
+    okText: 'Generar Clave',
+    isDanger: false
+  });
+  if (confirmed) {
     userApiKey = generateApiKey();
     updateShortcutCredentialsUI();
 
@@ -1981,7 +2130,13 @@ async function syncClientTotalsToServer() {
 if (btnVaultGoogleLogin) {
   btnVaultGoogleLogin.addEventListener('click', async () => {
     if (currentUser && !currentUser.isAnonymous) {
-      if (confirm('¿Cerrar sesión de Google? Tu Bóveda seguirá activa y protegida con tu código.')) {
+      const confirmed = await appConfirm('¿Cerrar sesión de Google? Tu Bóveda seguirá activa y protegida con tu código.', {
+        title: 'Cerrar Sesión Google',
+        icon: '☁️',
+        okText: 'Desvincular',
+        isDanger: false
+      });
+      if (confirmed) {
         await signOut(auth);
       }
     } else {
@@ -2164,12 +2319,16 @@ async function syncLocalDataToVault(vaultId) {
     const existingSnap = await getDocs(txColl);
     if (existingSnap.empty && localTrans.length > 0) {
       for (const t of localTrans) {
-        await addDoc(txColl, {
+        const docRef = await addDoc(txColl, {
           vaultId,
           ...t,
           createdAt: t.createdAt || new Date().toISOString()
         });
+        t.firestoreId = docRef.id;
+        t.id = docRef.id;
       }
+      localStorage.setItem('finances_v10_trans', JSON.stringify(localTrans));
+      transactions = localTrans;
     }
   } catch (err) { console.warn('Sync transacciones a bóveda:', err); }
 
@@ -2178,12 +2337,16 @@ async function syncLocalDataToVault(vaultId) {
     const existingDebtSnap = await getDocs(debtColl);
     if (existingDebtSnap.empty && localDebts.length > 0) {
       for (const d of localDebts) {
-        await addDoc(debtColl, {
+        const docRef = await addDoc(debtColl, {
           vaultId,
           ...d,
           createdAt: d.createdAt || new Date().toISOString()
         });
+        d.firestoreId = docRef.id;
+        d.id = docRef.id;
       }
+      localStorage.setItem('finances_v10_debts', JSON.stringify(localDebts));
+      debts = localDebts;
     }
   } catch (err) { console.warn('Sync deudas a bóveda:', err); }
 
@@ -2192,12 +2355,16 @@ async function syncLocalDataToVault(vaultId) {
     const existingGSnap = await getDocs(gColl);
     if (existingGSnap.empty && localGoals.length > 0) {
       for (const g of localGoals) {
-        await addDoc(gColl, {
+        const docRef = await addDoc(gColl, {
           vaultId,
           ...g,
           createdAt: g.createdAt || new Date().toISOString()
         });
+        g.firestoreId = docRef.id;
+        g.id = docRef.id;
       }
+      localStorage.setItem('finances_v10_goals', JSON.stringify(localGoals));
+      savingsGoals = localGoals;
     }
   } catch (err) { console.warn('Sync metas a bóveda:', err); }
 
@@ -2206,12 +2373,16 @@ async function syncLocalDataToVault(vaultId) {
     const existingRSnap = await getDocs(rColl);
     if (existingRSnap.empty && localRecurring.length > 0) {
       for (const r of localRecurring) {
-        await addDoc(rColl, {
+        const docRef = await addDoc(rColl, {
           vaultId,
           ...r,
           createdAt: r.createdAt || new Date().toISOString()
         });
+        r.firestoreId = docRef.id;
+        r.id = docRef.id;
       }
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(localRecurring));
+      recurringPayments = localRecurring;
     }
   } catch (err) { console.warn('Sync pagos fijos a bóveda:', err); }
 }
@@ -2249,25 +2420,41 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeTransactions = onSnapshot(txColl, (snapshot) => {
     const cloudTrans = [];
     snapshot.forEach(docSnap => {
-      if (!recentlyDeletedTxIds.has(docSnap.id)) {
-        const tData = docSnap.data();
-        if (tData.description && (
-          tData.description.startsWith('AHORRO EN META:') ||
-          tData.description.startsWith('AHORRO INICIAL EN META:') ||
-          tData.description.startsWith('RETIRO DE META:')
-        )) {
-          return;
-        }
-        cloudTrans.push({ ...tData, id: docSnap.id, firestoreId: docSnap.id });
+      const tData = docSnap.data();
+      const docId = String(docSnap.id);
+      const locId = tData.id ? String(tData.id) : '';
+      const locField = tData.localId ? String(tData.localId) : '';
+      const tmpField = tData.tempId ? String(tData.tempId) : '';
+      const crAt = tData.createdAt ? String(tData.createdAt) : '';
+
+      if (recentlyDeletedTxIds.has(docId) ||
+          (locId && recentlyDeletedTxIds.has(locId)) ||
+          (locField && recentlyDeletedTxIds.has(locField)) ||
+          (tmpField && recentlyDeletedTxIds.has(tmpField)) ||
+          (crAt && recentlyDeletedTxIds.has(crAt))) {
+        return;
       }
+      if (tData.description && (
+        tData.description.startsWith('AHORRO EN META:') ||
+        tData.description.startsWith('AHORRO INICIAL EN META:') ||
+        tData.description.startsWith('RETIRO DE META:')
+      )) {
+        return;
+      }
+      cloudTrans.push({ ...tData, id: docSnap.id, firestoreId: docSnap.id, localId: tData.localId || tData.id });
     });
     // Preservar transacciones locales provisionales recién insertadas
-    const localPending = transactions.filter(t => typeof t.id === 'string' && t.id.startsWith('tx_') && !recentlyDeletedTxIds.has(t.id) && !cloudTrans.some(c => c.createdAt === t.createdAt && c.amount === t.amount));
-    if (cloudTrans.length > 0 || localPending.length > 0 || transactions.length === 0) {
-      transactions = sortTransactionsByDate([...cloudTrans, ...localPending]);
-      localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-      updateUI();
-    }
+    const localPending = transactions.filter(t => 
+      typeof t.id === 'string' && t.id.startsWith('tx_') &&
+      !recentlyDeletedTxIds.has(String(t.id)) &&
+      !recentlyDeletedTxIds.has(String(t.localId)) &&
+      !recentlyDeletedTxIds.has(String(t.firestoreId)) &&
+      !cloudTrans.some(c => (c.createdAt && c.createdAt === t.createdAt) || (c.localId && c.localId === t.id))
+    );
+    // Actualizar estado siempre con los datos autoritativos del snapshot
+    transactions = sortTransactionsByDate([...cloudTrans, ...localPending]);
+    localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+    updateUI();
   }, (error) => {
     console.warn('Nota listener transacciones:', error);
     setTimeout(() => {
@@ -2279,16 +2466,34 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeDebts = onSnapshot(debtsColl, (snapshot) => {
     const cloudDebts = [];
     snapshot.forEach(docSnap => {
-      if (!recentlyDeletedDebtIds.has(docSnap.id)) {
-        cloudDebts.push({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id });
+      const dData = docSnap.data();
+      const docId = String(docSnap.id);
+      const locId = dData.id ? String(dData.id) : '';
+      const locField = dData.localId ? String(dData.localId) : '';
+      const tmpField = dData.tempId ? String(dData.tempId) : '';
+      const crAt = dData.createdAt ? String(dData.createdAt) : '';
+      const dSig = dData.name ? `sig_debt_${dData.name}` : '';
+
+      if (recentlyDeletedDebtIds.has(docId) ||
+          (locId && recentlyDeletedDebtIds.has(locId)) ||
+          (locField && recentlyDeletedDebtIds.has(locField)) ||
+          (tmpField && recentlyDeletedDebtIds.has(tmpField)) ||
+          (crAt && recentlyDeletedDebtIds.has(crAt)) ||
+          (dSig && recentlyDeletedDebtIds.has(dSig))) {
+        return;
       }
+      cloudDebts.push({ ...dData, id: docSnap.id, firestoreId: docSnap.id, localId: dData.localId || dData.id });
     });
-    const localPending = debts.filter(d => typeof d.id === 'string' && d.id.startsWith('debt_') && !recentlyDeletedDebtIds.has(d.id) && !cloudDebts.some(c => c.name === d.name && c.total === d.total));
-    if (cloudDebts.length > 0 || localPending.length > 0 || debts.length === 0) {
-      debts = [...cloudDebts, ...localPending];
-      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-      updateUI();
-    }
+    const localPending = debts.filter(d => 
+      typeof d.id === 'string' && d.id.startsWith('debt_') &&
+      !recentlyDeletedDebtIds.has(String(d.id)) &&
+      !recentlyDeletedDebtIds.has(String(d.localId)) &&
+      !recentlyDeletedDebtIds.has(String(d.firestoreId)) &&
+      !cloudDebts.some(c => (c.name === d.name && c.total === d.total) || (c.localId && c.localId === d.id))
+    );
+    debts = [...cloudDebts, ...localPending];
+    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+    updateUI();
   }, (error) => {
     console.warn('Nota listener deudas:', error);
     setTimeout(() => {
@@ -2300,16 +2505,34 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeGoals = onSnapshot(gColl, (snapshot) => {
     const cloudGoals = [];
     snapshot.forEach(docSnap => {
-      if (!recentlyDeletedGoalIds.has(docSnap.id)) {
-        cloudGoals.push({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id });
+      const gData = docSnap.data();
+      const docId = String(docSnap.id);
+      const locId = gData.id ? String(gData.id) : '';
+      const locField = gData.localId ? String(gData.localId) : '';
+      const tmpField = gData.tempId ? String(gData.tempId) : '';
+      const gName = gData.name ? String(gData.name) : '';
+      const gSig = gName ? `sig_goal_${gName}` : '';
+
+      if (recentlyDeletedGoalIds.has(docId) ||
+          (locId && recentlyDeletedGoalIds.has(locId)) ||
+          (locField && recentlyDeletedGoalIds.has(locField)) ||
+          (tmpField && recentlyDeletedGoalIds.has(tmpField)) ||
+          (gName && recentlyDeletedGoalIds.has(gName)) ||
+          (gSig && recentlyDeletedGoalIds.has(gSig))) {
+        return;
       }
+      cloudGoals.push({ ...gData, id: docSnap.id, firestoreId: docSnap.id, localId: gData.localId || gData.id });
     });
-    const localPending = savingsGoals.filter(g => typeof g.id === 'string' && g.id.startsWith('goal_') && !recentlyDeletedGoalIds.has(g.id) && !cloudGoals.some(c => c.name === g.name && c.targetAmount === g.targetAmount));
-    if (cloudGoals.length > 0 || localPending.length > 0 || savingsGoals.length === 0) {
-      savingsGoals = [...cloudGoals, ...localPending];
-      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-      renderSavingsGoals();
-    }
+    const localPending = savingsGoals.filter(g => 
+      typeof g.id === 'string' && g.id.startsWith('goal_') &&
+      !recentlyDeletedGoalIds.has(String(g.id)) &&
+      !recentlyDeletedGoalIds.has(String(g.localId)) &&
+      !recentlyDeletedGoalIds.has(String(g.firestoreId)) &&
+      !cloudGoals.some(c => (c.name === g.name && c.targetAmount === g.targetAmount) || (c.localId && c.localId === g.id))
+    );
+    savingsGoals = [...cloudGoals, ...localPending];
+    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+    renderSavingsGoals();
   }, (error) => {
     console.warn('Nota listener metas:', error);
     setTimeout(() => {
@@ -2321,16 +2544,34 @@ function setupVaultCloudListeners(vaultId) {
   unsubscribeRecurring = onSnapshot(rColl, (snapshot) => {
     const cloudR = [];
     snapshot.forEach(docSnap => {
-      if (!recentlyDeletedRecurringIds.has(docSnap.id)) {
-        cloudR.push({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id });
+      const rData = docSnap.data();
+      const docId = String(docSnap.id);
+      const locId = rData.id ? String(rData.id) : '';
+      const locField = rData.localId ? String(rData.localId) : '';
+      const tmpField = rData.tempId ? String(rData.tempId) : '';
+      const rName = rData.name ? String(rData.name) : '';
+      const rSig = rName ? `sig_rec_${rName}` : '';
+
+      if (recentlyDeletedRecurringIds.has(docId) ||
+          (locId && recentlyDeletedRecurringIds.has(locId)) ||
+          (locField && recentlyDeletedRecurringIds.has(locField)) ||
+          (tmpField && recentlyDeletedRecurringIds.has(tmpField)) ||
+          (rName && recentlyDeletedRecurringIds.has(rName)) ||
+          (rSig && recentlyDeletedRecurringIds.has(rSig))) {
+        return;
       }
+      cloudR.push({ ...rData, id: docSnap.id, firestoreId: docSnap.id, localId: rData.localId || rData.id });
     });
-    const localPending = recurringPayments.filter(r => typeof r.id === 'string' && r.id.startsWith('rec_') && !recentlyDeletedRecurringIds.has(r.id) && !cloudR.some(c => c.name === r.name && c.amount === r.amount));
-    if (cloudR.length > 0 || localPending.length > 0 || recurringPayments.length === 0) {
-      recurringPayments = [...cloudR, ...localPending];
-      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-      renderRecurringPayments();
-    }
+    const localPending = recurringPayments.filter(r => 
+      typeof r.id === 'string' && r.id.startsWith('rec_') &&
+      !recentlyDeletedRecurringIds.has(String(r.id)) &&
+      !recentlyDeletedRecurringIds.has(String(r.localId)) &&
+      !recentlyDeletedRecurringIds.has(String(r.firestoreId)) &&
+      !cloudR.some(c => (c.name === r.name && c.amount === r.amount) || (c.localId && c.localId === r.id))
+    );
+    recurringPayments = [...cloudR, ...localPending];
+    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+    renderRecurringPayments();
   }, (error) => {
     console.warn('Nota listener pagos fijos:', error);
     setTimeout(() => {
@@ -2543,6 +2784,9 @@ async function addTransactionLocallyOrCloud(txData) {
   const localId = txData.id || ('tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
   const cleanTx = {
     id: localId,
+    localId: localId,
+    tempId: localId,
+    firestoreId: localId,
     type: txData.type,
     description: txData.description,
     amount: txData.amount,
@@ -2569,10 +2813,12 @@ async function addTransactionLocallyOrCloud(txData) {
       vaultId: activeVaultId,
       ...cleanTx
     });
-    // Actualizar el ID provisional con el de Firestore
-    cleanTx.id = docRef.id;
+    // Actualizar el ID provisional con el de Firestore preservando localId
     cleanTx.firestoreId = docRef.id;
+    cleanTx.id = docRef.id;
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+    // Refrescar para que los botones de eliminar en la tabla tengan el ID definitivo
+    updateUI();
   } catch (e) {
     console.warn('Transacción guardada localmente (pendiente de sync en la nube):', e);
   }
@@ -2582,31 +2828,61 @@ async function addTransactionLocallyOrCloud(txData) {
 
 // ELIMINACION DE TRANSACCION
 window.removeTransaction = async function(idOrIndex) {
-  if (!confirm('¿Deseas eliminar este movimiento permanentemente?')) return;
-  const strId = String(idOrIndex);
-  let targetTx = transactions.find(t => String(t.id) === strId || String(t.firestoreId) === strId);
-  if (!targetTx && !isNaN(parseInt(idOrIndex, 10))) {
+  const confirmed = await appConfirm('¿Deseas eliminar este movimiento permanentemente?', {
+    title: 'Eliminar Movimiento',
+    icon: '🗑️',
+    okText: 'Eliminar Movimiento',
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  const strId = String(idOrIndex).trim();
+  let targetTx = transactions.find(t => 
+    t && (
+      String(t.id) === strId ||
+      String(t.firestoreId) === strId ||
+      String(t.localId) === strId ||
+      String(t.tempId) === strId ||
+      (t.createdAt && String(t.createdAt) === strId)
+    )
+  );
+  if (!targetTx && !isNaN(parseInt(idOrIndex, 10)) && transactions[parseInt(idOrIndex, 10)]) {
     targetTx = transactions[parseInt(idOrIndex, 10)];
   }
 
-  const idToDelete = targetTx ? targetTx.id : strId;
-  const firestoreIdToDelete = targetTx && targetTx.firestoreId ? targetTx.firestoreId : strId;
-
-  recentlyDeletedTxIds.add(String(idToDelete));
-  recentlyDeletedTxIds.add(String(firestoreIdToDelete));
-
+  // Recopilar todos los posibles identificadores para lápida (tombstone)
+  const idsToDelete = new Set();
+  idsToDelete.add(strId);
   if (targetTx) {
-    transactions = transactions.filter(t => t !== targetTx);
-  } else {
-    transactions = transactions.filter(t => String(t.id) !== strId && String(t.firestoreId) !== strId);
+    if (targetTx.id) idsToDelete.add(String(targetTx.id));
+    if (targetTx.firestoreId) idsToDelete.add(String(targetTx.firestoreId));
+    if (targetTx.localId) idsToDelete.add(String(targetTx.localId));
+    if (targetTx.tempId) idsToDelete.add(String(targetTx.tempId));
+    if (targetTx.createdAt) idsToDelete.add(String(targetTx.createdAt));
+    if (targetTx.date && targetTx.amount && targetTx.description) {
+      idsToDelete.add(`sig_${targetTx.date}_${targetTx.amount}_${targetTx.description}`);
+    }
   }
 
+  // Marcar como eliminado en memoria y localStorage para evitar resurrección por snapshot
+  idsToDelete.forEach(id => {
+    recentlyDeletedTxIds.add(id);
+    saveRecentlyDeletedId('tx', id);
+  });
+
+  // Eliminar inmediatamente del estado local
+  if (targetTx) {
+    transactions = transactions.filter(t => t !== targetTx && !idsToDelete.has(String(t.id)) && !idsToDelete.has(String(t.firestoreId)) && !idsToDelete.has(String(t.localId)));
+  } else {
+    transactions = transactions.filter(t => !idsToDelete.has(String(t.id)) && !idsToDelete.has(String(t.firestoreId)) && !idsToDelete.has(String(t.localId)));
+  }
+
+  sortTransactionsByDate(transactions);
   localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
   updateUI();
   showQuickToast('🗑️ Movimiento eliminado');
 
   // Sincronización automática con Compromisos Fijos / Recurrentes:
-  // Si el movimiento provenía de un PAGO FIJO o INGRESO FIJO, volver a ponerlo como pendiente de inmediato
   if (targetTx) {
     const isFixed = targetTx.recurringId ||
       (targetTx.description && (targetTx.description.toUpperCase().includes('PAGO FIJO') || targetTx.description.toUpperCase().includes('INGRESO FIJO')));
@@ -2614,14 +2890,14 @@ window.removeTransaction = async function(idOrIndex) {
     if (isFixed) {
       const fixedName = targetTx.recurringName || targetTx.description.replace(/^(PAGO FIJO:|INGRESO FIJO:)\s*/i, '').trim();
       const recItem = recurringPayments.find(r =>
-        (targetTx.recurringId && (String(r.id) === String(targetTx.recurringId) || String(r.firestoreId) === String(targetTx.recurringId))) ||
+        (targetTx.recurringId && (String(r.id) === String(targetTx.recurringId) || String(r.firestoreId) === String(targetTx.recurringId) || String(r.localId) === String(targetTx.recurringId))) ||
         (r.name && (r.name.toLowerCase() === fixedName.toLowerCase() || fixedName.toLowerCase().includes(r.name.toLowerCase()) || r.name.toLowerCase().includes(fixedName.toLowerCase())))
       );
       if (recItem) {
         recItem.lastPaidMonth = null;
         localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
         try {
-          await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', recItem.id), {
+          await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', recItem.firestoreId || recItem.id), {
             lastPaidMonth: null
           }, { merge: true });
         } catch (e) {
@@ -2633,18 +2909,17 @@ window.removeTransaction = async function(idOrIndex) {
     }
 
     // Sincronización automática con Deudas:
-    // Si el movimiento era un abono a deuda, descontar el monto pagado para mantener sincronía
     const isAbono = targetTx.debtId || (targetTx.description && targetTx.description.toUpperCase().includes('ABONO A '));
     if (isAbono) {
       const debtItem = debts.find(d =>
-        (targetTx.debtId && (String(d.id) === String(targetTx.debtId) || String(d.firestoreId) === String(targetTx.debtId))) ||
+        (targetTx.debtId && (String(d.id) === String(targetTx.debtId) || String(d.firestoreId) === String(targetTx.debtId) || String(d.localId) === String(targetTx.debtId))) ||
         (d.name && targetTx.description.toUpperCase().includes(d.name.toUpperCase()))
       );
       if (debtItem) {
         debtItem.paid = Math.max(0, (debtItem.paid || 0) - (targetTx.amount || 0));
         localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
         try {
-          await setDoc(doc(db, 'vaults', activeVaultId, 'debts', debtItem.id), {
+          await setDoc(doc(db, 'vaults', activeVaultId, 'debts', debtItem.firestoreId || debtItem.id), {
             paid: debtItem.paid
           }, { merge: true });
         } catch (e) {
@@ -2656,16 +2931,42 @@ window.removeTransaction = async function(idOrIndex) {
     }
   }
 
-  try {
-    await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', idToDelete));
-    if (firestoreIdToDelete !== idToDelete) {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', firestoreIdToDelete));
+  // Eliminar en Firestore por IDs directos
+  for (const docId of idsToDelete) {
+    if (!docId || docId.startsWith('sig_')) continue;
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', docId));
+    } catch (e) {
+      console.warn('Nota eliminando de Firestore:', docId, e);
     }
-  } catch (e) {
-    console.warn('Error eliminando de Firestore:', e);
   }
+
+  // Búsqueda y eliminación de documentos equivalentes en Firestore para asegurar eliminación
+  if (targetTx) {
+    try {
+      const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
+      const snap = await getDocs(txColl);
+      for (const docSnap of snap.docs) {
+        const d = docSnap.data();
+        const isMatch = (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId)) ||
+                        (targetTx.createdAt && d.createdAt === targetTx.createdAt) ||
+                        (d.date === targetTx.date && d.amount === targetTx.amount && d.description === targetTx.description);
+        if (isMatch) {
+          recentlyDeletedTxIds.add(docSnap.id);
+          saveRecentlyDeletedId('tx', docSnap.id);
+          try {
+            await deleteDoc(docSnap.ref);
+          } catch (delErr) {}
+        }
+      }
+    } catch (qErr) {
+      console.warn('Verificación en Firestore tras eliminar transacción:', qErr);
+    }
+  }
+
   syncClientTotalsToServer();
 };
+window.deleteTransaction = window.removeTransaction;
 
 // FORMULARIO DE INGRESO
 incomeForm.addEventListener('submit', async (e) => {
@@ -2866,6 +3167,9 @@ debtForm.addEventListener('submit', async (e) => {
   const localId = 'debt_' + Date.now();
   const debtData = {
     id: localId,
+    localId: localId,
+    tempId: localId,
+    firestoreId: localId,
     name: nameVal,
     total: totalVal,
     paid: 0,
@@ -2887,8 +3191,10 @@ debtForm.addEventListener('submit', async (e) => {
       vaultId: activeVaultId,
       ...debtData
     });
+    debtData.firestoreId = docRef.id;
     debtData.id = docRef.id;
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+    updateUI();
   } catch (e) {
     console.warn('Deuda guardada localmente (pendiente de sync a la nube):', e);
   }
@@ -2914,6 +3220,9 @@ if (goalForm) {
     const localId = 'goal_' + Date.now();
     const goalData = {
       id: localId,
+      localId: localId,
+      tempId: localId,
+      firestoreId: localId,
       name: nameVal,
       targetAmount: targetVal,
       currentAmount: initialVal,
@@ -2933,9 +3242,10 @@ if (goalForm) {
         vaultId: activeVaultId,
         ...goalData
       });
-      goalData.id = docRef.id;
       goalData.firestoreId = docRef.id;
+      goalData.id = docRef.id;
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
     } catch (e) {
       console.warn('Meta guardada localmente (pendiente de sync a la nube):', e);
     }
@@ -2970,6 +3280,9 @@ if (recurringForm) {
     const localId = 'rec_' + Date.now();
     const rData = {
       id: localId,
+      localId: localId,
+      tempId: localId,
+      firestoreId: localId,
       name: nameVal,
       type: typeVal,
       amount: amountVal,
@@ -2992,8 +3305,10 @@ if (recurringForm) {
         vaultId: activeVaultId,
         ...rData
       });
+      rData.firestoreId = docRef.id;
       rData.id = docRef.id;
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
     } catch (e) {
       console.warn('Registro fijo guardado localmente (pendiente de sync):', e);
     }
@@ -3163,47 +3478,101 @@ if (goalActionForm) {
 }
 
 window.deleteSavingsGoal = async function(idOrIndex) {
-  const strId = String(idOrIndex);
-  let targetGoal = savingsGoals.find(g => String(g.id) === strId || String(g.firestoreId) === strId);
-  if (!targetGoal && !isNaN(parseInt(idOrIndex, 10))) {
+  const strId = String(idOrIndex).trim();
+  let targetGoal = savingsGoals.find(g => 
+    g && (
+      String(g.id) === strId ||
+      String(g.firestoreId) === strId ||
+      String(g.localId) === strId ||
+      String(g.tempId) === strId ||
+      (g.createdAt && String(g.createdAt) === strId)
+    )
+  );
+  if (!targetGoal && !isNaN(parseInt(idOrIndex, 10)) && savingsGoals[parseInt(idOrIndex, 10)]) {
     targetGoal = savingsGoals[parseInt(idOrIndex, 10)];
   }
-  if (!targetGoal) return;
 
-  const currentAmt = targetGoal.currentAmount || 0;
+  const goalName = targetGoal ? targetGoal.name : 'esta meta';
+  const currentAmt = targetGoal ? (targetGoal.currentAmount || 0) : 0;
   const msg = currentAmt > 0
-    ? `¿Deseas eliminar la meta "${targetGoal.name}"?\nLos $ ${formatCurrency(currentAmt)} ahorrados se liberarán de esta meta.`
-    : `¿Deseas eliminar la meta de ahorro "${targetGoal.name}"?`;
+    ? `¿Deseas eliminar la meta "${goalName}"?\nLos $ ${formatCurrency(currentAmt)} ahorrados se liberarán de esta meta.`
+    : `¿Deseas eliminar la meta de ahorro "${goalName}"?`;
 
-  if (!confirm(msg)) return;
+  const confirmed = await appConfirm(msg, {
+    title: 'Eliminar Meta de Ahorro',
+    icon: '🎯',
+    okText: 'Eliminar Meta',
+    isDanger: true
+  });
+  if (!confirmed) return;
 
-  const idToDelete = targetGoal.id;
-  const firestoreIdToDelete = targetGoal.firestoreId || idToDelete;
+  const idsToDelete = new Set();
+  idsToDelete.add(strId);
+  if (targetGoal) {
+    if (targetGoal.id) idsToDelete.add(String(targetGoal.id));
+    if (targetGoal.firestoreId) idsToDelete.add(String(targetGoal.firestoreId));
+    if (targetGoal.localId) idsToDelete.add(String(targetGoal.localId));
+    if (targetGoal.tempId) idsToDelete.add(String(targetGoal.tempId));
+    if (targetGoal.createdAt) idsToDelete.add(String(targetGoal.createdAt));
+    if (targetGoal.name) {
+      idsToDelete.add(String(targetGoal.name));
+      idsToDelete.add(`sig_goal_${targetGoal.name}`);
+    }
+  }
 
-  recentlyDeletedGoalIds.add(String(idToDelete));
-  recentlyDeletedGoalIds.add(String(firestoreIdToDelete));
+  idsToDelete.forEach(id => {
+    recentlyDeletedGoalIds.add(id);
+    saveRecentlyDeletedId('goal', id);
+  });
 
-  savingsGoals = savingsGoals.filter(g => g !== targetGoal);
+  if (targetGoal) {
+    savingsGoals = savingsGoals.filter(g => g !== targetGoal && !idsToDelete.has(String(g.id)) && !idsToDelete.has(String(g.firestoreId)) && !idsToDelete.has(String(g.localId)));
+  } else {
+    savingsGoals = savingsGoals.filter(g => !idsToDelete.has(String(g.id)) && !idsToDelete.has(String(g.firestoreId)) && !idsToDelete.has(String(g.localId)));
+  }
   localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
 
   // Limpiar cualquier movimiento legacy de esta meta para no duplicar datos
-  transactions = transactions.filter(t => !t.description || (!t.description.includes(`META: ${targetGoal.name}`) && !t.description.includes(`META ${targetGoal.name}`)));
-  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+  if (targetGoal && targetGoal.name) {
+    transactions = transactions.filter(t => !t.description || (!t.description.includes(`META: ${targetGoal.name}`) && !t.description.includes(`META ${targetGoal.name}`)));
+    localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+  }
 
   renderSavingsGoals();
   updateUI();
-  showQuickToast(`🗑️ Meta "${targetGoal.name}" eliminada`);
+  showQuickToast(`🗑️ Meta "${goalName}" eliminada`);
 
-  try {
-    await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', idToDelete));
-    if (firestoreIdToDelete !== idToDelete) {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', firestoreIdToDelete));
+  for (const docId of idsToDelete) {
+    if (!docId || docId.startsWith('sig_')) continue;
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', docId));
+    } catch (e) {
+      console.warn('Nota eliminando meta en Firestore:', docId, e);
     }
-  } catch (e) {
-    console.warn('Error eliminando meta de Firestore:', e);
+  }
+
+  if (targetGoal) {
+    try {
+      const gColl = collection(db, 'vaults', activeVaultId, 'savingsGoals');
+      const snap = await getDocs(gColl);
+      for (const docSnap of snap.docs) {
+        const d = docSnap.data();
+        const isMatch = (targetGoal.localId && (d.localId === targetGoal.localId || d.id === targetGoal.localId)) ||
+                        (targetGoal.name && d.name === targetGoal.name);
+        if (isMatch) {
+          recentlyDeletedGoalIds.add(docSnap.id);
+          saveRecentlyDeletedId('goal', docSnap.id);
+          try { await deleteDoc(docSnap.ref); } catch (delErr) {}
+        }
+      }
+    } catch (qErr) {
+      console.warn('Verificación en Firestore tras eliminar meta:', qErr);
+    }
   }
   syncClientTotalsToServer();
 };
+window.deleteGoal = window.deleteSavingsGoal;
+window.removeGoal = window.deleteSavingsGoal;
 
 // RENDER FINANZAS FIJAS & RECURRENTES (INGRESOS Y GASTOS FIJOS)
 function renderRecurringPayments() {
@@ -3353,36 +3722,66 @@ window.quickPayRecurring = async function(idOrIndex) {
 };
 
 window.deleteRecurringPayment = async function(idOrIndex) {
-  const strId = String(idOrIndex);
-  let targetR = recurringPayments.find(r => String(r.id) === strId || String(r.firestoreId) === strId);
-  if (!targetR && !isNaN(parseInt(idOrIndex, 10))) {
+  const strId = String(idOrIndex).trim();
+  let targetR = recurringPayments.find(r => 
+    r && (
+      String(r.id) === strId ||
+      String(r.firestoreId) === strId ||
+      String(r.localId) === strId ||
+      String(r.tempId) === strId ||
+      (r.createdAt && String(r.createdAt) === strId)
+    )
+  );
+  if (!targetR && !isNaN(parseInt(idOrIndex, 10)) && recurringPayments[parseInt(idOrIndex, 10)]) {
     targetR = recurringPayments[parseInt(idOrIndex, 10)];
   }
-  if (!targetR) return;
 
-  if (!confirm(`¿Deseas eliminar el compromiso recurrente "${targetR.name}"?`)) return;
+  const rName = targetR ? targetR.name : 'este registro';
+  const confirmed = await appConfirm(`¿Deseas eliminar el compromiso recurrente "${rName}"?`, {
+    title: 'Eliminar Finanza Fija',
+    icon: '🔄',
+    okText: 'Eliminar Registro',
+    isDanger: true
+  });
+  if (!confirmed) return;
 
-  const idToDelete = targetR.id;
-  const firestoreIdToDelete = targetR.firestoreId || idToDelete;
+  const idsToDelete = new Set();
+  idsToDelete.add(strId);
+  if (targetR) {
+    if (targetR.id) idsToDelete.add(String(targetR.id));
+    if (targetR.firestoreId) idsToDelete.add(String(targetR.firestoreId));
+    if (targetR.localId) idsToDelete.add(String(targetR.localId));
+    if (targetR.tempId) idsToDelete.add(String(targetR.tempId));
+    if (targetR.createdAt) idsToDelete.add(String(targetR.createdAt));
+    if (targetR.name) idsToDelete.add(String(targetR.name));
+  }
 
-  recentlyDeletedRecurringIds.add(String(idToDelete));
-  recentlyDeletedRecurringIds.add(String(firestoreIdToDelete));
+  idsToDelete.forEach(id => {
+    recentlyDeletedRecurringIds.add(id);
+    saveRecentlyDeletedId('recurring', id);
+  });
 
-  recurringPayments = recurringPayments.filter(r => r !== targetR);
+  if (targetR) {
+    recurringPayments = recurringPayments.filter(r => r !== targetR && !idsToDelete.has(String(r.id)) && !idsToDelete.has(String(r.firestoreId)) && !idsToDelete.has(String(r.localId)));
+  } else {
+    recurringPayments = recurringPayments.filter(r => !idsToDelete.has(String(r.id)) && !idsToDelete.has(String(r.firestoreId)) && !idsToDelete.has(String(r.localId)));
+  }
   localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
   renderRecurringPayments();
-  showQuickToast(`🗑️ "${targetR.name}" eliminado`);
+  showQuickToast(`🗑️ "${rName}" eliminado`);
 
-  try {
-    await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', idToDelete));
-    if (firestoreIdToDelete !== idToDelete) {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', firestoreIdToDelete));
+  for (const docId of idsToDelete) {
+    if (!docId) continue;
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId));
+    } catch (e) {
+      console.warn('Nota eliminando compromiso fijo en Firestore:', docId, e);
     }
-  } catch (e) {
-    console.warn('Error eliminando pago recurrente de Firestore:', e);
   }
   syncClientTotalsToServer();
 };
+window.deleteRecurring = window.deleteRecurringPayment;
+window.removeRecurringPayment = window.deleteRecurringPayment;
 
 // ABONAR A DEUDA
 window.payDebt = async function(idOrIndex) {
@@ -3406,7 +3805,13 @@ window.payDebt = async function(idOrIndex) {
   const pending = Math.max(0, totalWithInterest - currentPaid);
 
   if (payAmount > pending) {
-    if (!confirm(`El monto ($ ${formatCurrency(payAmount)}) supera el saldo pendiente ($ ${formatCurrency(pending)}). ¿Deseas liquidar la deuda por el saldo exacto?`)) {
+    const confirmed = await appConfirm(`El monto ($ ${formatCurrency(payAmount)}) supera el saldo pendiente ($ ${formatCurrency(pending)}). ¿Deseas liquidar la deuda por el saldo exacto?`, {
+      title: 'Liquidar Saldo Pendiente',
+      icon: '💳',
+      okText: 'Liquidar Total',
+      isDanger: false
+    });
+    if (!confirmed) {
       return;
     }
   }
@@ -3455,60 +3860,93 @@ window.payDebt = async function(idOrIndex) {
 
 // ELIMINAR DEUDA
 window.removeDebt = async function(idOrIndex) {
-  const strId = String(idOrIndex);
-  let targetDebt = debts.find(d => String(d.id) === strId || String(d.firestoreId) === strId);
-  if (!targetDebt && !isNaN(parseInt(idOrIndex, 10))) {
+  const strId = String(idOrIndex).trim();
+  let targetDebt = debts.find(d => 
+    d && (
+      String(d.id) === strId ||
+      String(d.firestoreId) === strId ||
+      String(d.localId) === strId ||
+      String(d.tempId) === strId ||
+      (d.createdAt && String(d.createdAt) === strId)
+    )
+  );
+  if (!targetDebt && !isNaN(parseInt(idOrIndex, 10)) && debts[parseInt(idOrIndex, 10)]) {
     targetDebt = debts[parseInt(idOrIndex, 10)];
   }
-  if (!targetDebt) return;
 
-  if (!confirm(`¿Deseas eliminar la deuda "${targetDebt.name}"?\n\nAl confirmar, también se eliminarán los registros de abonos asociados en gastos para no dejar gastos huérfanos en tu historial.`)) {
-    return;
+  const debtName = targetDebt ? targetDebt.name : 'esta deuda';
+  const confirmed = await appConfirm(`¿Deseas eliminar la deuda "${debtName}"?\n\nAl confirmar, también se eliminarán los registros de abonos asociados en gastos para no dejar gastos huérfanos en tu historial.`, {
+    title: 'Eliminar Deuda / Obligación',
+    icon: '🗓️',
+    okText: 'Eliminar Deuda',
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  const idsToDelete = new Set();
+  idsToDelete.add(strId);
+  if (targetDebt) {
+    if (targetDebt.id) idsToDelete.add(String(targetDebt.id));
+    if (targetDebt.firestoreId) idsToDelete.add(String(targetDebt.firestoreId));
+    if (targetDebt.localId) idsToDelete.add(String(targetDebt.localId));
+    if (targetDebt.tempId) idsToDelete.add(String(targetDebt.tempId));
+    if (targetDebt.createdAt) idsToDelete.add(String(targetDebt.createdAt));
   }
 
-  const idToDelete = targetDebt.id;
-  const firestoreIdToDelete = targetDebt.firestoreId || idToDelete;
+  idsToDelete.forEach(id => {
+    recentlyDeletedDebtIds.add(id);
+    saveRecentlyDeletedId('debt', id);
+  });
 
-  recentlyDeletedDebtIds.add(String(idToDelete));
-  recentlyDeletedDebtIds.add(String(firestoreIdToDelete));
-
-  debts = debts.filter(d => d !== targetDebt);
+  if (targetDebt) {
+    debts = debts.filter(d => d !== targetDebt && !idsToDelete.has(String(d.id)) && !idsToDelete.has(String(d.firestoreId)) && !idsToDelete.has(String(d.localId)));
+  } else {
+    debts = debts.filter(d => !idsToDelete.has(String(d.id)) && !idsToDelete.has(String(d.firestoreId)) && !idsToDelete.has(String(d.localId)));
+  }
   localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
 
   // Eliminar abonos asociados registrados en gastos
-  const debtNameUpper = targetDebt.name.trim().toUpperCase();
-  const txsToDelete = transactions.filter(t => 
-    t.description && (
-      t.description.toUpperCase().includes(`ABONO A ${debtNameUpper}`) ||
-      t.description.toUpperCase().includes(`PAGO DE DEUDA: ${debtNameUpper}`) ||
-      t.description.toUpperCase().includes(`DEUDA: ${debtNameUpper}`)
-    )
-  );
+  if (targetDebt && targetDebt.name) {
+    const debtNameUpper = targetDebt.name.trim().toUpperCase();
+    const txsToDelete = transactions.filter(t => 
+      t.description && (
+        t.description.toUpperCase().includes(`ABONO A ${debtNameUpper}`) ||
+        t.description.toUpperCase().includes(`PAGO DE DEUDA: ${debtNameUpper}`) ||
+        t.description.toUpperCase().includes(`DEUDA: ${debtNameUpper}`)
+      )
+    );
 
-  for (const t of txsToDelete) {
-    recentlyDeletedTxIds.add(String(t.id));
-    if (t.firestoreId) recentlyDeletedTxIds.add(String(t.firestoreId));
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', t.id));
-    } catch (e) {}
+    for (const t of txsToDelete) {
+      const tIds = [t.id, t.firestoreId, t.localId, t.tempId].filter(Boolean);
+      tIds.forEach(tid => {
+        recentlyDeletedTxIds.add(String(tid));
+        saveRecentlyDeletedId('tx', String(tid));
+      });
+      for (const tid of tIds) {
+        try {
+          await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', String(tid)));
+        } catch (e) {}
+      }
+    }
+
+    transactions = transactions.filter(t => !txsToDelete.includes(t));
+    localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
   }
 
-  transactions = transactions.filter(t => !txsToDelete.includes(t));
-  localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-
   updateUI();
-  showQuickToast(`🗑️ Deuda "${targetDebt.name}" y sus abonos eliminados`);
+  showQuickToast(`🗑️ Deuda "${debtName}" y sus abonos eliminados`);
 
-  try {
-    await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', idToDelete));
-    if (firestoreIdToDelete !== idToDelete) {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', firestoreIdToDelete));
+  for (const docId of idsToDelete) {
+    if (!docId) continue;
+    try {
+      await deleteDoc(doc(db, 'vaults', activeVaultId, 'debts', docId));
+    } catch (e) {
+      console.warn('Nota eliminando deuda de Firestore:', docId, e);
     }
-  } catch (e) {
-    console.warn('Error eliminando deuda de Firestore:', e);
   }
   syncClientTotalsToServer();
 };
+window.deleteDebt = window.removeDebt;
 
 function getNextDueDate(startDateStr, paymentsCount) {
   if (!startDateStr) return '';

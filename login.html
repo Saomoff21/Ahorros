@@ -341,6 +341,19 @@
     </div>
 
     <div class="auth-card">
+      <!-- ACCESO DIRECTO PARA PROBAR SIN REGISTRO -->
+      <div class="guest-access-card" style="margin-bottom: 16px; padding: 14px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 14px; text-align: center;">
+        <div style="font-size: 0.85rem; font-weight: 800; color: var(--primary); margin-bottom: 4px;">
+          🚀 ¿Deseas probar la aplicación primero sin registrarte?
+        </div>
+        <p style="font-size: 0.73rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+          Accede directamente a la plataforma para registrar ingresos, gastos, deudas y probar todas las funciones libremente.
+        </p>
+        <button type="button" id="btn-top-guest-access" style="width: 100%; padding: 11px; background: var(--primary); color: #000; border: none; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 4px 14px var(--primary-glow);">
+          <span>⚡ Entrar a Probar la App Ahora</span> ➔
+        </button>
+      </div>
+
       <div class="auth-tabs">
         <button type="button" id="tab-login" class="auth-tab-btn active">Iniciar Sesión</button>
         <button type="button" id="tab-register" class="auth-tab-btn">Crear Cuenta</button>
@@ -426,12 +439,15 @@
     import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-    // CARGA DE CONFIGURACION FIREBASE
+    // CARGA DE CONFIGURACION FIREBASE (PROYECTO AHORROS-SA)
     let firebaseConfig = {
-      projectId: "gen-lang-client-0791489226",
-      appId: "1:444846324805:web:84aae995b6c52346beb72c",
-      apiKey: "AIzaSyAEAlepremteHWQAZGao8OqVJqMgJvEREA",
-      authDomain: "gen-lang-client-0791489226.firebaseapp.com"
+      projectId: "ahorros-sa",
+      appId: "1:161318086592:web:f795e936d14ea7cc6d4a25",
+      apiKey: "AIzaSyASRcR-3pV6LUcdbN4YwzGRF235z5PNb54",
+      authDomain: "ahorros-sa.firebaseapp.com",
+      storageBucket: "ahorros-sa.firebasestorage.app",
+      messagingSenderId: "161318086592",
+      measurementId: "G-FVK1SHVFFY"
     };
 
     try {
@@ -443,7 +459,7 @@
         }
       }
     } catch (e) {
-      console.warn('Usando configuración base de Firebase');
+      console.warn('Usando configuración bundled de Firebase (ahorros-sa)');
     }
 
     let app = null;
@@ -486,19 +502,23 @@
       document.getElementById('active-session-banner').style.display = 'none';
     });
 
-    document.getElementById('btn-demo-access')?.addEventListener('click', () => {
+    function launchGuestDemoSession() {
       const demoCode = 'USR-INVITADO';
       const demoUser = {
         uid: 'usr_invitado',
         username: 'Invitado',
         email: 'invitado@ahorros.app',
-        userCode: demoCode
+        userCode: demoCode,
+        isGuest: true
       };
       localStorage.setItem('ahorros_current_user', JSON.stringify(demoUser));
       localStorage.setItem('ahorros_active_vault', demoCode);
       localStorage.setItem('ahorros_boveda_code', demoCode);
       window.location.replace('index.html');
-    });
+    }
+
+    document.getElementById('btn-demo-access')?.addEventListener('click', launchGuestDemoSession);
+    document.getElementById('btn-top-guest-access')?.addEventListener('click', launchGuestDemoSession);
 
     // PESTAÑAS LOGIN / REGISTRO
     const tabLogin = document.getElementById('tab-login');

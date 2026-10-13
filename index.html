@@ -2,11 +2,22 @@
 <html lang="es" data-theme="carbon">
 <head>
   <script>
-    // Verificación inmediata de sesión: si no hay usuario activo, redirigir a login
+    // Acceso amigable y flexible: si no hay usuario activo, inicializar automáticamente
+    // sesión local para permitir probar y explorar la app libremente en PC, Safari y móviles sin bloqueo.
     try {
-      const activeUser = localStorage.getItem('ahorros_current_user');
+      let activeUser = localStorage.getItem('ahorros_current_user');
       if (!activeUser) {
-        window.location.replace('login.html');
+        const guestCode = 'USR-INVITADO';
+        const defaultGuest = {
+          uid: 'usr_invitado',
+          username: 'Invitado',
+          email: '',
+          userCode: guestCode,
+          isGuest: true
+        };
+        localStorage.setItem('ahorros_current_user', JSON.stringify(defaultGuest));
+        localStorage.setItem('ahorros_active_vault', guestCode);
+        localStorage.setItem('ahorros_boveda_code', guestCode);
       }
     } catch (e) {}
   </script>
@@ -40,6 +51,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
+
+  <!-- BANNER INFORMATIVO NO BLOQUEANTE PARA MODO PRUEBA / INVITADO -->
+  <div id="guest-welcome-banner" class="guest-welcome-banner hidden">
+    <div class="guest-banner-content">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.25rem;">✨</span>
+        <div>
+          <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary-color);">MODO DE PRUEBA ACTIVO:</span>
+          <span style="font-size: 0.78rem; color: var(--text-main);">
+            Puedes probar y usar la app libremente (ingresos, gastos, deudas, metas). Para sincronizar entre varios dispositivos con tu código permanente en la nube:
+          </span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <a href="login.html" class="btn btn-primary" style="font-size: 0.74rem; padding: 6px 12px; text-decoration: none; border-radius: 8px;">
+          🔐 Iniciar Sesión / Cuenta
+        </a>
+        <button type="button" id="btn-close-guest-banner" class="btn-banner-close" title="Cerrar aviso y usar la app">
+          ✕ Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- HEADER MODERNO Y ELEGANTE -->
   <header class="app-header">
@@ -304,6 +338,7 @@
                 <th>Medio</th>
                 <th>Método / Cuenta</th>
                 <th>Monto / Saldo</th>
+                <th style="width: 40px; text-align: center;"></th>
               </tr>
             </thead>
             <tbody id="dashboard-summary-list"></tbody>
@@ -418,7 +453,7 @@
 
           <div class="panel-card table-panel border-success">
             <div class="panel-header">
-              <h2>Historial de Ingresos</h2>
+              <h2>Historial de Ingresos <span id="income-month-tag" class="history-period-label text-success"></span></h2>
               <span id="income-period-total" class="tag-badge text-success">$ 0</span>
             </div>
             <div class="table-wrapper">
@@ -523,7 +558,7 @@
 
           <div class="panel-card table-panel border-danger">
             <div class="panel-header">
-              <h2>Historial de Gastos</h2>
+              <h2>Historial de Gastos <span id="expense-month-tag" class="history-period-label text-danger"></span></h2>
               <span id="expense-period-total" class="tag-badge text-danger">$ 0</span>
             </div>
             <div class="table-wrapper">
@@ -1618,6 +1653,23 @@
             🚀 ¡Entendido! Entrar y Probar la Aplicación
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMACIÓN IN-APP (SEGURO PARA IFRAMES Y MÓVILES) -->
+  <div id="app-confirm-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 420px; text-align: center; border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 10px 40px rgba(0,0,0,0.7);">
+      <div style="font-size: 2.2rem; margin-bottom: 8px;" id="confirm-modal-icon">🗑️</div>
+      <h3 id="confirm-modal-title" style="font-size: 1.15rem; font-weight: 800; margin-bottom: 8px; color: var(--text-main);">Confirmar Eliminación</h3>
+      <p id="confirm-modal-message" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; white-space: pre-line;">¿Estás seguro de eliminar este registro permanentemente?</p>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button type="button" id="btn-confirm-cancel" class="btn btn-outline" style="flex: 1; padding: 11px; font-weight: 700; font-size: 0.85rem; justify-content: center;">
+          Cancelar
+        </button>
+        <button type="button" id="btn-confirm-ok" class="btn btn-danger" style="flex: 1; padding: 11px; font-weight: 800; font-size: 0.85rem; justify-content: center; box-shadow: 0 4px 14px var(--danger-glow);">
+          Eliminar
+        </button>
       </div>
     </div>
   </div>

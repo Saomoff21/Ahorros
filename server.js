@@ -181,16 +181,25 @@ app.all('/api/shortcut/transaction', (req, res) => {
 
   // Parámetros flexibles para tolerar cualquier nombre usado en la app de Atajos de iOS
   const rawType = safeDecode(payload.type || payload.tipo || req.forcedType || '');
-  const rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : (payload.precio !== undefined ? payload.precio : (payload.total !== undefined ? payload.total : payload.value))));
-  const rawDescription = safeDecode(payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || payload.nombre || payload.motivo || payload.nota || '');
-  const rawCategory = safeDecode(payload.category || payload.categoria || payload.cat || payload.rubro || '');
+  let rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : (payload.precio !== undefined ? payload.precio : (payload.total !== undefined ? payload.total : payload.value))));
+  let rawDescription = safeDecode(payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || payload.nombre || payload.motivo || payload.nota || '');
+  let rawCategory = safeDecode(payload.category || payload.categoria || payload.cat || payload.rubro || '');
   const rawDate = safeDecode(payload.date || payload.fecha || '');
-  const rawMethod = safeDecode(payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || payload.formaPago || '');
+  let rawMethod = safeDecode(payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.metodoPago || payload.banco || payload.medio || payload.formaPago || '');
   const returnFormat = String(payload.format || payload.modo || (payload.text ? 'text' : '')).toLowerCase();
+
+  // Limpieza de marcadores de posición no reemplazados en iOS Shortcuts
+  const isPlaceholder = (val) => {
+    if (!val) return false;
+    const s = String(val).trim();
+    return s.includes('[Variable_') || s.includes('[Monto]') || s.includes('[Metodo]') || s.includes('[Categoria]') || s.includes('[Detalle]') || s.includes('[Cuenta]') || s.includes('[Tipo]');
+  };
+
+  const hasAmountPlaceholder = isPlaceholder(rawAmount);
 
   // Normalizar y validar tipo (si no se especifica, por defecto es 'gasto')
   let normalizedType = String(rawType || '').trim().toLowerCase();
-  if (!normalizedType) {
+  if (!normalizedType || isPlaceholder(normalizedType)) {
     normalizedType = 'gasto';
   }
   
@@ -198,8 +207,28 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const cleanType = isIncome ? 'income' : 'expense';
 
   // Normalizar monto
-  const numericAmount = parseNumericAmount(rawAmount);
+  let numericAmount = hasAmountPlaceholder ? 0 : parseNumericAmount(rawAmount);
+
+  // Rescate inteligente: si numericAmount es 0 pero rawDescription contiene un número (ej: "35000 almuerzo" o "50000")
+  if ((!numericAmount || numericAmount <= 0) && rawDescription && !isPlaceholder(rawDescription)) {
+    const match = String(rawDescription).match(/\b\d{3,9}\b/);
+    if (match) {
+      numericAmount = parseInt(match[0], 10);
+      rawDescription = String(rawDescription).replace(match[0], '').replace(/\$|\bCOP\b/gi, '').trim();
+    }
+  }
+
   if (!numericAmount || numericAmount <= 0) {
+    if (hasAmountPlaceholder) {
+      const errorMsg = 'En tu iPhone dejaste el texto [Variable_Monto] en vez de la variable azul. En la app Atajos, toca donde dice [Variable_Monto], bórralo y selecciona la burbuja azul "¿Cuánto gastaste?" que aparece directamente arriba de tu teclado.';
+      if (returnFormat === 'text') return res.status(400).type('text/plain').send('Error: ' + errorMsg);
+      return res.status(400).json({
+        success: false,
+        error: errorMsg,
+        speech: 'Atención: En tu iPhone debes vincular la variable azul ¿Cuánto gastaste? sobre el teclado en lugar del texto escrito Variable Monto.'
+      });
+    }
+
     const errorMsg = 'El monto debe ser un número mayor a 0.';
     if (returnFormat === 'text') return res.status(400).type('text/plain').send('Error: ' + errorMsg);
     return res.status(400).json({
@@ -214,12 +243,15 @@ app.all('/api/shortcut/transaction', (req, res) => {
 
   // Normalizar descripción preliminar
   let cleanDescription = String(rawDescription || '').trim();
-  if (['UNDEFINED', 'NULL', '[ENTRADA]', '[ENTRADA2]', '[DETALLE]', '[CONCEPTO]'].includes(cleanDescription.toUpperCase())) {
+  if (isPlaceholder(cleanDescription) || ['UNDEFINED', 'NULL', '[ENTRADA]', '[ENTRADA2]', '[DETALLE]', '[CONCEPTO]'].includes(cleanDescription.toUpperCase())) {
     cleanDescription = '';
   }
 
   // Normalizar categoría
   let cleanCategory = removeAccents(rawCategory || '').trim().toUpperCase();
+  if (isPlaceholder(cleanCategory)) {
+    cleanCategory = '';
+  }
 
   // Auto-detección inteligente de categoría basada en concepto si no viene o viene por defecto
   const descLower = cleanDescription.toLowerCase();

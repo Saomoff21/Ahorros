@@ -22,6 +22,21 @@
       "totalExpense": 68000,
       "pendingDebts": 1212000,
       "lastUpdated": "2026-10-11T18:28:21.961Z"
+    },
+    "AHO-SC-7F9ZTA": {
+      "apiKey": "AHO-SC-7F9ZTA",
+      "balance": -673334,
+      "totalIncome": 0,
+      "totalExpense": 673334,
+      "pendingDebts": 0,
+      "lastUpdated": "2026-10-13T13:42:33.963Z"
+    },
+    "AHO-SC-TEST": {
+      "apiKey": "AHO-SC-TEST",
+      "balance": -100000,
+      "totalIncome": 0,
+      "totalExpense": 100000,
+      "lastUpdated": "2026-10-13T14:04:32.863Z"
     }
   },
   "transactions": [
@@ -108,6 +123,48 @@
       "createdAt": "2026-10-11T18:28:21.960Z",
       "source": "iphone_shortcut",
       "syncedToCloud": true
+    },
+    {
+      "id": "tx_sc_1791900265296_ymclgs",
+      "apiKey": "AHO-SC-TEST",
+      "type": "expense",
+      "amount": 45000,
+      "description": "Almuerzo",
+      "category": "ALIMENTACION",
+      "paymentMethod": "NEQUI",
+      "date": "2026-10-13",
+      "time": "02:04:25 p. m.",
+      "createdAt": "2026-10-13T14:04:25.192Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": false
+    },
+    {
+      "id": "tx_sc_1791900269146_nfzec2",
+      "apiKey": "AHO-SC-TEST",
+      "type": "expense",
+      "amount": 35000,
+      "description": "Cena",
+      "category": "ALIMENTACION",
+      "paymentMethod": "NEQUI",
+      "date": "2026-10-13",
+      "time": "02:04:29 p. m.",
+      "createdAt": "2026-10-13T14:04:29.145Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": false
+    },
+    {
+      "id": "tx_sc_1791900272863_an0q3c",
+      "apiKey": "AHO-SC-TEST",
+      "type": "expense",
+      "amount": 20000,
+      "description": "Taxi",
+      "category": "TRANSPORTE",
+      "paymentMethod": "NEQUI",
+      "date": "2026-10-13",
+      "time": "02:04:32 p. m.",
+      "createdAt": "2026-10-13T14:04:32.863Z",
+      "source": "iphone_shortcut",
+      "syncedToCloud": false
     }
   ]
 }

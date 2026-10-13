@@ -1087,6 +1087,9 @@ const shortcutLangSelect = document.getElementById('shortcut-lang-select');
 const btnModeExpense = document.getElementById('btn-mode-expense');
 const btnModeIncome = document.getElementById('btn-mode-income');
 const btnModeDual = document.getElementById('btn-mode-dual');
+const btnComplexitySimple = document.getElementById('btn-complexity-simple');
+const btnComplexityFull = document.getElementById('btn-complexity-full');
+let currentShortcutComplexity = 'simple';
 
 function updateShortcutCredentialsUI() {
   const webhookUrl = `${publicSharedOrigin}/api/shortcut/transaction`;
@@ -1099,9 +1102,15 @@ function updateShortcutCredentialsUI() {
   }
 
   if (currentShortcutMode === 'expense') {
-    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
-    if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO LISTO (REGISTRAR GASTO):';
-    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Con <code>&format=text</code> tu iPhone recibe directamente la frase de confirmación en español lista para 'Hablar texto' o 'Mostrar notificación'. Reemplaza cada <code>[Variable]</code> tocando la barra azul sobre el teclado en la app Atajos.`;
+    if (currentShortcutComplexity === 'simple') {
+      directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=[Variable_Monto]&desc=[Variable_Detalle]&format=text`;
+      if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE RÁPIDO (2 PREGUNTAS: MONTO Y CONCEPTO):';
+      if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 <strong>Recomendado:</strong> Solo necesitas 2 acciones en tu iPhone: <em>"¿Cuánto gastaste?"</em> y <em>"¿En qué concepto o detalle?"</em>. El método se guarda en Nequi y la categoría se detecta automáticamente.`;
+    } else {
+      directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=gasto&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
+      if (shortcutDirectLabel) shortcutDirectLabel.textContent = '🎯 ENLACE COMPLETO (4 PREGUNTAS CON MÉTODO Y CATEGORÍA):';
+      if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Con <code>&format=text</code> tu iPhone recibe la confirmación por voz. En Atajos vincula las 4 variables mágicas correspondientes a cada pregunta.`;
+    }
     if (shortcutSampleJsonEl) {
       shortcutSampleJsonEl.textContent = JSON.stringify({
         type: "expense",
@@ -1112,9 +1121,15 @@ function updateShortcutCredentialsUI() {
       }, null, 2);
     }
   } else if (currentShortcutMode === 'income') {
-    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=ingreso&amount=[Variable_Monto]&account=[Variable_Cuenta]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
-    if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO LISTO (REGISTRAR INGRESO):';
-    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Con <code>&format=text</code> tu iPhone recibe la confirmación hablada directa para 'Hablar texto' o notificación. Inserta cada variable mágica tocando el teclado en Atajos.`;
+    if (currentShortcutComplexity === 'simple') {
+      directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=ingreso&amount=[Variable_Monto]&desc=[Variable_Detalle]&format=text`;
+      if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE RÁPIDO (2 PREGUNTAS: INGRESO Y DETALLE):';
+      if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Solo pide monto e ingreso. La cuenta se guarda en Banco por defecto.`;
+    } else {
+      directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=ingreso&amount=[Variable_Monto]&account=[Variable_Cuenta]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
+      if (shortcutDirectLabel) shortcutDirectLabel.textContent = '🎯 ENLACE COMPLETO (REGISTRAR INGRESO CON CUENTA):';
+      if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Con <code>&format=text</code> tu iPhone recibe la confirmación hablada directa para Siri o notificación.`;
+    }
     if (shortcutSampleJsonEl) {
       shortcutSampleJsonEl.textContent = JSON.stringify({
         type: "income",
@@ -1126,9 +1141,15 @@ function updateShortcutCredentialsUI() {
     }
   } else {
     // Modo Dual / Maestro
-    directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=[Variable_Tipo]&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
-    if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO MAESTRO (GASTO O INGRESO):';
-    if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 En Atajos usa un menú para preguntar si es Gasto o Ingreso y envía el tipo en el parámetro <code>type=[Variable_Tipo]</code>.`;
+    if (currentShortcutComplexity === 'simple') {
+      directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=[Variable_Tipo]&amount=[Variable_Monto]&desc=[Variable_Detalle]&format=text`;
+      if (shortcutDirectLabel) shortcutDirectLabel.textContent = '⚡ ENLACE DIRECTO MAESTRO (GASTO O INGRESO):';
+      if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Pregunta si es Gasto o Ingreso, luego pide el monto y concepto.`;
+    } else {
+      directUrl = `${publicSharedOrigin}/api/shortcut/transaction?key=${encodeURIComponent(userApiKey)}&type=[Variable_Tipo]&amount=[Variable_Monto]&account=[Variable_Metodo]&category=[Variable_Categoria]&desc=[Variable_Detalle]&format=text`;
+      if (shortcutDirectLabel) shortcutDirectLabel.textContent = '🎯 ENLACE DIRECTO MAESTRO COMPLETO:';
+      if (shortcutDirectHelp) shortcutDirectHelp.innerHTML = `💡 Pregunta tipo, monto, método de pago, categoría y concepto en tu iPhone.`;
+    }
     if (shortcutSampleJsonEl) {
       shortcutSampleJsonEl.textContent = JSON.stringify({
         type: "gasto",
@@ -1259,6 +1280,38 @@ if (btnModeDual) {
     btnModeIncome.style.color = 'var(--text-muted)';
 
     updateShortcutCredentialsUI();
+  });
+}
+
+if (btnComplexitySimple) {
+  btnComplexitySimple.addEventListener('click', () => {
+    currentShortcutComplexity = 'simple';
+    btnComplexitySimple.style.borderColor = 'var(--primary-color)';
+    btnComplexitySimple.style.background = 'rgba(6, 182, 212, 0.15)';
+    btnComplexitySimple.style.color = 'var(--primary-color)';
+    if (btnComplexityFull) {
+      btnComplexityFull.style.borderColor = 'var(--border-color)';
+      btnComplexityFull.style.background = 'var(--surface-secondary)';
+      btnComplexityFull.style.color = 'var(--text-muted)';
+    }
+    updateShortcutCredentialsUI();
+    showQuickToast('⚡ Enlace simplificado: 2 preguntas (Monto y Concepto)');
+  });
+}
+
+if (btnComplexityFull) {
+  btnComplexityFull.addEventListener('click', () => {
+    currentShortcutComplexity = 'full';
+    btnComplexityFull.style.borderColor = 'var(--primary-color)';
+    btnComplexityFull.style.background = 'rgba(6, 182, 212, 0.15)';
+    btnComplexityFull.style.color = 'var(--primary-color)';
+    if (btnComplexitySimple) {
+      btnComplexitySimple.style.borderColor = 'var(--border-color)';
+      btnComplexitySimple.style.background = 'var(--surface-secondary)';
+      btnComplexitySimple.style.color = 'var(--text-muted)';
+    }
+    updateShortcutCredentialsUI();
+    showQuickToast('🎯 Enlace completo: 4 preguntas (Monto, Método, Categoría, Detalle)');
   });
 }
 

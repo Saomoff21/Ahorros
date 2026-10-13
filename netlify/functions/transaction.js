@@ -43,10 +43,10 @@ export async function handler(event, context) {
 
     // Parámetros flexibles
     const rawType = payload.type || payload.tipo || 'expense';
-    const rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : payload.value));
-    const rawDesc = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || '';
-    const rawCategory = payload.category || payload.categoria || payload.cat || '';
-    const rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.banco || 'NEQUI';
+    let rawAmount = payload.amount !== undefined ? payload.amount : (payload.monto !== undefined ? payload.monto : (payload.valor !== undefined ? payload.valor : payload.value));
+    let rawDesc = payload.description || payload.desc || payload.concepto || payload.detalle || payload.title || payload.item || '';
+    let rawCategory = payload.category || payload.categoria || payload.cat || '';
+    let rawMethod = payload.paymentMethod || payload.account || payload.metodo || payload.cuenta || payload.banco || 'NEQUI';
     const rawDate = payload.date || payload.fecha || '';
 
     // Normalizar tipo
@@ -54,11 +54,20 @@ export async function handler(event, context) {
     const isIncome = ['income', 'ingreso', 'entrada'].includes(normType);
     const cleanType = isIncome ? 'income' : 'expense';
 
-    // Normalizar monto
+    // Limpieza de marcadores de posición no reemplazados en iOS Shortcuts
+    const isPlaceholder = (val) => {
+      if (!val) return false;
+      const s = String(val).trim();
+      return s.includes('[Variable_') || s.includes('[Monto]') || s.includes('[Metodo]') || s.includes('[Categoria]') || s.includes('[Detalle]') || s.includes('[Cuenta]') || s.includes('[Tipo]');
+    };
+
+    const hasAmountPlaceholder = isPlaceholder(rawAmount);
+
+    // Si rawAmount vino como texto de placeholder, intentar buscar si el usuario ingresó el monto en la descripción
     let numAmount = 0;
-    if (typeof rawAmount === 'number') {
+    if (!hasAmountPlaceholder && typeof rawAmount === 'number') {
       numAmount = Math.abs(rawAmount);
-    } else if (rawAmount) {
+    } else if (!hasAmountPlaceholder && rawAmount) {
       let s = String(rawAmount).replace(/[^\d.,]/g, '').trim();
       if (s.includes('.') && s.includes(',')) {
         if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
@@ -68,12 +77,12 @@ export async function handler(event, context) {
         }
       } else if (s.includes('.')) {
         const parts = s.split('.');
-        if (parts.length > 2 || parts[1].length === 3) {
+        if (parts.length > 2 || (parts[1] && parts[1].length === 3)) {
           s = s.replace(/\./g, '');
         }
       } else if (s.includes(',')) {
         const parts = s.split(',');
-        if (parts.length > 2 || parts[1].length === 3) {
+        if (parts.length > 2 || (parts[1] && parts[1].length === 3)) {
           s = s.replace(/,/g, '');
         } else {
           s = parts[0] + '.' + parts[1];
@@ -82,7 +91,28 @@ export async function handler(event, context) {
       numAmount = Math.abs(parseFloat(s) || 0);
     }
 
+    // Rescate inteligente: si numAmount no se pudo leer pero rawDesc contiene números (ej: "35000 almuerzo" o "50000")
+    if ((!numAmount || numAmount <= 0) && rawDesc && !isPlaceholder(rawDesc)) {
+      const match = String(rawDesc).match(/\b\d{3,9}\b/);
+      if (match) {
+        numAmount = parseInt(match[0], 10);
+        // Limpiar el número de la descripción para que quede solo el concepto
+        rawDesc = String(rawDesc).replace(match[0], '').replace(/\$|\bCOP\b/gi, '').trim();
+      }
+    }
+
     if (!numAmount || numAmount <= 0) {
+      if (hasAmountPlaceholder) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'En tu iPhone dejaste el texto [Variable_Monto] en vez de la variable azul. En la app Atajos, toca donde dice [Variable_Monto], bórralo y selecciona la burbuja azul "¿Cuánto gastaste?" que aparece directamente arriba de tu teclado.',
+            speech: 'Atención: En tu iPhone debes vincular la variable azul ¿Cuánto gastaste? sobre el teclado en lugar del texto escrito Variable Monto.'
+          })
+        };
+      }
       return {
         statusCode: 400,
         headers,
@@ -94,9 +124,28 @@ export async function handler(event, context) {
       };
     }
 
-    const cleanDesc = (String(rawDesc || (isIncome ? 'INGRESO DESDE ATAJO' : 'GASTO DESDE ATAJO'))).trim().toUpperCase();
-    const cleanCat = (String(rawCategory || (isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION'))).trim().toUpperCase();
-    const cleanMethod = (String(rawMethod || 'NEQUI')).trim().toUpperCase();
+    // Sanitizar concepto, categoría y método si llegaron como placeholders
+    let cleanDesc = isPlaceholder(rawDesc) || !rawDesc ? (isIncome ? 'INGRESO DESDE ATAJO' : 'GASTO DESDE ATAJO') : String(rawDesc).trim().toUpperCase();
+    let cleanCat = isPlaceholder(rawCategory) || !rawCategory ? '' : String(rawCategory).trim().toUpperCase();
+    let cleanMethod = isPlaceholder(rawMethod) || !rawMethod ? 'NEQUI' : String(rawMethod).trim().toUpperCase();
+
+    // Auto-detección inteligente de categoría si vino vacía o por defecto
+    const descLower = cleanDesc.toLowerCase();
+    if (!cleanCat || cleanCat === 'ALIMENTACION' || cleanCat === 'OTROS') {
+      if (descLower.includes('uber') || descLower.includes('didi') || descLower.includes('taxi') || descLower.includes('gasolina') || descLower.includes('pasaje') || descLower.includes('bus')) {
+        cleanCat = 'TRANSPORTE';
+      } else if (descLower.includes('arriendo') || descLower.includes('luz') || descLower.includes('agua') || descLower.includes('gas') || descLower.includes('internet') || descLower.includes('servicios')) {
+        cleanCat = 'VIVIENDA Y SERVICIOS';
+      } else if (descLower.includes('medico') || descLower.includes('farmacia') || descLower.includes('drogueria') || descLower.includes('salud')) {
+        cleanCat = 'SALUD Y BIENESTAR';
+      } else if (descLower.includes('cine') || descLower.includes('cerveza') || descLower.includes('fiesta') || descLower.includes('bar')) {
+        cleanCat = 'ENTRETENIMIENTO Y OCIO';
+      } else if (descLower.includes('salario') || descLower.includes('sueldo') || descLower.includes('nomina') || descLower.includes('honorarios')) {
+        cleanCat = 'SALARIO / TRABAJO';
+      } else if (!cleanCat) {
+        cleanCat = isIncome ? 'SALARIO / TRABAJO' : 'ALIMENTACION';
+      }
+    }
 
     let cleanDate = String(rawDate || '').trim();
     if (!cleanDate || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {

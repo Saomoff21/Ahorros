@@ -13,17 +13,28 @@ export async function handler(event, context) {
     return { statusCode: 200, headers, body: '' };
   }
 
+  // Responder a peticiones de chequeo de pendientes
+  const pathStr = String(event.path || '').toLowerCase();
+  if (pathStr.endsWith('/pending') || (event.queryStringParameters && event.queryStringParameters.pending !== undefined)) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, count: 0, transactions: [] })
+    };
+  }
+
   try {
-    let payload = {};
-    if (event.httpMethod === 'GET') {
-      payload = event.queryStringParameters || {};
-    } else {
+    let queryParams = event.queryStringParameters || {};
+    let bodyParams = {};
+    if (event.body) {
       try {
-        payload = JSON.parse(event.body || '{}');
+        bodyParams = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
       } catch (e) {
-        payload = event.queryStringParameters || {};
+        bodyParams = {};
       }
     }
+    // Combinar parámetros de URL y cuerpo para máxima compatibilidad
+    const payload = { ...queryParams, ...bodyParams };
 
     // Extraer clave o código de bóveda
     const headerKey = (event.headers && (event.headers['x-api-key'] || event.headers['X-Api-Key'])) || '';
@@ -168,11 +179,76 @@ export async function handler(event, context) {
       console.warn('Lookup key warning:', e);
     }
 
-    const nowIso = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
 
-    // Guardar directamente en Google Cloud Firestore
+    // CONTROL DE IDEMPOTENCIA Y DEDUPLICACIÓN EN FIRESTORE
+    // Consultar las transacciones recientes para prevenir registros dobles causados por reintentos de red o envíos dobles en <60s
+    try {
+      const recentRes = await fetch(`https://firestore.googleapis.com/v1/projects/ahorros-sa/databases/(default)/documents/vaults/${encodeURIComponent(targetVaultId)}/transactions?pageSize=15`);
+      if (recentRes.ok) {
+        const recentData = await recentRes.json();
+        const docs = recentData.documents || [];
+        const isDuplicate = docs.some(d => {
+          const f = d.fields || {};
+          const fAmt = f.amount ? (f.amount.doubleValue || f.amount.integerValue || 0) : 0;
+          const fType = f.type ? f.type.stringValue : '';
+          const fDesc = f.description ? f.description.stringValue : '';
+          const fDate = f.date ? f.date.stringValue : '';
+          const fCreated = f.createdAt ? f.createdAt.stringValue : '';
+
+          if (Math.abs(fAmt - numAmount) > 0.01) return false;
+          if (fType !== cleanType) return false;
+          if (fDesc !== cleanDesc) return false;
+          if (fDate && cleanDate && fDate !== cleanDate) return false;
+
+          if (fCreated) {
+            const ageMs = Math.abs(now.getTime() - new Date(fCreated).getTime());
+            return ageMs < 60000; // Recibido en los últimos 60 segundos
+          }
+          return false;
+        });
+
+        if (isDuplicate) {
+          console.log(`[NETLIFY DEDUPLICATION] Duplicado evitado dentro de 60s en bóveda ${targetVaultId}`);
+          const formattedAmount = '$ ' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(numAmount);
+          const typeLabel = isIncome ? 'Ingreso' : 'Gasto';
+          const methodLabel = cleanMethod === 'EFECTIVO' ? 'en Efectivo físico' : `con ${cleanMethod}`;
+          const speechText = `${typeLabel} de ${formattedAmount} ${methodLabel} registrado en ${cleanCat}. Tu saldo ha sido actualizado en la nube.`;
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              deduplicated: true,
+              message: speechText,
+              speech: speechText,
+              transaction: {
+                type: cleanType,
+                amount: numAmount,
+                description: cleanDesc,
+                category: cleanCat,
+                paymentMethod: cleanMethod,
+                date: cleanDate,
+                vaultId: targetVaultId,
+                createdAt: nowIso
+              }
+            })
+          };
+        }
+      }
+    } catch (dedupErr) {
+      console.warn('Advertencia en comprobación de duplicados:', dedupErr);
+    }
+
+    const txId = 'tx_sc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+
+    // Guardar directamente en Google Cloud Firestore con identificador único
     const firestoreBody = {
       fields: {
+        id: { stringValue: txId },
+        localId: { stringValue: txId },
         type: { stringValue: cleanType },
         amount: { doubleValue: numAmount },
         description: { stringValue: cleanDesc },
@@ -186,7 +262,7 @@ export async function handler(event, context) {
       }
     };
 
-    const fsRes = await fetch(`https://firestore.googleapis.com/v1/projects/ahorros-sa/databases/(default)/documents/vaults/${encodeURIComponent(targetVaultId)}/transactions`, {
+    const fsRes = await fetch(`https://firestore.googleapis.com/v1/projects/ahorros-sa/databases/(default)/documents/vaults/${encodeURIComponent(targetVaultId)}/transactions?documentId=${encodeURIComponent(txId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(firestoreBody)
@@ -205,6 +281,8 @@ export async function handler(event, context) {
         message: speechText,
         speech: speechText,
         transaction: {
+          id: txId,
+          localId: txId,
           type: cleanType,
           amount: numAmount,
           description: cleanDesc,

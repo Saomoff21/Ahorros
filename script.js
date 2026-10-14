@@ -95,10 +95,19 @@ function generateVaultCode() {
   return `AHO-${rand}`;
 }
 
-// ORDENACION CRONOLOGICA ESTRICTA POR FECHA (MÁS RECIENTES PRIMERO)
+// ORDENACION CRONOLOGICA ESTRICTA POR FECHA (MÁS RECIENTES PRIMERO) Y DEDUPLICACION DEFENSIVA
 function sortTransactionsByDate(list) {
   if (!Array.isArray(list)) return [];
-  return list.sort((a, b) => {
+  const seenIds = new Set();
+  const unique = [];
+  for (const item of list) {
+    if (!item) continue;
+    const uid = String(item.id || item.firestoreId || item.localId || '');
+    if (uid && seenIds.has(uid)) continue;
+    if (uid) seenIds.add(uid);
+    unique.push(item);
+  }
+  return unique.sort((a, b) => {
     // 1. Prioridad: Fecha del movimiento (YYYY-MM-DD)
     const da = a.date || '';
     const db = b.date || '';
@@ -1765,21 +1774,38 @@ function renderShortcutEvents() {
 }
 
 // POLLING DE ATAJOS PENDIENTES DESDE EL SERVIDOR
+let isPollingPendingShortcuts = false;
 async function pollPendingShortcuts() {
+  if (isPollingPendingShortcuts) return;
+  isPollingPendingShortcuts = true;
   try {
     const res = await fetch(`/api/shortcut/pending?key=${encodeURIComponent(userApiKey)}&vault=${encodeURIComponent(activeVaultId)}`);
     if (!res.ok) return;
     const data = await res.json();
-    if (data.success && data.transactions && data.transactions.length > 0) {
+    if (data.success && Array.isArray(data.transactions) && data.transactions.length > 0) {
+      let anyAdded = false;
       for (const t of data.transactions) {
-        shortcutEvents.unshift(t);
-        await addTransactionLocallyOrCloud(t);
+        // Verificar si la transacción ya está en memoria o en el estado local
+        const alreadyExists = transactions.some(existing => 
+          (t.id && (existing.id === t.id || existing.localId === t.id || existing.firestoreId === t.id)) ||
+          (t.createdAt && existing.createdAt === t.createdAt) ||
+          (existing.date === t.date && existing.type === t.type && Math.abs(existing.amount - t.amount) < 0.01 && existing.description === t.description && Math.abs(new Date(existing.createdAt || 0) - new Date(t.createdAt || 0)) < 60000)
+        );
+        if (!alreadyExists) {
+          shortcutEvents.unshift(t);
+          await addTransactionLocallyOrCloud(t);
+          anyAdded = true;
+        }
       }
-      renderShortcutEvents();
-      updateUI();
+      if (anyAdded) {
+        renderShortcutEvents();
+        updateUI();
+      }
     }
   } catch (e) {
     // Polling silencioso
+  } finally {
+    isPollingPendingShortcuts = false;
   }
 }
 setInterval(pollPendingShortcuts, 5000);
@@ -1877,8 +1903,10 @@ async function loadVaultFromCloud(vaultId) {
     const txSnap = await getDocs(txColl);
     if (!txSnap.empty) {
       const cloudTrans = [];
+      const seenTxIds = new Set();
       txSnap.forEach(d => {
-        if (!recentlyDeletedTxIds.has(d.id)) {
+        if (!recentlyDeletedTxIds.has(d.id) && !seenTxIds.has(d.id)) {
+          seenTxIds.add(d.id);
           const tData = d.data();
           // Limpiar transacciones residuales de metas que antes distorsionaban ingresos/gastos
           if (tData.description && (
@@ -1888,7 +1916,17 @@ async function loadVaultFromCloud(vaultId) {
           )) {
             return;
           }
-          cloudTrans.push({ ...tData, id: d.id, firestoreId: d.id });
+          // Evitar pintar registros idénticos si ingresaron duplicados en la base de datos dentro de 30s
+          const isDuplicatedDoc = cloudTrans.some(prev =>
+            prev.type === tData.type &&
+            Math.abs(prev.amount - tData.amount) < 0.01 &&
+            prev.description === tData.description &&
+            prev.date === tData.date &&
+            Math.abs(new Date(prev.createdAt || 0) - new Date(tData.createdAt || 0)) < 30000
+          );
+          if (!isDuplicatedDoc) {
+            cloudTrans.push({ ...tData, id: d.id, firestoreId: d.id, localId: tData.localId || d.id });
+          }
         }
       });
       transactions = sortTransactionsByDate(cloudTrans);
@@ -2112,7 +2150,8 @@ function setupVaultCloudListeners(vaultId) {
 
   const txColl = collection(db, 'vaults', vaultId, 'transactions');
   unsubscribeTransactions = onSnapshot(txColl, (snapshot) => {
-    const cloudTrans = [];
+    const rawCloudTrans = [];
+    const seenTxDocIds = new Set();
     snapshot.forEach(docSnap => {
       const tData = docSnap.data();
       const docId = String(docSnap.id);
@@ -2135,16 +2174,48 @@ function setupVaultCloudListeners(vaultId) {
       )) {
         return;
       }
-      cloudTrans.push({ ...tData, id: docSnap.id, firestoreId: docSnap.id, localId: tData.localId || tData.id });
+
+      if (!seenTxDocIds.has(docId)) {
+        seenTxDocIds.add(docId);
+        rawCloudTrans.push({
+          ...tData,
+          id: docSnap.id,
+          firestoreId: docSnap.id,
+          localId: tData.localId || tData.id || docSnap.id
+        });
+      }
     });
-    // Preservar transacciones locales provisionales recién insertadas
+
+    // Deduplicar cloudTrans en caso de que en la base de datos existan dos registros idénticos ingresados en ráfaga (<30s)
+    const cloudTrans = [];
+    rawCloudTrans.forEach(ct => {
+      const isDuplicate = cloudTrans.some(prev =>
+        prev.type === ct.type &&
+        Math.abs((prev.amount || 0) - (ct.amount || 0)) < 0.01 &&
+        prev.description === ct.description &&
+        prev.date === ct.date &&
+        Math.abs(new Date(prev.createdAt || 0) - new Date(ct.createdAt || 0)) < 30000
+      );
+      if (!isDuplicate) {
+        cloudTrans.push(ct);
+      }
+    });
+
+    // Preservar transacciones locales provisionales recién insertadas que aún no hayan llegado a Firestore
     const localPending = transactions.filter(t => 
       typeof t.id === 'string' && t.id.startsWith('tx_') &&
       !recentlyDeletedTxIds.has(String(t.id)) &&
       !recentlyDeletedTxIds.has(String(t.localId)) &&
       !recentlyDeletedTxIds.has(String(t.firestoreId)) &&
-      !cloudTrans.some(c => (c.createdAt && c.createdAt === t.createdAt) || (c.localId && c.localId === t.id))
+      !cloudTrans.some(c => 
+        (c.id && c.id === t.id) ||
+        (c.firestoreId && c.firestoreId === t.id) ||
+        (c.localId && (c.localId === t.id || c.localId === t.localId)) ||
+        (c.createdAt && c.createdAt === t.createdAt) ||
+        (c.type === t.type && Math.abs((c.amount || 0) - (t.amount || 0)) < 0.01 && c.description === t.description && c.date === t.date && Math.abs(new Date(c.createdAt || 0) - new Date(t.createdAt || 0)) < 60000)
+      )
     );
+
     // Actualizar estado siempre con los datos autoritativos del snapshot
     transactions = sortTransactionsByDate([...cloudTrans, ...localPending]);
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
@@ -2493,6 +2564,16 @@ async function addTransactionLocallyOrCloud(txData) {
     ...(txData.recurringName ? { recurringName: txData.recurringName } : {})
   };
 
+  // Evitar duplicar en memoria si ya existe en transactions (mismo id o misma transacción recibida dentro de 45s)
+  const isAlreadyInState = transactions.some(t => 
+    (cleanTx.id && (t.id === cleanTx.id || t.localId === cleanTx.id || t.firestoreId === cleanTx.id)) ||
+    (cleanTx.firestoreId && (t.id === cleanTx.firestoreId || t.firestoreId === cleanTx.firestoreId)) ||
+    (t.type === cleanTx.type && Math.abs((t.amount || 0) - (cleanTx.amount || 0)) < 0.01 && t.description === cleanTx.description && t.date === cleanTx.date && Math.abs(new Date(t.createdAt || 0) - new Date(cleanTx.createdAt || 0)) < 45000)
+  );
+  if (isAlreadyInState) {
+    return;
+  }
+
   // 1. Guardar localmente y actualizar interfaz INMEDIATAMENTE
   transactions.push(cleanTx);
   sortTransactionsByDate(transactions);
@@ -2544,7 +2625,7 @@ window.removeTransaction = async function(idOrIndex) {
     targetTx = transactions[parseInt(idOrIndex, 10)];
   }
 
-  // Recopilar todos los posibles identificadores para lápida (tombstone)
+  // Recopilar exclusivamente los identificadores específicos de esta transacción
   const idsToDelete = new Set();
   idsToDelete.add(strId);
   if (targetTx) {
@@ -2553,9 +2634,6 @@ window.removeTransaction = async function(idOrIndex) {
     if (targetTx.localId) idsToDelete.add(String(targetTx.localId));
     if (targetTx.tempId) idsToDelete.add(String(targetTx.tempId));
     if (targetTx.createdAt) idsToDelete.add(String(targetTx.createdAt));
-    if (targetTx.date && targetTx.amount && targetTx.description) {
-      idsToDelete.add(`sig_${targetTx.date}_${targetTx.amount}_${targetTx.description}`);
-    }
   }
 
   // Marcar como eliminado en memoria y localStorage para evitar resurrección por snapshot
@@ -2564,7 +2642,7 @@ window.removeTransaction = async function(idOrIndex) {
     saveRecentlyDeletedId('tx', id);
   });
 
-  // Eliminar inmediatamente del estado local
+  // Eliminar inmediatamente del estado local SOLO la transacción seleccionada
   if (targetTx) {
     transactions = transactions.filter(t => t !== targetTx && !idsToDelete.has(String(t.id)) && !idsToDelete.has(String(t.firestoreId)) && !idsToDelete.has(String(t.localId)));
   } else {
@@ -2627,7 +2705,7 @@ window.removeTransaction = async function(idOrIndex) {
 
   // Eliminar en Firestore por IDs directos
   for (const docId of idsToDelete) {
-    if (!docId || docId.startsWith('sig_')) continue;
+    if (!docId) continue;
     try {
       await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', docId));
     } catch (e) {
@@ -2635,17 +2713,18 @@ window.removeTransaction = async function(idOrIndex) {
     }
   }
 
-  // Búsqueda y eliminación de documentos equivalentes en Firestore para asegurar eliminación
+  // Búsqueda y eliminación en Firestore: SOLO por id exacto o localId correspondiente a este registro específico
   if (targetTx) {
     try {
       const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
       const snap = await getDocs(txColl);
       for (const docSnap of snap.docs) {
         const d = docSnap.data();
-        const isMatch = (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId)) ||
-                        (targetTx.createdAt && d.createdAt === targetTx.createdAt) ||
-                        (d.date === targetTx.date && d.amount === targetTx.amount && d.description === targetTx.description);
-        if (isMatch) {
+        const isTargetDoc = docSnap.id === strId ||
+                            docSnap.id === targetTx.firestoreId ||
+                            docSnap.id === targetTx.id ||
+                            (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId || docSnap.id === targetTx.localId));
+        if (isTargetDoc) {
           recentlyDeletedTxIds.add(docSnap.id);
           saveRecentlyDeletedId('tx', docSnap.id);
           try {

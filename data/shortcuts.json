@@ -97,20 +97,6 @@
       "syncedToCloud": true
     },
     {
-      "id": "tx_sc_1791743297960_vkaxtk",
-      "apiKey": "AHO-SC-N385BY",
-      "type": "expense",
-      "amount": 25000,
-      "description": "Almuerzo del dia",
-      "category": "ALIMENTACION",
-      "paymentMethod": "NEQUI",
-      "date": "2026-10-11",
-      "time": "06:28:17 p. m.",
-      "createdAt": "2026-10-11T18:28:17.941Z",
-      "source": "iphone_shortcut",
-      "syncedToCloud": true
-    },
-    {
       "id": "tx_sc_1791743301961_h6qqlz",
       "apiKey": "AHO-SC-N385BY",
       "type": "expense",

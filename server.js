@@ -326,6 +326,38 @@ app.all('/api/shortcut/transaction', (req, res) => {
   };
 
   const data = loadData();
+
+  // Control de Idempotencia y Deduplicación en el servidor
+  const existingDup = data.transactions.find(t => {
+    if (t.apiKey !== apiKey && t.vaultId !== newTx.vaultId) return false;
+    if (t.type !== cleanType || Math.abs((t.amount || 0) - numericAmount) > 0.01) return false;
+    if (String(t.description || '').trim() !== cleanDescription) return false;
+    if (t.date && cleanDate && t.date !== cleanDate) return false;
+    const diffMs = Math.abs(now.getTime() - new Date(t.createdAt || 0).getTime());
+    return diffMs < 60000;
+  });
+
+  if (existingDup) {
+    console.log(`[SHORTCUT DEDUPLICATED] Petición duplicada descartada para ${apiKey} (${cleanDescription})`);
+    const formattedAmount = formatCurrency(numericAmount);
+    const typeLabel = isIncome ? 'Ingreso' : 'Gasto';
+    const methodLabel = cleanPaymentMethod === 'EFECTIVO' ? 'en Efectivo físico' : `con ${cleanPaymentMethod}`;
+    const userStats = data.users[apiKey] || { balance: 0 };
+    const speechText = `${typeLabel} de ${formattedAmount} ${methodLabel} registrado en ${cleanCategory}. Tu saldo estimado es de ${formatCurrency(userStats.balance)}.`;
+    if (returnFormat === 'text' || req.headers.accept === 'text/plain') {
+      return res.type('text/plain').send(speechText);
+    }
+    return res.json({
+      success: true,
+      deduplicated: true,
+      message: speechText,
+      speech: speechText,
+      transaction: existingDup,
+      userBalance: userStats.balance,
+      formattedBalance: formatCurrency(userStats.balance)
+    });
+  }
+
   data.transactions.push(newTx);
 
   // Actualizar métricas del usuario en caché

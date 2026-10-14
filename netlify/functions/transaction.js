@@ -23,6 +23,14 @@ export async function handler(event, context) {
     };
   }
 
+  if (event.httpMethod === 'DELETE') {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, message: 'Operación DELETE procesada' })
+    };
+  }
+
   try {
     let queryParams = event.queryStringParameters || {};
     let bodyParams = {};

@@ -225,26 +225,39 @@ function appConfirm(message, options = {}) {
       isDone = true;
       modal.classList.add('hidden');
       modal.style.display = 'none';
-      btnOk.removeEventListener('click', onOk);
-      btnCancel.removeEventListener('click', onCancel);
-      modal.removeEventListener('click', onBackdrop);
+      btnOk.onclick = null;
+      btnCancel.onclick = null;
+      modal.onclick = null;
+      document.removeEventListener('keydown', onKeyDown);
     };
 
-    const onOk = (e) => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup();
+        resolve(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        cleanup();
+        resolve(true);
+      }
+    };
+
+    btnOk.onclick = (e) => {
       e?.preventDefault?.();
       e?.stopPropagation?.();
       cleanup();
       resolve(true);
     };
 
-    const onCancel = (e) => {
+    btnCancel.onclick = (e) => {
       e?.preventDefault?.();
       e?.stopPropagation?.();
       cleanup();
       resolve(false);
     };
 
-    const onBackdrop = (e) => {
+    modal.onclick = (e) => {
       if (e.target === modal) {
         e?.preventDefault?.();
         cleanup();
@@ -252,9 +265,7 @@ function appConfirm(message, options = {}) {
       }
     };
 
-    btnOk.addEventListener('click', onOk, { once: true });
-    btnCancel.addEventListener('click', onCancel, { once: true });
-    modal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKeyDown);
   });
 }
 
@@ -309,8 +320,9 @@ let savingsGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
 let recurringPayments = JSON.parse(localStorage.getItem('finances_v10_recurring')) || [];
 let shortcutEvents = [];
 
-// Sets de IDs eliminados recientemente para evitar resurrección por snapshot en tiempo real
+// Sets de IDs y Firmas eliminadas recientemente para evitar resurrección por snapshot en tiempo real
 const recentlyDeletedTxIds = new Set();
+const recentlyDeletedTxSignatures = new Set();
 const recentlyDeletedDebtIds = new Set();
 const recentlyDeletedGoalIds = new Set();
 const recentlyDeletedRecurringIds = new Set();
@@ -322,6 +334,7 @@ function loadRecentlyDeletedIds() {
     if (raw) {
       const data = JSON.parse(raw);
       (data.tx || []).forEach(id => recentlyDeletedTxIds.add(String(id)));
+      (data.txSig || []).forEach(sig => recentlyDeletedTxSignatures.add(String(sig)));
       (data.debt || []).forEach(id => recentlyDeletedDebtIds.add(String(id)));
       (data.goal || []).forEach(id => recentlyDeletedGoalIds.add(String(id)));
       (data.recurring || []).forEach(id => recentlyDeletedRecurringIds.add(String(id)));
@@ -334,7 +347,7 @@ function saveRecentlyDeletedId(type, id) {
   if (!id) return;
   try {
     const raw = localStorage.getItem('ahorros_tombstones') || sessionStorage.getItem('ahorros_tombstones');
-    const data = raw ? JSON.parse(raw) : { tx: [], debt: [], goal: [], recurring: [] };
+    const data = raw ? JSON.parse(raw) : { tx: [], txSig: [], debt: [], goal: [], recurring: [] };
     if (!data[type]) data[type] = [];
     const strId = String(id);
     if (!data[type].includes(strId)) {
@@ -1061,7 +1074,7 @@ if (btnCopyUrl) {
   });
 }
 
-// GENERADOR DE GUÍA OFICIAL EN PDF DE ALTA FIDELIDAD (2 PÁGINAS PERFECTAS, SIN ERRORES NI CORTES)
+// GENERADOR DE GUÍA OFICIAL EN PDF DE ALTA FIDELIDAD (3 PÁGINAS MAESTRAS PERFECTAS, CON NUEVO ATAJO UNIVERSAL)
 if (btnDownloadPdfGuide) {
   btnDownloadPdfGuide.addEventListener('click', () => {
     showQuickToast('📄 Generando Guía Visual Pro en PDF...');
@@ -1093,173 +1106,284 @@ if (btnDownloadPdfGuide) {
 
       const cleanBaseWebhook = `${publicSharedOrigin}/api/shortcut/transaction`;
 
+      // Helper para encabezado estándar
+      const drawHeader = (pageTitle, subTitle, pageNum, bannerColor = cPrimary) => {
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, 210, 297, 'F');
+
+        doc.setFillColor(240, 249, 255);
+        doc.roundedRect(12, 10, 186, 23, 3, 3, 'F');
+        doc.setDrawColor(...bannerColor);
+        doc.setLineWidth(0.6);
+        doc.roundedRect(12, 10, 186, 23, 3, 3, 'D');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11.5);
+        doc.setTextColor(...bannerColor);
+        doc.text(pageTitle, 18, 17.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.6);
+        doc.setTextColor(...cBody);
+        doc.text(subTitle, 18, 23.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.6);
+        doc.text(`Bóveda Sincronizada: ${activeVaultId}   |   Tu Clave API Personal: ${userApiKey}`, 18, 29);
+
+        // Pie de página
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.2);
+        doc.setTextColor(...cMuted);
+        doc.text(`PÁGINA ${pageNum}/3   |   AHORROS SA - GUÍA OFICIAL MAESTRA   |   FINANZAS EN TIEMPO REAL`, 38, 288);
+      };
+
       // =========================================================================
-      // PÁGINA 1: REGISTRO DE GASTOS, MÉTODOS DE CONFIGURACIÓN Y ADVERTENCIAS DEL MONTO
+      // PÁGINA 1: NUEVO ATAJO MAESTRO UNIVERSAL (TODO EN UNO) & DATOS DE CONEXIÓN
       // =========================================================================
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, 210, 297, 'F');
+      drawHeader(
+        'AHORROS SA  |  GUÍA OFICIAL MAESTRA DE ATAJOS PARA IPHONE & SIRI',
+        'Configuración paso a paso para registro instantáneo por voz, widgets y botones rápidos en iOS',
+        1,
+        cPrimary
+      );
 
-      // Banner Header Superior
-      doc.setFillColor(240, 249, 255);
-      doc.roundedRect(12, 10, 186, 22, 3, 3, 'F');
-      doc.setDrawColor(...cPrimary);
-      doc.setLineWidth(0.6);
-      doc.roundedRect(12, 10, 186, 22, 3, 3, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.setTextColor(...cPrimary);
-      doc.text('AHORROS SA  |  GUÍA OFICIAL DE ATAJOS PARA IPHONE & SIRI', 18, 18);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.8);
-      doc.setTextColor(...cBody);
-      doc.text('Configuración paso a paso para registro instantáneo por voz, widgets y botones rápidos en iOS', 18, 24);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Bóveda Vinculada: ${activeVaultId}   |   Tu Clave API Personal: ${userApiKey}`, 18, 29);
-
-      // Tarjeta: Datos Oficiales de Conexión
+      // Tarjeta: Datos Oficiales de Conexión Sincronizados
       doc.setFillColor(...cBgCard);
-      doc.roundedRect(12, 35, 186, 19, 2.5, 2.5, 'F');
+      doc.roundedRect(12, 36, 186, 18, 2.5, 2.5, 'F');
       doc.setDrawColor(...cBorder);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, 35, 186, 19, 2.5, 2.5, 'D');
+      doc.roundedRect(12, 36, 186, 18, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.2);
+      doc.setFontSize(8);
       doc.setTextColor(...cPrimary);
-      doc.text('DATOS OFICIALES DE CONEXIÓN PARA TU IPHONE (100% LIMPIOS & VÁLIDOS)', 18, 41);
+      doc.text('DATOS OFICIALES DE CONEXIÓN PARA TU IPHONE (100% LIMPIOS & VÁLIDOS)', 18, 41.5);
 
       doc.setFont('courier', 'bold');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.3);
       doc.setTextColor(...cCrimson);
-      doc.text(`URL de Webhook: ${cleanBaseWebhook}`, 18, 46);
+      doc.text(`URL de Webhook: ${cleanBaseWebhook}`, 18, 46.5);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.2);
       doc.setTextColor(...cBody);
       doc.text(`Clave de Atajo: ${userApiKey}  (Identifica de forma exclusiva tu cuenta en la nube sin pedir contraseñas)`, 18, 51);
 
-      // Tarjeta 1: MÉTODO 1 OFICIAL (POST JSON - 100% LIBRE DE ERRORES)
+      // Tarjeta Principal: NUEVO ATAJO MAESTRO UNIVERSAL (POST JSON)
       let curY = 57;
       doc.setFillColor(...cBgCard);
-      doc.roundedRect(12, curY, 186, 75, 2.5, 2.5, 'F');
+      doc.roundedRect(12, curY, 186, 126, 2.5, 2.5, 'F');
       doc.setDrawColor(...cEmerald);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(12, curY, 186, 75, 2.5, 2.5, 'D');
+      doc.setLineWidth(0.6);
+      doc.roundedRect(12, curY, 186, 126, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.8);
       doc.setTextColor(...cEmerald);
-      doc.text('MÉTODO 1 (OFICIAL RECOMENDADO): REGISTRAR GASTO CON POST JSON (100% NATIVO DE APPLE)', 18, curY + 6.5);
+      doc.text('⭐ NUEVO ATAJO MAESTRO UNIVERSAL: DECIDE GASTO O INGRESO EN UN SOLO BOTÓN', 18, curY + 6.5);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
+      doc.setFontSize(7.2);
       doc.setTextColor(...cBody);
-      doc.text('Este método utiliza la URL limpia sin parámetros en la barra. NUNCA arroja "URL no válida" y es el estándar de Apple:', 18, curY + 12);
+      doc.text('¿Por qué tener atajos separados si puedes tener uno solo que te pregunte? Con este atajo universal podrás registrar ambos:', 18, curY + 12);
 
-      const m1Steps = [
-        ['Paso 1 (Crear):', 'Abre la app "Atajos", pulsa "+" arriba a la derecha y nombra el atajo "Registrar Gasto".'],
-        ['Paso 2 (Monto):', 'Acción "Solicitar entrada" -> Tipo: Número -> Pregunta: "¿Cuánto gastaste?". (¡Usa Número, no Texto!)'],
-        ['Paso 3 (Método):', 'Acción "Elegir de la lista" -> Opciones: NEQUI, BANCOLOMBIA, DAVIPLATA, EFECTIVO, TARJETA.'],
-        ['Paso 4 (Categoría):', 'Acción "Elegir de la lista" -> Opciones: ALIMENTACIÓN, TRANSPORTE, VIVIENDA, SERVICIOS, OTROS.'],
-        ['Paso 5 (Detalle):', 'Acción "Solicitar entrada" -> Tipo: Texto -> Pregunta: "¿Detalle o concepto? (Opcional)".'],
-        ['Paso 6 (Petición):', 'Acción "Obtener contenido de URL" con los siguientes ajustes exactos:']
+      const universalSteps = [
+        ['Paso 1 (Crear):', 'Abre "Atajos", pulsa "+" arriba a la derecha y nombra el atajo "Finanzas" o "Registrar Movimiento".'],
+        ['Paso 2 (Decidir Tipo):', 'Acción "Elegir de la lista" -> Opciones: "Gasto" e "Ingreso". [Variable Tipo de Movimiento]'],
+        ['Paso 3 (Pedir Monto):', 'Acción "Solicitar entrada" -> Tipo: Número -> "¿Cuánto dinero es?". (¡OBLIGATORIO: Tipo Número, NO Texto!)'],
+        ['Paso 4 (Método / Cuenta):', 'Acción "Elegir de la lista" -> Opciones: NEQUI, BANCOLOMBIA, DAVIPLATA, EFECTIVO, TARJETA.'],
+        ['Paso 5 (Categoría):', 'Acción "Elegir de la lista" -> Opciones: ALIMENTACIÓN, TRANSPORTE, VIVIENDA, SERVICIOS, SALARIO, OTROS.'],
+        ['Paso 6 (Detalle):', 'Acción "Solicitar entrada" -> Tipo: Texto -> Pregunta: "¿Concepto o detalle? (Opcional)".'],
+        ['Paso 7 (Petición Web):', 'Acción "Obtener contenido de URL" con los ajustes exactos mostrados a continuación:']
       ];
 
-      let sY = curY + 18;
-      m1Steps.forEach(([label, desc]) => {
+      let sY = curY + 17.5;
+      universalSteps.forEach(([label, desc]) => {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.2);
+        doc.setFontSize(7.1);
         doc.setTextColor(...cPrimary);
         doc.text(label, 18, sY);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...cDark);
-        doc.text(desc, 44, sY);
-        sY += 5.2;
+        doc.text(desc, 48, sY);
+        sY += 5.1;
       });
 
-      // Detalle de la acción Obtener contenido de URL en POST JSON
+      // Detalle de configuración de Obtener contenido de URL en POST JSON
       doc.setFillColor(...cBgBox);
-      doc.roundedRect(18, sY - 1, 174, 18, 2, 2, 'F');
+      doc.roundedRect(18, sY - 0.5, 174, 29, 2, 2, 'F');
       doc.setDrawColor(...cBorder);
       doc.setLineWidth(0.3);
-      doc.roundedRect(18, sY - 1, 174, 18, 2, 2, 'D');
+      doc.roundedRect(18, sY - 0.5, 174, 29, 2, 2, 'D');
 
       doc.setFont('courier', 'bold');
       doc.setFontSize(6.8);
       doc.setTextColor(...cDark);
       doc.text(`• URL a pegar: ${cleanBaseWebhook}   |   Método: POST   |   Cuerpo: JSON`, 22, sY + 3.5);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.9);
-      doc.text(`• Agrega campos en JSON: key: "${userApiKey}" (Texto), type: "gasto" (Texto), format: "text" (Texto)`, 22, sY + 8);
-      doc.text(`• Vincula las variables azules: amount -> [¿Cuánto gastaste?], account -> [Método], category -> [Categoría], desc -> [Detalle]`, 22, sY + 12.5);
+      doc.setFontSize(6.8);
+      doc.text(`• Campo 1 (Texto): key -> "${userApiKey}"`, 22, sY + 7.5);
+      doc.text(`• Campo 2 (Texto): type -> [Variable azul Tipo de Movimiento (Gasto o Ingreso)]`, 22, sY + 11.5);
+      doc.text(`• Campo 3 (Texto): amount -> [Variable azul Número de ¿Cuánto dinero es?]`, 22, sY + 15.5);
+      doc.text(`• Campo 4 (Texto): account -> [Variable azul Método]   |   Campo 5: category -> [Variable azul Categoría]`, 22, sY + 19.5);
+      doc.text(`• Campo 6 (Texto): desc -> [Variable azul Detalle]   |   Campo 7: format -> "text"`, 22, sY + 23.5);
+      doc.text(`• Nota: Para enlazar variables mágicas, toca sobre el campo de texto y selecciona la variable azul sobre el teclado.`, 22, sY + 27.5);
 
-      sY += 21;
+      sY += 32;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.2);
       doc.setTextColor(...cEmerald);
-      doc.text('Paso 7 (Confirmar):', 18, sY);
+      doc.text('Paso 8 (Confirmar):', 18, sY);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...cDark);
-      doc.text('Acción "Hablar texto" pasando el resultado de la URL. Con format=text Siri te confirmará tu nuevo saldo en voz alta.', 44, sY);
+      doc.text('Acción "Hablar texto" pasando el [Resultado de Obtener contenido de URL].', 48, sY);
+      sY += 4.5;
+      doc.text('Siri leerá en voz alta: "Gasto de $ 25.000 registrado en Alimentación. Tu saldo disponible es de $ 1.250.000".', 48, sY);
 
-      // Tarjeta 2: MÉTODO 2 (GET) Y RESOLUCIÓN DEL ERROR "URL NO VÁLIDA"
-      let getCardY = 136;
-      doc.setFillColor(254, 252, 232);
-      doc.roundedRect(12, getCardY, 186, 42, 2.5, 2.5, 'F');
+      // Tarjeta Inferior: Ventajas del Atajo Maestro
+      let vY = 187;
+      doc.setFillColor(240, 249, 255);
+      doc.roundedRect(12, vY, 186, 32, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cPrimary);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, vY, 186, 32, 2.5, 2.5, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.2);
+      doc.setTextColor(...cPrimary);
+      doc.text('💡 ¿POR QUÉ ESTE MÉTODO POST JSON ES EL ESTÁNDAR 100% LIBRE DE ERRORES?', 18, vY + 6.5);
+
+      const mAdv = [
+        '1. URL 100% Limpia: Al no llevar parámetros en la barra de URL, Apple jamás mostrará "La URL no es válida".',
+        '2. Soporta Cualquier Texto: Permite espacios, tildes, signos de puntuación y descripciones largas sin errores de codificación.',
+        '3. Un Solo Ícono en Pantalla: No saturas tu pantalla con 3 o 4 atajos diferentes; todo se gestiona desde un único botón.',
+        '4. Idempotencia y Cero Duplicados: El servidor cuenta con protección anti-duplicados de 60s por reenvíos de red o doble toque.'
+      ];
+      let ay = vY + 12;
+      mAdv.forEach(adv => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.1);
+        doc.setTextColor(...cDark);
+        doc.text(adv, 18, ay);
+        ay += 4.8;
+      });
+
+      // Tarjeta de Prueba Rápida
+      let testY = 222;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, testY, 186, 61, 2.5, 2.5, 'F');
       doc.setDrawColor(...cAmber);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, getCardY, 186, 42, 2.5, 2.5, 'D');
+      doc.roundedRect(12, testY, 186, 61, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8.2);
       doc.setTextColor(...cAmber);
-      doc.text('MÉTODO 2: REGISTRO POR URL DIRECTA (GET) & ¿POR QUÉ SURGE "LA URL NO ES VÁLIDA"?', 18, getCardY + 6);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.2);
-      doc.setTextColor(...cDark);
-      const urlInvalidExplain = '¿Por qué la app Atajos rechaza URLs con corchetes [ ]? En los estándares web, los corchetes "[" y "]" son caracteres inválidos en URLs. Si copias un enlace que contiene "[Monto]" o "[Metodo]" como texto literal, Apple mostrará inmediatamente "La URL no es válida".';
-      const uLines = doc.splitTextToSize(urlInvalidExplain, 174);
-      doc.text(uLines, 18, getCardY + 11.5);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Cómo configurar el enlace GET correctamente en tu iPhone:', 18, getCardY + 22);
-
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(6.8);
-      doc.setTextColor(...cCrimson);
-      doc.text(`1. URL base limpia: ${cleanBaseWebhook}?key=${userApiKey}&type=gasto&amount=`, 18, getCardY + 27);
+      doc.text('🚀 CÓMO PROBAR TU NUEVO ATAJO EN 5 SEGUNDOS', 18, testY + 6.5);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.1);
       doc.setTextColor(...cDark);
-      doc.text('2. Justo al final de "amount=", NO escribas corchetes: toca la burbuja azul de la variable previa "¿Cuánto gastaste?".', 18, getCardY + 32);
-      doc.text('3. Luego agrega &account= y la variable azul del Método, &category= y la Categoría, &desc= y el Detalle, y &format=text.', 18, getCardY + 37);
+      doc.text('1. Dentro del editor del atajo en tu iPhone, pulsa el botón azul de reproducción (▶) en la esquina inferior derecha.', 18, testY + 12.5);
+      doc.text('2. Elige "Gasto", escribe un monto de prueba (ej: 10000), selecciona "Nequi" y "Alimentación".', 18, testY + 18);
+      doc.text('3. Tu iPhone contactará la nube, Siri te confirmará en voz alta y verás aparecer el movimiento en la web en tiempo real.', 18, testY + 23.5);
+      doc.text('4. En caso de que desees eliminar esa prueba, haz clic en la "X" en la tabla web: se eliminará al instante sin trabas.', 18, testY + 29);
 
-      // Tarjeta 3: ADVERTENCIAS CRÍTICAS DEL MONTO INGRESADO Y SOLUCIÓN DE ERRORES
-      let warnY = 181;
-      doc.setFillColor(254, 242, 242);
-      doc.roundedRect(12, warnY, 186, 62, 2.5, 2.5, 'F');
-      doc.setDrawColor(...cCrimson);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...cPrimary);
+      doc.text('¿Quieres tener atajos directos sin menú de selección? Continúa en la Página 2 para los atajos dedicados.', 18, testY + 37);
+
+      // =========================================================================
+      // PÁGINA 2: ATAJOS DEDICADOS, MÉTODO GET Y ADVERTENCIAS CRÍTICAS DEL MONTO
+      // =========================================================================
+      doc.addPage();
+      drawHeader(
+        '2. ATAJOS DEDICADOS, MÉTODO GET Y ADVERTENCIAS CRÍTICAS DEL MONTO',
+        'Alternativas directas de 1 toque, explicación del error de corchetes y reglas del formato numérico',
+        2,
+        cEmerald
+      );
+
+      // Tarjeta 1: Atajos Dedicados de 1 Toque
+      let p2Y = 36;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, p2Y, 186, 46, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cEmerald);
       doc.setLineWidth(0.5);
-      doc.roundedRect(12, warnY, 186, 62, 2.5, 2.5, 'D');
+      doc.roundedRect(12, p2Y, 186, 46, 2.5, 2.5, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...cEmerald);
+      doc.text('OPCIÓN ALTERNATIVA: ATAJOS DEDICADOS ESPECÍFICOS (1 TOQUE)', 18, p2Y + 6.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.2);
+      doc.setTextColor(...cDark);
+      doc.text('Si prefieres tener 2 íconos separados ("Registrar Gasto" y "Registrar Ingreso") sin que te pregunte el tipo:', 18, p2Y + 12);
+      doc.text('• Atajo "Registrar Gasto": Sigue los mismos pasos del atajo universal, pero omite el Paso 2 y fija en JSON type: "gasto".', 18, p2Y + 18);
+      doc.text('• Atajo "Registrar Ingreso": Omite el Paso 2 y fija en JSON type: "ingreso". Pregunta: "¿Cuánto dinero recibiste?".', 18, p2Y + 24);
+      doc.text('• En ambos casos puedes agregar la acción "Hablar texto" para que Siri te confirme el saldo actualizado de inmediato.', 18, p2Y + 30);
+      doc.text('• Ambos atajos se sincronizan en la misma Bóveda (' + activeVaultId + ') usando tu misma clave API.', 18, p2Y + 36);
+
+      // Tarjeta 2: MÉTODO GET Y ERROR "LA URL NO ES VÁLIDA"
+      let getY = 85;
+      doc.setFillColor(254, 252, 232);
+      doc.roundedRect(12, getY, 186, 46, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cAmber);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, getY, 186, 46, 2.5, 2.5, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...cAmber);
+      doc.text('MÉTODO GET POR ENLACE DIRECTO & ¿POR QUÉ SURGE "LA URL NO ES VÁLIDA"?', 18, getY + 6.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.1);
+      doc.setTextColor(...cDark);
+      const urlInvalidExplain = '¿Por qué la app Atajos rechaza URLs que contienen corchetes [ ]? En los estándares oficiales de internet (RFC 3986), los caracteres "[" y "]" son ilegales dentro de una URL. Si copias un texto que dice literalmente "[Monto]" o "[Metodo]", Apple mostrará inmediatamente "La URL no es válida".';
+      const uLines = doc.splitTextToSize(urlInvalidExplain, 174);
+      doc.text(uLines, 18, getY + 12);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cómo configurar el enlace GET correctamente en tu iPhone (si no usas POST JSON):', 18, getY + 23);
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(6.7);
+      doc.setTextColor(...cCrimson);
+      doc.text(`1. URL base limpia: ${cleanBaseWebhook}?key=${userApiKey}&type=gasto&amount=`, 18, getY + 28);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.1);
+      doc.setTextColor(...cDark);
+      doc.text('2. Justo al final de "amount=", NO escribas corchetes: toca la burbuja azul de la variable mágica "¿Cuánto dinero es?".', 18, getY + 33.5);
+      doc.text('3. Agrega &account= y la variable azul del Método, &category= y la Categoría, &desc= y el Detalle, y &format=text.', 18, getY + 39);
+
+      // Tarjeta 3: ADVERTENCIAS CRÍTICAS DEL MONTO INGRESADO
+      let warnY = 134;
+      doc.setFillColor(254, 242, 242);
+      doc.roundedRect(12, warnY, 186, 92, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cCrimson);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(12, warnY, 186, 92, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.8);
       doc.setTextColor(...cCrimson);
       doc.text('⚠️ ADVERTENCIAS CRÍTICAS DEL MONTO Y POSIBLES ERRORES AL USAR LA OPCIÓN', 18, warnY + 6.5);
 
-      const warnings = [
-        ['1. Error "El monto debe ser un número mayor a 0" o texto no reemplazado:', 'Ocurre si en tu atajo dejaste escrito el texto "[Monto]" literalmente en lugar de seleccionar la burbuja/variable mágica azul sobre el teclado de tu iPhone. Borra las letras escritas y toca la burbuja azul "¿Cuánto gastaste?".'],
-        ['2. Tipo de Entrada del Monto (¡Configurar siempre como Número!):', 'En la primera acción "Solicitar entrada" para el monto, el Tipo SIEMPRE debe ser Número (no Texto). Si lo dejas como Texto, el teclado de tu iPhone puede ingresar comas, símbolos o letras accidentales que impidan procesar el valor.'],
-        ['3. Formato de Puntos y Cifras:', 'Puedes ingresar tanto números continuos (ej: 50000) como con puntos de miles (ej: 50.000). Ahorros SA interpreta ambos formatos sin problemas. NUNCA escribas palabras como "pesos" o "COP" dentro del monto.'],
-        ['4. Detección Inteligente de Categoría y Cuenta si se omiten:', 'Si omites la categoría o el método de pago, el sistema analizará el concepto escrito (ej: "Uber" -> Transporte, "Almuerzo" -> Alimentación) y asignará Nequi o Banco automáticamente para que ningún movimiento quede sin registrar.']
+      const detailedWarnings = [
+        ['1. Tipo de Entrada Obligatorio (¡Configurar siempre como NÚMERO!):', 'En la acción "Solicitar entrada" para el monto, el Tipo SIEMPRE debe ser Número (no Texto). Si lo dejas configurado como Texto, el teclado de tu iPhone permitirá ingresar comas, símbolos monetarios, espacios o letras accidentales que impedirán calcular el valor en la nube.'],
+        ['2. Error "El monto debe ser un número mayor a 0":', 'Ocurre cuando en tu atajo quedó escrito el texto "[Monto]" literalmente en vez de seleccionar la burbuja/variable mágica azul sobre el teclado de tu iPhone. Para corregirlo: borra las letras escritas y toca la burbuja azul "¿Cuánto dinero es?".'],
+        ['3. Formato de Puntos y Cifras:', 'Puedes ingresar tanto números continuos (ej: 50000) como con puntos de miles (ej: 50.000). El motor de Ahorros SA interpreta ambos formatos perfectamente. NUNCA escribas palabras como "pesos", "$" o "COP" dentro del campo de monto.'],
+        ['4. Detección Inteligente de Categoría y Cuenta si se omiten:', 'Si omites la categoría o el método de pago por prisa, el sistema analizará el concepto escrito (ej: "Uber" -> Transporte, "Almuerzo" -> Alimentación, "Sueldo" -> Salario) y asignará Nequi o Efectivo automáticamente para que ningún movimiento se pierda.'],
+        ['5. Comportamiento de Decimales y Centavos:', 'Si vas a ingresar valores con decimales (ej: 12.50), usa punto decimal. No obstante, para monedas sin centavos habituales como el peso colombiano (COP), se recomienda ingresar siempre cifras enteras.']
       ];
 
       let wY = warnY + 13;
-      warnings.forEach(([title, body]) => {
+      detailedWarnings.forEach(([title, body]) => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.1);
         doc.setTextColor(...cCrimson);
@@ -1268,141 +1392,116 @@ if (btnDownloadPdfGuide) {
         doc.setTextColor(...cDark);
         const bLines = doc.splitTextToSize(body, 174);
         doc.text(bLines, 18, wY + 4);
-        wY += 11.8;
+        wY += 14.5;
       });
 
-      // Tarjeta 4: Activación por Voz con Siri
-      let siriY = 246;
+      // Tarjeta 4: Seguridad y Sincronización en la Nube
+      let secY = 230;
       doc.setFillColor(240, 249, 255);
-      doc.roundedRect(12, siriY, 186, 32, 2.5, 2.5, 'F');
+      doc.roundedRect(12, secY, 186, 53, 2.5, 2.5, 'F');
       doc.setDrawColor(...cPrimary);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, siriY, 186, 32, 2.5, 2.5, 'D');
+      doc.roundedRect(12, secY, 186, 53, 2.5, 2.5, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.2);
+      doc.setTextColor(...cPrimary);
+      doc.text('🔒 PRIVACIDAD, SEGURIDAD Y SINCRONIZACIÓN AUTOMÁTICA EN LA NUBE', 18, secY + 6.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.1);
+      doc.setTextColor(...cDark);
+      doc.text('• Cifrado Extremo a Extremo: Todas las peticiones viajan bajo el protocolo HTTPS TLS 1.3 con certificados de alta seguridad.', 18, secY + 13);
+      doc.text('• Llave de Atajo Segura: Tu clave API personal identifica exclusivamente tu Bóveda (' + activeVaultId + ') sin exponer tus contraseñas.', 18, secY + 19);
+      doc.text('• Sincronización Multi-Dispositivo: Al registrar un movimiento en tu iPhone, la web abierta en tu PC se actualiza al instante.', 18, secY + 25);
+      doc.text('• Eliminación Instantánea y Limpia: Si eliminas un movimiento en la web, se borra de memoria y de la base de datos sin trabas.', 18, secY + 31);
+      doc.text('• Modo Desconectado: Si tu iPhone no tiene señal en ese momento, el atajo te avisará y podrás reintentarlo al recuperar cobertura.', 18, secY + 37);
+
+      // =========================================================================
+      // PÁGINA 3: ACTIVACIÓN POR VOZ CON SIRI, WIDGETS, DICCIONARIO Y FAQ
+      // =========================================================================
+      doc.addPage();
+      drawHeader(
+        '3. ACTIVACIÓN POR VOZ CON SIRI, WIDGETS, DICCIONARIO Y FAQ',
+        'Dictado por voz con Siri, widgets en pantalla de inicio, carátulas de Apple Watch y preguntas frecuentes',
+        3,
+        cPrimary
+      );
+
+      // Tarjeta 1: Activación por Voz con Siri
+      let siriY = 36;
+      doc.setFillColor(240, 249, 255);
+      doc.roundedRect(12, siriY, 186, 44, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cPrimary);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(12, siriY, 186, 44, 2.5, 2.5, 'D');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.8);
+      doc.setTextColor(...cPrimary);
+      doc.text('🎙️ ACTIVACIÓN POR VOZ CON SIRI & APPLE WATCH (SIN TOCAR LA PANTALLA)', 18, siriY + 6.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.2);
+      doc.setTextColor(...cDark);
+      doc.text('1. El nombre del atajo es la frase mágica de activación. Si lo llamaste "Finanzas", solo di: "Oye Siri, Finanzas".', 18, siriY + 13);
+      doc.text('2. Siri te responderá por voz preguntándote si es Gasto o Ingreso, luego el monto, la cuenta y el concepto.', 18, siriY + 19);
+      doc.text('3. Respóndele con naturalidad (ej: "Gasto", "Veinticinco mil", "Nequi", "Almuerzo con compañeros").', 18, siriY + 25);
+      doc.text('4. Siri enviará la información a la nube y te confirmará en voz alta tu nuevo saldo disponible en tiempo real.', 18, siriY + 31);
+      doc.text('5. Apple Watch: Agrega la complicación de Atajos a tu carátula para registrar gastos con 1 toque en tu muñeca.', 18, siriY + 37);
+
+      // Tarjeta 2: Botón en Pantalla de Inicio y Bloqueo
+      let widY = 83;
+      doc.setFillColor(...cBgCard);
+      doc.roundedRect(12, widY, 186, 38, 2.5, 2.5, 'F');
+      doc.setDrawColor(...cBorder);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(12, widY, 186, 38, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(...cPrimary);
-      doc.text('🎙️ ACTIVACIÓN POR VOZ CON SIRI & APPLE WATCH', 18, siriY + 6.5);
+      doc.text('📱 CÓMO AGREGAR EL BOTÓN A TU PANTALLA DE INICIO O BLOQUEO (WIDGET)', 18, widY + 6.5);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.2);
       doc.setTextColor(...cDark);
-      doc.text('1. Di: "Oye Siri, Registrar Gasto". Siri abrirá el atajo y te preguntará "¿Cuánto gastaste?".', 18, siriY + 13);
-      doc.text('2. Respóndele con tu voz (ej: "Cuarenta y cinco mil", "Nequi", "Almuerzo ejecutivo").', 18, siriY + 19);
-      doc.text('3. Siri enviará la información a la nube y te confirmará en voz alta tu nuevo saldo disponible en tiempo real.', 18, siriY + 25);
-
-      // Pie de Página 1
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
-      doc.setTextColor(...cMuted);
-      doc.text('PÁGINA 1/2   |   AHORROS SA - GUÍA OFICIAL PRO   |   FINANZAS EN TIEMPO REAL', 42, 287);
-
-      // =========================================================================
-      // PÁGINA 2: REGISTRO DE INGRESOS, ATAJO MAESTRO, DICCIONARIO Y PREGUNTAS
-      // =========================================================================
-      doc.addPage();
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, 210, 297, 'F');
-
-      // Banner Header Superior Página 2
-      doc.setFillColor(236, 253, 245);
-      doc.roundedRect(12, 10, 186, 22, 3, 3, 'F');
-      doc.setDrawColor(...cEmerald);
-      doc.setLineWidth(0.6);
-      doc.roundedRect(12, 10, 186, 22, 3, 3, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.setTextColor(...cEmerald);
-      doc.text('2. REGISTRAR INGRESOS, ATAJO MAESTRO Y DICCIONARIO DE ACCIONES', 18, 18);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.8);
-      doc.setTextColor(...cBody);
-      doc.text('Automatizaciones avanzadas y referencia trilingüe de acciones para cualquier iPhone (iOS)', 18, 25);
-
-      // Tarjeta 1: Registro de Ingresos
-      let p2Y = 35;
-      doc.setFillColor(...cBgCard);
-      doc.roundedRect(12, p2Y, 186, 51, 2.5, 2.5, 'F');
-      doc.setDrawColor(...cEmerald);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(12, p2Y, 186, 51, 2.5, 2.5, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.8);
-      doc.setTextColor(...cEmerald);
-      doc.text('CÓMO REGISTRAR INGRESOS (SALARIO, HONORARIOS, COBROS)', 18, p2Y + 6.5);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
-      doc.setTextColor(...cDark);
-      doc.text('Paso A: Crea un nuevo atajo y nómbralo "Registrar Ingreso".', 18, p2Y + 13);
-      doc.text('Paso B: Agrega "Solicitar entrada" (Número) -> "¿Cuánto dinero ingresas?". [Variable Monto]', 18, p2Y + 19);
-      doc.text('Paso C: Agrega "Elegir de la lista" -> Opciones: BANCO, NEQUI, DAVIPLATA, EFECTIVO. [Variable Cuenta]', 18, p2Y + 25);
-      doc.text('Paso D: Agrega "Solicitar entrada" (Texto) -> "¿Origen o concepto? (ej: Salario, Pago cliente)". [Variable Detalle]', 18, p2Y + 31);
-      doc.text('Paso E: Agrega "Obtener contenido de URL" (POST JSON con type: "ingreso" o GET con &type=ingreso):', 18, p2Y + 37);
-
-      doc.setFillColor(...cBgBox);
-      doc.roundedRect(18, p2Y + 40, 174, 8, 1.5, 1.5, 'F');
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(6.8);
-      doc.setTextColor(...cEmerald);
-      doc.text(`Enlace GET: ${cleanBaseWebhook}?key=${userApiKey}&type=ingreso&amount=[Monto]&account=[Cuenta]&desc=[Detalle]&format=text`, 21, p2Y + 45.5);
-
-      // Tarjeta 2: Atajo Maestro Dual
-      p2Y += 55;
-      doc.setFillColor(...cBgCard);
-      doc.roundedRect(12, p2Y, 186, 44, 2.5, 2.5, 'F');
-      doc.setDrawColor(...cPrimary);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(12, p2Y, 186, 44, 2.5, 2.5, 'D');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.8);
-      doc.setTextColor(...cPrimary);
-      doc.text('ATAJO MAESTRO DUAL: UN SOLO ÍCONO EN PANTALLA PARA GASTOS E INGRESOS', 18, p2Y + 6.5);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
-      doc.setTextColor(...cDark);
-      doc.text('Si prefieres tener un único botón en tu pantalla de inicio o widget que sirva para cualquier movimiento:', 18, p2Y + 13);
-      doc.text('1. Agrega como primera acción "Elegir de la lista" con 2 opciones: "Gasto" e "Ingreso".', 18, p2Y + 19);
-      doc.text('2. Usa la condición "Si": Si elige Gasto ejecuta el flujo de Gasto; si elige Ingreso ejecuta el flujo de Ingreso.', 18, p2Y + 25);
-      doc.text('3. O en el cuerpo JSON envía type: [Resultado de la lista]. El servidor detecta automáticamente ambas opciones.', 18, p2Y + 31);
-      doc.text('4. Siri te responderá confirmando si fue gasto o ingreso y te dirá tu saldo final consolidado.', 18, p2Y + 37);
+      doc.text('1. Abre la app Atajos y localiza tu atajo "Finanzas" o "Registrar Movimiento".', 18, widY + 13);
+      doc.text('2. Toca el ícono de tres puntos (...) para entrar a los ajustes del atajo.', 18, widY + 18.5);
+      doc.text('3. Toca el ícono de Compartir (o la "i" de información) y selecciona "Agregar a pantalla de inicio".', 18, widY + 24);
+      doc.text('4. Asígnalo con un ícono de moneda o billete. Ahora tendrás un botón rápido para usar cada vez que salgas de compras.', 18, widY + 29.5);
 
       // Tarjeta 3: Diccionario Trilingüe de Acciones de iOS
-      p2Y += 48;
+      let dicY = 124;
       doc.setFillColor(...cBgCard);
-      doc.roundedRect(12, p2Y, 186, 64, 2.5, 2.5, 'F');
+      doc.roundedRect(12, dicY, 186, 68, 2.5, 2.5, 'F');
       doc.setDrawColor(...cBorder);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, p2Y, 186, 64, 2.5, 2.5, 'D');
+      doc.roundedRect(12, dicY, 186, 68, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.8);
       doc.setTextColor(...cPrimary);
-      doc.text('DICCIONARIO DE ACCIONES SEGÚN EL IDIOMA DE TU IPHONE', 18, p2Y + 6.5);
+      doc.text('DICCIONARIO DE ACCIONES SEGÚN EL IDIOMA DE TU IPHONE', 18, dicY + 6.5);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.2);
       doc.setTextColor(...cBody);
-      doc.text('FUNCIÓN EN EL ATAJO', 18, p2Y + 13);
-      doc.text('ESPAÑOL (LATAM)', 65, p2Y + 13);
-      doc.text('ESPAÑOL (ESPAÑA)', 115, p2Y + 13);
-      doc.text('ENGLISH (iOS)', 162, p2Y + 13);
+      doc.text('FUNCIÓN EN EL ATAJO', 18, dicY + 13);
+      doc.text('ESPAÑOL (LATAM)', 65, dicY + 13);
+      doc.text('ESPAÑOL (ESPAÑA)', 115, dicY + 13);
+      doc.text('ENGLISH (iOS)', 162, dicY + 13);
 
       doc.setDrawColor(...cBorder);
       doc.setLineWidth(0.3);
-      doc.line(16, p2Y + 15, 194, p2Y + 15);
+      doc.line(16, dicY + 15, 194, dicY + 15);
 
       const trilingualRows = [
         ['1. Pedir Monto (Número)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
-        ['2. Elegir Método / Categoría', 'Elegir de la lista', 'Seleccionar del menú', 'Choose from Menu'],
+        ['2. Elegir Tipo / Cuenta / Cat', 'Elegir de la lista', 'Seleccionar del menú', 'Choose from Menu'],
         ['3. Pedir Detalle (Texto)', 'Solicitar entrada', 'Solicitar entrada', 'Ask for Input'],
-        ['4. Enviar datos al servidor', 'Obtener contenido de URL', 'Obtener contenido de la URL', 'Get Contents of URL'],
-        ['5. Voz de Siri (Confirmar)', 'Hablar texto', 'Leer texto con la voz', 'Speak Text'],
+        ['4. Enviar datos al webhook', 'Obtener contenido de URL', 'Obtener contenido de la URL', 'Get Contents of URL'],
+        ['5. Voz de Siri (Confirmación)', 'Hablar texto', 'Leer texto con la voz', 'Speak Text'],
         ['6. Notificación visual', 'Mostrar notificación', 'Mostrar resultado', 'Show Notification']
       ];
 
@@ -1410,44 +1509,51 @@ if (btnDownloadPdfGuide) {
       doc.setFontSize(7.1);
       doc.setTextColor(...cDark);
 
-      let rY = p2Y + 21;
+      let rY = dicY + 21;
       trilingualRows.forEach(row => {
         doc.text(row[0], 18, rY);
         doc.text(row[1], 65, rY);
         doc.text(row[2], 115, rY);
         doc.text(row[3], 162, rY);
-        rY += 6.2;
+        rY += 6.5;
       });
 
-      // Tarjeta 4: Preguntas Frecuentes y Solución de Dudas
-      p2Y += 68;
+      // Tarjeta 4: Preguntas Frecuentes y Diagnóstico
+      let faqY = 195;
       doc.setFillColor(...cBgCard);
-      doc.roundedRect(12, p2Y, 186, 36, 2.5, 2.5, 'F');
+      doc.roundedRect(12, faqY, 186, 88, 2.5, 2.5, 'F');
       doc.setDrawColor(...cAmber);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, p2Y, 186, 36, 2.5, 2.5, 'D');
+      doc.roundedRect(12, faqY, 186, 88, 2.5, 2.5, 'D');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(...cAmber);
-      doc.text('PREGUNTAS FRECUENTES Y SOLUCIÓN DE PROBLEMAS', 18, p2Y + 6.5);
+      doc.text('PREGUNTAS FRECUENTES Y DIAGNÓSTICO EN TIEMPO REAL', 18, faqY + 6.5);
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.1);
-      doc.setTextColor(...cDark);
-      doc.text('• ¿Por qué siempre se guardaba $ 25.000? Porque se escribió "25000" como texto fijo en vez de la variable azul.', 18, p2Y + 13);
-      doc.text('• ¿Por qué solo se guardaba Nequi? Porque faltaba la acción "Elegir de la lista" con las cuentas BANCO, DAVIPLATA, etc.', 18, p2Y + 19);
-      doc.text('• ¿Cómo actualizo la clave si la cambio? Al pulsar "Nueva" en la web, se sincroniza en la nube automáticamente.', 18, p2Y + 25);
-      doc.text('• ¿Cómo agregar el botón a la pantalla de inicio? En Atajos, toca ajustes del atajo y pulsa "Agregar a pantalla de inicio".', 18, p2Y + 31);
+      const faqs = [
+        ['• ¿Qué ocurre si pulso "Nueva" Clave en la web?', 'Al generar una nueva clave, se vincula automáticamente a tu Bóveda en Firestore. Solo debes actualizar el campo "key" en tu atajo con el nuevo valor copiado.'],
+        ['• ¿Por qué antes aparecían transacciones duplicadas?', 'Ocurría cuando la conexión móvil tenía microcortes y el iPhone reintentaba enviar la petición. Ahora el sistema cuenta con control nativo de idempotencia que descarta envíos idénticos en menos de 60 segundos.'],
+        ['• ¿Por qué siempre se guardaba el mismo monto (ej: $ 25.000)?', 'Porque en el atajo se escribió el número como texto estático en lugar de enlazar la variable azul mágica de la pregunta previa. Borra el texto y selecciona la variable.'],
+        ['• ¿Cómo eliminar un movimiento en la web?', 'En el historial web, haz clic en el botón "X". La eliminación es inmediata, no se traba ni vuelve a aparecer gracias a las firmas de seguridad.'],
+        ['• ¿Puedo usar este atajo desde otro iPhone o iPad?', '¡Sí! Puedes compartir el atajo por AirDrop a tu familia o colaboradores usando la misma clave de Bóveda para consolidar las finanzas del hogar o negocio.']
+      ];
 
-      // Pie de Página 2
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.3);
-      doc.setTextColor(...cMuted);
-      doc.text('PÁGINA 2/2   |   AHORROS SA - GUÍA OFICIAL PRO   |   FINANZAS EN TIEMPO REAL', 42, 287);
+      let fY = faqY + 13;
+      faqs.forEach(([q, a]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.1);
+        doc.setTextColor(...cDark);
+        doc.text(q, 18, fY);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...cBody);
+        const aLines = doc.splitTextToSize(a, 174);
+        doc.text(aLines, 18, fY + 3.8);
+        fY += 13.5;
+      });
 
       doc.save(`Guia_Oficial_Atajos_iPhone_AhorrosSA_${activeVaultId}.pdf`);
-      showQuickToast('✅ Guía visual en PDF de 2 páginas descargada con éxito');
+      showQuickToast('✅ Guía visual en PDF de 3 páginas descargada con éxito');
     } catch (pdfErr) {
       console.error('Error generando PDF:', pdfErr);
       showQuickToast('⚠️ Error generando PDF. Abriendo versión para imprimir...');
@@ -1791,7 +1897,11 @@ async function pollPendingShortcuts() {
           (t.createdAt && existing.createdAt === t.createdAt) ||
           (existing.date === t.date && existing.type === t.type && Math.abs(existing.amount - t.amount) < 0.01 && existing.description === t.description && Math.abs(new Date(existing.createdAt || 0) - new Date(t.createdAt || 0)) < 60000)
         );
-        if (!alreadyExists) {
+        const sig = `${t.type}_${t.amount}_${t.date}_${(t.description || '').trim().toLowerCase()}`;
+        const isDeleted = (t.id && recentlyDeletedTxIds.has(String(t.id))) ||
+                          (t.localId && recentlyDeletedTxIds.has(String(t.localId))) ||
+                          recentlyDeletedTxSignatures.has(sig);
+        if (!alreadyExists && !isDeleted) {
           shortcutEvents.unshift(t);
           await addTransactionLocallyOrCloud(t);
           anyAdded = true;
@@ -1906,8 +2016,12 @@ async function loadVaultFromCloud(vaultId) {
       const seenTxIds = new Set();
       txSnap.forEach(d => {
         if (!recentlyDeletedTxIds.has(d.id) && !seenTxIds.has(d.id)) {
-          seenTxIds.add(d.id);
           const tData = d.data();
+          const sig = `${tData.type}_${tData.amount}_${tData.date}_${(tData.description || '').trim().toLowerCase()}`;
+          if (recentlyDeletedTxSignatures.has(sig)) {
+            return;
+          }
+          seenTxIds.add(d.id);
           // Limpiar transacciones residuales de metas que antes distorsionaban ingresos/gastos
           if (tData.description && (
             tData.description.startsWith('AHORRO EN META:') ||
@@ -2159,6 +2273,11 @@ function setupVaultCloudListeners(vaultId) {
       const locField = tData.localId ? String(tData.localId) : '';
       const tmpField = tData.tempId ? String(tData.tempId) : '';
       const crAt = tData.createdAt ? String(tData.createdAt) : '';
+
+      const sig = `${tData.type}_${tData.amount}_${tData.date}_${(tData.description || '').trim().toLowerCase()}`;
+      if (recentlyDeletedTxSignatures.has(sig)) {
+        return;
+      }
 
       if (recentlyDeletedTxIds.has(docId) ||
           (locId && recentlyDeletedTxIds.has(locId)) ||
@@ -2601,12 +2720,12 @@ async function addTransactionLocallyOrCloud(txData) {
   syncClientTotalsToServer();
 }
 
-// ELIMINACION DE TRANSACCION
+// ELIMINACION DE TRANSACCION (FLUIDA, INSTANTANEA Y A PRUEBA DE RESURRECCION)
 window.removeTransaction = async function(idOrIndex) {
   const confirmed = await appConfirm('¿Deseas eliminar este movimiento permanentemente?', {
     title: 'Eliminar Movimiento',
     icon: '🗑️',
-    okText: 'Eliminar Movimiento',
+    okText: 'Eliminar',
     isDanger: true
   });
   if (!confirmed) return;
@@ -2634,15 +2753,20 @@ window.removeTransaction = async function(idOrIndex) {
     if (targetTx.localId) idsToDelete.add(String(targetTx.localId));
     if (targetTx.tempId) idsToDelete.add(String(targetTx.tempId));
     if (targetTx.createdAt) idsToDelete.add(String(targetTx.createdAt));
+
+    // Generar firma única para evitar resurrección en snapshots o reintentos
+    const txSig = `${targetTx.type}_${targetTx.amount}_${targetTx.date}_${(targetTx.description || '').trim().toLowerCase()}`;
+    recentlyDeletedTxSignatures.add(txSig);
+    saveRecentlyDeletedId('txSig', txSig);
   }
 
-  // Marcar como eliminado en memoria y localStorage para evitar resurrección por snapshot
+  // Marcar como eliminado en memoria y localStorage
   idsToDelete.forEach(id => {
     recentlyDeletedTxIds.add(id);
     saveRecentlyDeletedId('tx', id);
   });
 
-  // Eliminar inmediatamente del estado local SOLO la transacción seleccionada
+  // 1. Eliminar inmediatamente del estado local de forma síncrona
   if (targetTx) {
     transactions = transactions.filter(t => t !== targetTx && !idsToDelete.has(String(t.id)) && !idsToDelete.has(String(t.firestoreId)) && !idsToDelete.has(String(t.localId)));
   } else {
@@ -2703,41 +2827,58 @@ window.removeTransaction = async function(idOrIndex) {
     }
   }
 
-  // Eliminar en Firestore por IDs directos
-  for (const docId of idsToDelete) {
-    if (!docId) continue;
-    try {
-      await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', docId));
-    } catch (e) {
-      console.warn('Nota eliminando de Firestore:', docId, e);
+  // 2. Ejecutar borrado en Firestore y caché del servidor en segundo plano sin congelar la interfaz
+  (async () => {
+    // A. Eliminar por IDs directos
+    for (const docId of idsToDelete) {
+      if (!docId) continue;
+      try {
+        await deleteDoc(doc(db, 'vaults', activeVaultId, 'transactions', docId));
+      } catch (e) {}
     }
-  }
 
-  // Búsqueda y eliminación en Firestore: SOLO por id exacto o localId correspondiente a este registro específico
-  if (targetTx) {
+    // B. Notificar al backend Express local para limpiar cache
     try {
-      const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
-      const snap = await getDocs(txColl);
-      for (const docSnap of snap.docs) {
-        const d = docSnap.data();
-        const isTargetDoc = docSnap.id === strId ||
-                            docSnap.id === targetTx.firestoreId ||
-                            docSnap.id === targetTx.id ||
-                            (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId || docSnap.id === targetTx.localId));
-        if (isTargetDoc) {
-          recentlyDeletedTxIds.add(docSnap.id);
-          saveRecentlyDeletedId('tx', docSnap.id);
-          try {
-            await deleteDoc(docSnap.ref);
-          } catch (delErr) {}
+      fetch('/api/shortcut/transaction', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: strId,
+          type: targetTx?.type,
+          amount: targetTx?.amount,
+          description: targetTx?.description,
+          apiKey: userApiKey,
+          vaultId: activeVaultId
+        })
+      }).catch(() => {});
+    } catch (e) {}
+
+    // C. Búsqueda y eliminación profunda en Firestore por id exacto o localId
+    if (targetTx) {
+      try {
+        const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
+        const snap = await getDocs(txColl);
+        const delPromises = [];
+        for (const docSnap of snap.docs) {
+          const d = docSnap.data();
+          const isTargetDoc = docSnap.id === strId ||
+                              docSnap.id === targetTx.firestoreId ||
+                              docSnap.id === targetTx.id ||
+                              (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId || docSnap.id === targetTx.localId));
+          if (isTargetDoc) {
+            recentlyDeletedTxIds.add(docSnap.id);
+            saveRecentlyDeletedId('tx', docSnap.id);
+            delPromises.push(deleteDoc(docSnap.ref).catch(() => {}));
+          }
         }
+        await Promise.all(delPromises);
+      } catch (qErr) {
+        console.warn('Limpieza en segundo plano:', qErr);
       }
-    } catch (qErr) {
-      console.warn('Verificación en Firestore tras eliminar transacción:', qErr);
     }
-  }
 
-  syncClientTotalsToServer();
+    syncClientTotalsToServer();
+  })();
 };
 window.deleteTransaction = window.removeTransaction;
 

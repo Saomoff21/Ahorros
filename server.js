@@ -157,6 +157,35 @@ app.get('/api/shortcut/health', (req, res) => {
  * Endpoint principal que llama el atajo de iOS "Obtener contenido de URL" (acepta GET y POST)
  */
 app.all('/api/shortcut/transaction', (req, res) => {
+  if (req.method === 'DELETE') {
+    const targetId = String(req.params?.id || req.query?.id || req.body?.id || req.body?.localId || '').trim();
+    const targetType = req.body?.type || req.query?.type;
+    const targetDesc = req.body?.description || req.query?.description;
+    const targetAmount = req.body?.amount || req.query?.amount;
+
+    const data = loadData();
+    const initialLen = data.transactions.length;
+
+    data.transactions = data.transactions.filter(t => {
+      if (targetId && (t.id === targetId || t.localId === targetId || t.firestoreId === targetId)) {
+        return false;
+      }
+      if (targetType && targetAmount && targetDesc &&
+          t.type === targetType &&
+          Math.abs(t.amount - parseFloat(targetAmount)) < 0.01 &&
+          t.description === targetDesc) {
+        return false;
+      }
+      return true;
+    });
+
+    if (data.transactions.length !== initialLen) {
+      saveData(data);
+    }
+
+    return res.json({ success: true, removedCount: initialLen - data.transactions.length });
+  }
+
   const apiKey = extractApiKey(req);
   if (!apiKey) {
     return res.status(401).json({
@@ -454,6 +483,39 @@ app.get('/api/shortcut/pending', (req, res) => {
     count: pending.length,
     transactions: pending
   });
+});
+
+/**
+ * DELETE /api/shortcut/transaction
+ * Permite al cliente web eliminar transacciones sincronizadas o en caché
+ */
+app.delete(['/api/shortcut/transaction', '/api/shortcut/transaction/:id'], (req, res) => {
+  const targetId = String(req.params?.id || req.query?.id || req.body?.id || req.body?.localId || '').trim();
+  const targetType = req.body?.type || req.query?.type;
+  const targetDesc = req.body?.description || req.query?.description;
+  const targetAmount = req.body?.amount || req.query?.amount;
+
+  const data = loadData();
+  const initialLen = data.transactions.length;
+
+  data.transactions = data.transactions.filter(t => {
+    if (targetId && (t.id === targetId || t.localId === targetId || t.firestoreId === targetId)) {
+      return false;
+    }
+    if (targetType && targetAmount && targetDesc &&
+        t.type === targetType &&
+        Math.abs(t.amount - parseFloat(targetAmount)) < 0.01 &&
+        t.description === targetDesc) {
+      return false;
+    }
+    return true;
+  });
+
+  if (data.transactions.length !== initialLen) {
+    saveData(data);
+  }
+
+  return res.json({ success: true, removedCount: initialLen - data.transactions.length });
 });
 
 /**

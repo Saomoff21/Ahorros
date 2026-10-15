@@ -7,20 +7,21 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #0c0d11;
-      --card-bg: #151821;
-      --card-border: #232938;
-      --primary: #06b6d4;
-      --primary-glow: rgba(6, 182, 212, 0.25);
+      --bg-color: #090a0f;
+      --card-bg: #11131a;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-glow: rgba(37, 99, 235, 0.12);
       --success: #10b981;
       --danger: #ef4444;
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
-      --input-bg: #0d0f14;
-      --input-border: #283042;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --input-bg: #090a0f;
+      --input-border: rgba(255, 255, 255, 0.12);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -31,7 +32,7 @@
     body {
       background: var(--bg-color);
       color: var(--text);
-      font-family: 'Roboto Flex', system-ui, -apple-system, sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -43,25 +44,11 @@
       touch-action: manipulation;
     }
 
-    /* Ambient background glow */
-    body::before {
-      content: '';
-      position: absolute;
-      top: 15%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: min(500px, 90vw);
-      height: min(500px, 90vw);
-      background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, rgba(16, 185, 129, 0.05) 50%, transparent 70%);
-      z-index: 0;
-      pointer-events: none;
-    }
-
     .auth-container {
       position: relative;
       z-index: 1;
       width: 100%;
-      max-width: 420px;
+      max-width: 400px;
       margin: 0 auto;
     }
 
@@ -71,26 +58,24 @@
     }
 
     .brand-logo {
-      width: 54px;
-      height: 54px;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px var(--primary-glow);
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
       margin-bottom: 10px;
       display: inline-block;
     }
 
     .brand-title {
-      font-size: 1.55rem;
-      font-weight: 900;
-      letter-spacing: 0.06em;
-      background: linear-gradient(135deg, #38bdf8, #34d399);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 4px;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 3px;
     }
 
     .brand-subtitle {
-      font-size: 0.8rem;
+      font-size: 0.76rem;
       color: var(--text-muted);
       letter-spacing: 0.02em;
     }
@@ -98,23 +83,21 @@
     .auth-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 20px;
-      padding: 28px 22px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
-      backdrop-filter: blur(12px);
+      border-radius: 10px;
+      padding: 24px 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
       width: 100%;
     }
 
     @media (max-width: 420px) {
       body {
-        padding: 10px;
+        padding: 12px;
       }
       .auth-card {
-        padding: 22px 16px;
-        border-radius: 16px;
+        padding: 20px 16px;
       }
       .brand-title {
-        font-size: 1.4rem;
+        font-size: 1.25rem;
       }
     }
 
@@ -122,45 +105,46 @@
     .auth-tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 5px;
-      border-radius: 12px;
+      gap: 4px;
+      background: #171b24;
+      padding: 4px;
+      border-radius: 8px;
       border: 1px solid var(--card-border);
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
 
     .auth-tab-btn {
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       color: var(--text-muted);
-      padding: 10px 8px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      border-radius: 9px;
+      padding: 8px 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
       font-family: inherit;
       text-align: center;
     }
 
     .auth-tab-btn.active {
-      background: var(--primary);
-      color: #000;
-      box-shadow: 0 2px 10px var(--primary-glow);
+      background: #202634;
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       text-align: left;
     }
 
     .form-label {
       display: block;
-      font-size: 0.76rem;
-      font-weight: 700;
+      font-size: 0.7rem;
+      font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
@@ -168,56 +152,53 @@
     /* IMPORTANTE: font-size: 16px para evitar auto-zoom involuntario en Safari iOS */
     .form-input {
       width: 100%;
-      padding: 13px 14px;
+      padding: 10px 12px;
       background: var(--input-bg);
       border: 1px solid var(--input-border);
-      border-radius: 11px;
+      border-radius: 8px;
       color: #fff;
       font-size: 16px !important;
       font-family: inherit;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 0.15s;
       -webkit-appearance: none;
       appearance: none;
     }
 
     .form-input:focus {
-      outline: none;
+      outline: 1px solid var(--primary);
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px var(--primary-glow);
     }
 
     .form-input::placeholder {
-      color: #555e70;
-      font-size: 0.88rem;
+      color: #64748b;
+      font-size: 0.82rem;
     }
 
     .btn-submit {
       width: 100%;
-      padding: 14px;
-      margin-top: 10px;
+      padding: 11px;
+      margin-top: 8px;
       border: none;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #06b6d4, #10b981);
-      color: #000;
-      font-size: 0.95rem;
-      font-weight: 800;
-      letter-spacing: 0.03em;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: background-color 0.15s;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       font-family: inherit;
     }
 
     .btn-submit:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px var(--primary-glow);
+      background: var(--primary-hover);
     }
 
     .btn-submit:active {
-      transform: translateY(0);
+      transform: scale(0.98);
     }
 
     .btn-submit:disabled {
@@ -342,15 +323,15 @@
 
     <div class="auth-card">
       <!-- ACCESO DIRECTO PARA PROBAR SIN REGISTRO -->
-      <div class="guest-access-card" style="margin-bottom: 16px; padding: 14px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 14px; text-align: center;">
-        <div style="font-size: 0.85rem; font-weight: 800; color: var(--primary); margin-bottom: 4px;">
-          🚀 ¿Deseas probar la aplicación primero sin registrarte?
+      <div class="guest-access-card" style="margin-bottom: 16px; padding: 12px; background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.18); border-radius: 8px; text-align: center;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text); margin-bottom: 4px;">
+          ¿Deseas explorar la plataforma antes de registrarte?
         </div>
-        <p style="font-size: 0.73rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
-          Accede directamente a la plataforma para registrar ingresos, gastos, deudas y probar todas las funciones libremente.
+        <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+          Accede al entorno local para registrar movimientos, presupuestos y atajos sin vincular correo.
         </p>
-        <button type="button" id="btn-top-guest-access" style="width: 100%; padding: 11px; background: var(--primary); color: #000; border: none; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 4px 14px var(--primary-glow);">
-          <span>⚡ Entrar a Probar la App Ahora</span> ➔
+        <button type="button" id="btn-top-guest-access" style="width: 100%; padding: 9px; background: #202634; color: #f8fafc; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease;">
+          <span>Explorar en Modo Demostración</span> ➔
         </button>
       </div>
 
@@ -374,12 +355,12 @@
         </div>
 
         <button type="submit" id="btn-login-submit" class="btn-submit">
-          <span>Ingresar a Mis Finanzas</span> ➔
+          <span>Ingresar a la Plataforma</span>
         </button>
 
         <div style="margin-top: 12px; text-align: center;">
-          <button type="button" id="btn-demo-access" style="background: rgba(255,255,255,0.05); border: 1px dashed var(--input-border); color: var(--text-muted); font-size: 0.78rem; font-weight: 700; padding: 10px 14px; border-radius: 10px; width: 100%; cursor: pointer; transition: all 0.2s;">
-            ⚡ Probar Modo Invitado / Acceso Inmediato
+          <button type="button" id="btn-demo-access" style="background: transparent; border: 1px solid rgba(255,255,255,0.08); color: var(--text-muted); font-size: 0.75rem; font-weight: 600; padding: 8px 12px; border-radius: 6px; width: 100%; cursor: pointer; transition: all 0.15s;">
+            Continuar como Invitado (Sin Registro)
           </button>
         </div>
       </form>

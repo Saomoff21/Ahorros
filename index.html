@@ -42,7 +42,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <!-- Chart.js para visualización de gráficos mensuales -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -55,21 +55,18 @@
   <!-- BANNER INFORMATIVO NO BLOQUEANTE PARA MODO PRUEBA / INVITADO -->
   <div id="guest-welcome-banner" class="guest-welcome-banner hidden">
     <div class="guest-banner-content">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.25rem;">✨</span>
-        <div>
-          <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary-color);">MODO DE PRUEBA ACTIVO:</span>
-          <span style="font-size: 0.78rem; color: var(--text-main);">
-            Puedes probar y usar la app libremente (ingresos, gastos, deudas, metas). Para sincronizar entre varios dispositivos con tu código permanente en la nube:
-          </span>
-        </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="badge" style="font-size: 0.68rem; padding: 3px 8px; font-weight: 700; letter-spacing: 0.04em;">MODO DEMOSTRACIÓN</span>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          Operando en almacenamiento local seguro. Para sincronizar en tiempo real entre múltiples dispositivos con tu clave única en la nube:
+        </span>
       </div>
       <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-        <a href="login.html" class="btn btn-primary" style="font-size: 0.74rem; padding: 6px 12px; text-decoration: none; border-radius: 8px;">
-          🔐 Iniciar Sesión / Cuenta
+        <a href="login.html" class="btn btn-primary" style="font-size: 0.74rem; padding: 6px 14px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+          Iniciar Sesión / Bóveda
         </a>
         <button type="button" id="btn-close-guest-banner" class="btn-banner-close" title="Cerrar aviso y usar la app">
-          ✕ Cerrar
+          Cerrar
         </button>
       </div>
     </div>
@@ -79,61 +76,62 @@
   <header class="app-header">
     <div class="header-container">
       <div class="brand">
-        <img src="/icon.svg" alt="Ahorros SA" style="width: 38px; height: 38px; border-radius: 10px; box-shadow: 0 4px 12px rgba(6,182,212,0.3);">
+        <img src="/icon.svg" alt="Ahorros SA" style="width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-color);">
         <div>
-          <h1>AHORROS SA</h1>
-          <span class="badge">FINANZAS & BÓVEDA NUBE</span>
+          <h1>AHORROS S.A.</h1>
+          <span class="badge">SISTEMA FINANCIERO & BÓVEDA</span>
         </div>
       </div>
 
       <div class="header-actions">
         <!-- Selector de Estilos y Temas para el usuario -->
-        <div class="theme-picker-wrapper" title="PERSONALIZAR ESTILO DE INTERFAZ">
-          <span class="theme-picker-label">ESTILO:</span>
+        <div class="theme-picker-wrapper" title="Personalizar estilo de interfaz">
+          <span class="theme-picker-label">TEMA:</span>
           <select id="theme-select" class="theme-select">
-            <option value="carbon" selected>⚡ GRAFITO CARBÓN</option>
-            <option value="dark">🌙 OSCURO MEDIANOCHE</option>
-            <option value="sapphire">💎 ZAFIRO FINTECH</option>
-            <option value="amethyst">🔮 AMATISTA ROYAL</option>
-            <option value="light">☀️ CLARO MINIMALISTA</option>
+            <option value="carbon" selected>Grafito Ejecutivo</option>
+            <option value="dark">Obsidiana Noche</option>
+            <option value="sapphire">Zafiro Institucional</option>
+            <option value="amethyst">Titanio Púrpura</option>
+            <option value="light">Platino Corporativo</option>
           </select>
         </div>
 
         <!-- Selector de Modo de Dispositivo (Auto / Móvil / PC) -->
-        <div class="device-picker-wrapper" title="ADAPTAR VISTA SEGÚN TU DISPOSITIVO (MÓVIL O PC)">
+        <div class="device-picker-wrapper" title="Adaptar vista según tu dispositivo (Móvil o PC)">
           <span class="device-picker-label">VISTA:</span>
           <select id="device-view-select" class="theme-select">
-            <option value="auto" selected>⚡ AUTO</option>
-            <option value="mobile">📱 MÓVIL</option>
-            <option value="desktop">💻 PC</option>
+            <option value="auto" selected>Automático</option>
+            <option value="mobile">Móvil</option>
+            <option value="desktop">Escritorio</option>
           </select>
         </div>
 
         <!-- Botón para instalar como App PWA en móvil o PC -->
-        <button id="btn-pwa-install" class="btn-pwa-install" title="INSTALAR COMO APLICACIÓN">
-          <span>📲</span> <span id="btn-pwa-install-text">INSTALAR APP</span>
+        <button id="btn-pwa-install" class="btn-pwa-install" title="Instalar como aplicación nativa">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          <span id="btn-pwa-install-text">Instalar App</span>
         </button>
 
         <!-- Indicador de sincronización en la nube -->
-        <div id="sync-indicator" class="sync-status" title="ESTADO DE SINCRONIZACIÓN EN LA NUBE">
+        <div id="sync-indicator" class="sync-status" title="Estado de sincronización en la nube">
           <span class="sync-dot" id="sync-dot"></span>
-          <span id="sync-text">NUBE CONECTADA</span>
+          <span id="sync-text">Nube Conectada</span>
         </div>
 
         <!-- Botón de Bóveda & Sincronización Multi-dispositivo -->
-        <button id="auth-btn" class="btn-auth" title="MI BÓVEDA & MULTI-DISPOSITIVO">
-          <span id="auth-btn-text">🔐 MI BÓVEDA</span>
+        <button id="auth-btn" class="btn-auth" title="Mi Bóveda & Multi-dispositivo">
+          <span id="auth-btn-text">Bóveda Nube</span>
         </button>
 
         <!-- Perfil de Usuario y Botón Cerrar Sesión -->
         <div class="user-profile-badge" id="user-profile-badge" title="Sesión activa y Código Único">
-          <span class="user-badge-icon">👤</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <div class="user-badge-info">
             <span id="user-badge-name" class="user-badge-name">Usuario</span>
             <span id="user-badge-code" class="user-badge-code" title="Tu Código Único de Bóveda">USR-XXXXXX</span>
           </div>
           <button type="button" id="btn-logout" class="btn-logout" title="Cerrar Sesión Segura">
-            <span>Salir</span> 🚪
+            <span>Salir</span>
           </button>
         </div>
       </div>
@@ -142,15 +140,15 @@
 
   <main class="main-container">
 
-    <!-- NAVEGACION DE PESTAÑAS (SEGMENTED REDONDEADO) -->
+    <!-- NAVEGACION DE PESTAÑAS (SEGMENTED CONTROL REFINADO) -->
     <nav class="tabs-nav">
-      <button class="tab-btn active" data-tab="tab-dashboard">📊 Dashboard</button>
-      <button class="tab-btn" data-tab="tab-movements">💰 Ingresos y Gastos</button>
-      <button class="tab-btn" data-tab="tab-savings">🎯 Metas de Ahorro</button>
-      <button class="tab-btn" data-tab="tab-recurring">🔄 Finanzas Fijas & Recurrentes</button>
-      <button class="tab-btn" data-tab="tab-charts">📈 Gráficos y Análisis</button>
-      <button class="tab-btn" data-tab="tab-debts">🗓️ Control de Deudas y Calendario</button>
-      <button class="tab-btn" data-tab="tab-shortcuts">📱 Atajos de iPhone</button>
+      <button class="tab-btn active" data-tab="tab-dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="tab-movements">Movimientos</button>
+      <button class="tab-btn" data-tab="tab-savings">Metas de Ahorro</button>
+      <button class="tab-btn" data-tab="tab-recurring">Finanzas Fijas</button>
+      <button class="tab-btn" data-tab="tab-charts">Análisis Gráfico</button>
+      <button class="tab-btn" data-tab="tab-debts">Control de Deudas</button>
+      <button class="tab-btn" data-tab="tab-shortcuts">Atajos de iPhone</button>
     </nav>
 
     <!-- BARRA GLOBAL DE FILTRO DE PERIODO Y METODOS (AÑO, MES, MEDIO Y METODO) -->
@@ -181,22 +179,22 @@
         </select>
 
         <!-- Filtro por Modo Físico vs Digital -->
-        <select id="global-filter-medium" class="filter-select" title="Filtrar por pago físico o digital">
-          <option value="ALL">💵📱 Todos los Medios</option>
-          <option value="FISICO">💵 Solo Pagos Físicos (Efectivo)</option>
-          <option value="DIGITAL">📱 Solo Pagos Digitales (Apps/Tarjetas)</option>
+        <select id="global-filter-medium" class="filter-select" title="Filtrar por medio de transacción">
+          <option value="ALL">Todos los Medios</option>
+          <option value="FISICO">Efectivo Físico</option>
+          <option value="DIGITAL">Digital (Cuentas & Tarjetas)</option>
         </select>
 
         <!-- Filtro por Método Específico -->
-        <select id="global-filter-method" class="filter-select" title="Filtrar por método específico">
-          <option value="ALL">🏦 Todas las Cuentas</option>
-          <option value="EFECTIVO">💵 Efectivo Físico</option>
-          <option value="NEQUI">📱 Nequi</option>
-          <option value="DAVIPLATA">📱 Daviplata</option>
-          <option value="BANCO">🏦 Banco / PSE</option>
-          <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
-          <option value="TARJETA_CREDITO">💳 Tarjeta Crédito</option>
-          <option value="OTRO">🌐 Otros</option>
+        <select id="global-filter-method" class="filter-select" title="Filtrar por cuenta específica">
+          <option value="ALL">Todas las Cuentas</option>
+          <option value="EFECTIVO">Efectivo en Mano</option>
+          <option value="NEQUI">Nequi</option>
+          <option value="DAVIPLATA">Daviplata</option>
+          <option value="BANCO">Banco / PSE</option>
+          <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+          <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+          <option value="OTRO">Otros Canales</option>
         </select>
       </div>
 
@@ -205,11 +203,13 @@
           Mostrando: Todos los meses (2026)
         </span>
         <button id="btn-toggle-show-time" class="btn-toggle-time" title="Mostrar u ocultar la hora exacta de los movimientos">
-          <span id="toggle-time-icon">🕒</span>
+          <span id="toggle-time-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </span>
           <span id="toggle-time-text">Ver Hora</span>
         </button>
         <button id="btn-clear-method-filter" class="btn-account-action hidden" style="padding: 4px 8px; font-size: 0.7rem;">
-          ✖ Quitar Filtro de Cuenta
+          Quitar Filtro de Cuenta
         </button>
       </div>
     </div>
@@ -1108,27 +1108,39 @@
   <!-- BARRA DE NAVEGACIÓN INFERIOR NATIVA PARA MÓVILES (APPLE / ANDROID UX) -->
   <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Navegación Móvil">
     <button type="button" class="mobile-nav-btn active" data-tab="tab-dashboard">
-      <span class="mobile-nav-icon">📊</span>
-      <span class="mobile-nav-label">Inicio</span>
+      <span class="mobile-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      </span>
+      <span class="mobile-nav-label">Dashboard</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-tab="tab-movements">
-      <span class="mobile-nav-icon">💰</span>
+      <span class="mobile-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+      </span>
       <span class="mobile-nav-label">Flujo</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-tab="tab-savings">
-      <span class="mobile-nav-icon">🎯</span>
+      <span class="mobile-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+      </span>
       <span class="mobile-nav-label">Metas</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-tab="tab-recurring">
-      <span class="mobile-nav-icon">🔄</span>
+      <span class="mobile-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+      </span>
       <span class="mobile-nav-label">Fijos</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-tab="tab-debts">
-      <span class="mobile-nav-icon">🗓️</span>
+      <span class="mobile-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      </span>
       <span class="mobile-nav-label">Deudas</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-tab="tab-shortcuts">
-      <span class="mobile-nav-icon">📱</span>
+      <span class="mobile-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      </span>
       <span class="mobile-nav-label">Atajos</span>
     </button>
   </nav>
@@ -1472,15 +1484,17 @@
 
   <!-- MODAL DE CONFIRMACIÓN IN-APP (SEGURO PARA IFRAMES Y MÓVILES) -->
   <div id="app-confirm-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 420px; text-align: center; border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 10px 40px rgba(0,0,0,0.7);">
-      <div style="font-size: 2.2rem; margin-bottom: 8px;" id="confirm-modal-icon">🗑️</div>
-      <h3 id="confirm-modal-title" style="font-size: 1.15rem; font-weight: 800; margin-bottom: 8px; color: var(--text-main);">Confirmar Eliminación</h3>
-      <p id="confirm-modal-message" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; white-space: pre-line;">¿Estás seguro de eliminar este registro permanentemente?</p>
+    <div class="modal-card" style="max-width: 400px; text-align: center; border-color: rgba(239, 68, 68, 0.35);">
+      <div style="margin-bottom: 12px; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); color: var(--danger-color);" id="confirm-modal-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+      </div>
+      <h3 id="confirm-modal-title" style="font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main);">Confirmar Eliminación</h3>
+      <p id="confirm-modal-message" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; white-space: pre-line;">¿Estás seguro de eliminar este registro permanentemente?</p>
       <div style="display: flex; gap: 10px; justify-content: center;">
-        <button type="button" id="btn-confirm-cancel" class="btn btn-outline" style="flex: 1; padding: 11px; font-weight: 700; font-size: 0.85rem; justify-content: center;">
+        <button type="button" id="btn-confirm-cancel" class="btn btn-outline" style="flex: 1; padding: 10px; font-weight: 600; font-size: 0.82rem; justify-content: center;">
           Cancelar
         </button>
-        <button type="button" id="btn-confirm-ok" class="btn btn-danger" style="flex: 1; padding: 11px; font-weight: 800; font-size: 0.85rem; justify-content: center; box-shadow: 0 4px 14px var(--danger-glow);">
+        <button type="button" id="btn-confirm-ok" class="btn btn-danger" style="flex: 1; padding: 10px; font-weight: 700; font-size: 0.82rem; justify-content: center;">
           Eliminar
         </button>
       </div>

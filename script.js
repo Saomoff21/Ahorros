@@ -563,46 +563,159 @@ const tabOrder = [
 ];
 let currentActiveTabId = 'tab-dashboard';
 
-function activateTab(tabId) {
+function activateTab(tabId, isInitial = false) {
   if (!tabId) return;
-  const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-  const targetMobileBtn = document.querySelector(`.mobile-nav-btn[data-tab="${tabId}"]`);
   const target = document.getElementById(tabId);
   if (!target) return;
 
-  const prevIndex = tabOrder.indexOf(currentActiveTabId);
-  const nextIndex = tabOrder.indexOf(tabId);
-  let animationClass = 'tab-fade-enter';
-
-  if (prevIndex !== -1 && nextIndex !== -1 && prevIndex !== nextIndex) {
-    animationClass = nextIndex > prevIndex ? 'tab-slide-right' : 'tab-slide-left';
+  // Evitar re-animar si la pestaña ya está activa y visible
+  if (currentActiveTabId === tabId && target.classList.contains('active')) {
+    return;
   }
 
-  tabButtons.forEach(b => b.classList.remove('active'));
-  mobileNavButtons.forEach(b => b.classList.remove('active'));
-  tabContents.forEach(c => {
-    c.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter');
+  const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  const targetMobileBtn = document.querySelector(`.mobile-nav-btn[data-tab="${tabId}"]`);
+
+  const prevIndex = tabOrder.indexOf(currentActiveTabId);
+  const nextIndex = tabOrder.indexOf(tabId);
+
+  // Determinar dirección de desplazamiento: si avanza (derecha a izquierda) o retrocede
+  let direction = null;
+  if (!isInitial && prevIndex !== -1 && nextIndex !== -1 && prevIndex !== nextIndex) {
+    direction = nextIndex > prevIndex ? 'forward' : 'backward';
+  }
+
+  // Identificar la pestaña saliente y el contenedor relativo de transición
+  const outgoingTab = currentActiveTabId ? document.getElementById(currentActiveTabId) : null;
+  const stage = document.getElementById('tabs-stage');
+
+  // Limpiar cualquier pestaña que haya quedado en proceso de salida anterior (soporte clics rápidos)
+  document.querySelectorAll('.tab-content.tab-exiting').forEach(el => {
+    el.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade');
+    el.style.display = 'none';
+    el.style.willChange = 'auto';
   });
 
+  // Limpiar clases de preparación previas
+  tabContents.forEach(c => {
+    c.classList.remove('tab-prepare-right', 'tab-prepare-left', 'tab-prepare-fade');
+  });
+
+  // 1. Fijar y transicionar elásticamente la altura de .tabs-stage para evitar colapso vertical
+  if (stage && outgoingTab && outgoingTab !== target && !isInitial) {
+    const fromHeight = outgoingTab.offsetHeight;
+    if (fromHeight > 0) {
+      stage.style.height = `${fromHeight}px`;
+    }
+
+    // Medir la altura natural del destino sin provocar parpadeo
+    target.style.visibility = 'hidden';
+    target.style.display = 'block';
+    target.style.position = 'relative';
+    const toHeight = target.offsetHeight;
+    target.style.display = 'none';
+    target.style.visibility = '';
+    target.style.position = '';
+
+    if (toHeight > 0 && fromHeight > 0) {
+      requestAnimationFrame(() => {
+        stage.style.height = `${toHeight}px`;
+      });
+    }
+  }
+
+  // 2. Gestionar la salida suave en paralelo de la pestaña anterior (~200ms)
+  if (outgoingTab && outgoingTab !== target && !isInitial) {
+    outgoingTab.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter');
+    outgoingTab.classList.add('tab-exiting');
+
+    if (direction === 'forward') {
+      outgoingTab.classList.add('exit-left');
+    } else if (direction === 'backward') {
+      outgoingTab.classList.add('exit-right');
+    } else {
+      outgoingTab.classList.add('exit-fade');
+    }
+
+    const onExitEnd = () => {
+      outgoingTab.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade');
+      outgoingTab.style.display = 'none';
+      outgoingTab.style.willChange = 'auto';
+      outgoingTab.removeEventListener('animationend', onExitEnd);
+    };
+
+    outgoingTab.addEventListener('animationend', onExitEnd, { once: true });
+    setTimeout(onExitEnd, 220); // Respaldo seguro
+  } else {
+    // Si es carga inicial o no hay pestaña previa, ocultar los demás contenidos
+    tabContents.forEach(c => {
+      if (c !== target) {
+        c.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter', 'tab-exiting', 'exit-left', 'exit-right', 'exit-fade');
+        c.style.display = 'none';
+        c.style.willChange = 'auto';
+      }
+    });
+  }
+
+  // Actualizar estados visuales de los botones de navegación
+  tabButtons.forEach(b => b.classList.remove('active'));
+  mobileNavButtons.forEach(b => b.classList.remove('active'));
   if (targetBtn) targetBtn.classList.add('active');
   if (targetMobileBtn) targetMobileBtn.classList.add('active');
-  
-  target.classList.add('active');
-  void target.offsetWidth; // Forzar reflow para reiniciar la animación fluida
-  target.classList.add(animationClass);
+
+  // 4. Garantizar Estado Inicial Cero (FOUC Fix)
+  let prepareClass = 'tab-prepare-fade';
+  let animationClass = 'tab-fade-enter';
+  if (direction === 'forward') {
+    prepareClass = 'tab-prepare-right';
+    animationClass = 'tab-slide-right';
+  } else if (direction === 'backward') {
+    prepareClass = 'tab-prepare-left';
+    animationClass = 'tab-slide-left';
+  }
+
+  target.style.display = 'block';
+  target.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter');
+
+  if (!isInitial && outgoingTab) {
+    target.classList.add(prepareClass);
+    // Iniciar animación en el siguiente cuadro para garantizar que arranca desde opacidad cero absoluta
+    requestAnimationFrame(() => {
+      target.classList.remove(prepareClass);
+      target.classList.add('active', animationClass);
+    });
+  } else {
+    target.classList.add('active', animationClass);
+  }
+
+  // Liberar recursos de composición GPU y restaurar altura automática al terminar
+  const onEnterEnd = () => {
+    target.style.willChange = 'auto';
+    if (stage) stage.style.height = '';
+    target.removeEventListener('animationend', onEnterEnd);
+  };
+  target.addEventListener('animationend', onEnterEnd, { once: true });
+  setTimeout(() => {
+    if (stage) stage.style.height = '';
+  }, 360);
 
   currentActiveTabId = tabId;
   localStorage.setItem('ahorros_active_tab', tabId);
 
-  // Scroll suave al inicio si es en móvil para evitar que quede descolocado
-  if (window.innerWidth <= 768) {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Scroll instantáneo al inicio si es en móvil para evitar sacudidas
+  if (window.innerWidth <= 768 && window.scrollY > 0) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
-  if (tabId === 'tab-charts') renderCharts();
-  else if (tabId === 'tab-debts') renderCalendar();
-  else if (tabId === 'tab-savings') renderSavingsGoals();
-  else if (tabId === 'tab-recurring') renderRecurringPayments();
+  // 2. Desacoplar renderizado pesado en un requestAnimationFrame doble (Async Render)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (tabId === 'tab-charts') renderCharts();
+      else if (tabId === 'tab-debts') renderCalendar();
+      else if (tabId === 'tab-savings') renderSavingsGoals();
+      else if (tabId === 'tab-recurring') renderRecurringPayments();
+    });
+  });
 }
 
 tabButtons.forEach(btn => {
@@ -621,7 +734,7 @@ mobileNavButtons.forEach(btn => {
 try {
   const savedTab = localStorage.getItem('ahorros_active_tab') || 'tab-dashboard';
   if (savedTab && document.getElementById(savedTab)) {
-    activateTab(savedTab);
+    activateTab(savedTab, true);
   }
 } catch (e) {}
 

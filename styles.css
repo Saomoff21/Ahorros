@@ -1134,6 +1134,14 @@ table {
   text-align: left;
 }
 
+.desktop-only {
+  display: table-cell;
+}
+
+.mobile-only-cell {
+  display: none !important;
+}
+
 th, td {
   padding: 11px 14px;
   border-bottom: 0.5px solid var(--border-color);
@@ -2447,6 +2455,32 @@ body[data-device="mobile"] .tabs-nav {
   display: none !important;
 }
 
+body[data-device="mobile"] .desktop-only {
+  display: none !important;
+}
+
+body[data-device="mobile"] .mobile-only-cell {
+  display: table-cell !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+body[data-device="mobile"] thead {
+  display: none !important;
+}
+
+body[data-device="mobile"] table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+body[data-device="mobile"] .table-wrapper {
+  overflow-x: hidden !important;
+  width: 100% !important;
+}
+
 body[data-device="mobile"] .main-container {
   padding-bottom: calc(75px + env(safe-area-inset-bottom)) !important;
 }
@@ -2735,61 +2769,174 @@ body[data-device="desktop"] .goals-layout-grid {
     font-size: 0.95rem !important;
   }
 
-  /* TABLAS SIN EXPULSIÓN DE VIEWPORT */
+  /* TABLAS EN MÓVIL: VISTA TIPO LISTA DE TRANSACCIONES NATIVA APPLE (SIN CORTES) */
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only-cell {
+    display: table-cell !important;
+    width: 100% !important;
+    padding: 0 !important;
+    border-bottom: 0.5px solid var(--border-color) !important;
+    white-space: normal !important;
+  }
+
   .table-wrapper {
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    border-radius: 10px;
-    display: block;
+    border-radius: 12px !important;
+    display: block !important;
   }
 
   table {
     width: 100% !important;
-    min-width: 480px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+    display: table !important;
+    table-layout: fixed !important;
   }
 
-  th, td {
-    padding: 8px 10px !important;
-    font-size: 0.74rem !important;
-    white-space: nowrap;
+  thead {
+    display: none !important;
   }
 
-  /* Columna de eliminar fija a la derecha en móviles para acceso táctil instantáneo */
-  tbody tr:not(.month-divider-row) td:last-child:not([colspan]),
-  thead th:last-child {
-    text-align: center;
-    position: sticky;
-    right: 0;
-    background: var(--surface-color);
-    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.35);
-    z-index: 5;
+  tbody {
+    display: table-row-group !important;
+    width: 100% !important;
   }
 
-  /* Filas de cabecera de mes y estados vacíos ocupan el ancho natural sin distorsión sticky */
-  tbody tr.month-divider-row td,
-  tbody tr td[colspan] {
-    position: static !important;
-    box-shadow: none !important;
+  tbody tr {
+    display: table-row !important;
+    width: 100% !important;
+  }
+
+  tbody tr.month-divider-row td {
+    display: table-cell !important;
+    width: 100% !important;
+    padding: 9px 14px !important;
+    background: rgba(120, 120, 128, 0.08) !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    letter-spacing: 0.03em !important;
+    border-bottom: 0.5px solid var(--border-color) !important;
     white-space: normal !important;
   }
 
-  tbody tr:hover td:last-child:not([colspan]),
-  tbody tr:active td:last-child:not([colspan]) {
-    background: var(--surface-secondary);
+  tbody tr td[colspan] {
+    display: table-cell !important;
+    width: 100% !important;
+    white-space: normal !important;
+    box-sizing: border-box !important;
   }
 
-  .btn-delete {
-    min-width: 32px !important;
-    min-height: 32px !important;
-    width: 32px !important;
-    height: 32px !important;
-    font-size: 0.85rem !important;
+  /* TARJETA MÓVIL DE MOVIMIENTO (INSET LIST ROW ESTILO iOS) */
+  .mobile-tx-card {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: var(--surface-color) !important;
+    transition: background-color 0.12s ease !important;
+  }
+
+  tbody tr:hover .mobile-tx-card,
+  .mobile-tx-card:active {
+    background: rgba(120, 120, 128, 0.08) !important;
+  }
+
+  .mobile-tx-left {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .mobile-tx-title {
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .mobile-tx-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-wrap: wrap !important;
+    font-size: 0.7rem !important;
+    color: var(--text-muted) !important;
+  }
+
+  .mobile-tx-meta .mobile-tx-date {
+    font-size: 0.68rem !important;
+    color: var(--text-muted) !important;
+  }
+
+  .mobile-tag {
+    font-size: 0.65rem !important;
+    padding: 1px 6px !important;
+  }
+
+  .mobile-tx-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mobile-tx-amount {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+    font-variant-numeric: tabular-nums !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .mobile-delete-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 9px !important;
+    background: rgba(255, 69, 58, 0.12) !important;
+    color: var(--danger-color) !important;
+    border: 0.5px solid rgba(255, 69, 58, 0.3) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: transform 0.1s, background-color 0.15s !important;
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
     pointer-events: auto !important;
-    position: relative;
-    z-index: 10;
-    touch-action: manipulation;
+    position: relative !important;
+    z-index: 10 !important;
+  }
+
+  .mobile-delete-btn:active {
+    transform: scale(0.9) !important;
+    background: rgba(255, 69, 58, 0.28) !important;
+  }
+
+  .mobile-debt-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    padding: 14px !important;
   }
 
   /* MODALES ESTILO BOTTOM SHEET CON ÁREA SEGURA */

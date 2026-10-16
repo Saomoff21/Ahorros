@@ -3850,7 +3850,7 @@ window.payDebt = async function(idOrIndex) {
 
   if (!targetDebt) return;
 
-  const inputEl = document.getElementById(`pay-input-${targetDebt.id}`) || document.getElementById(`pay-input-${strId}`);
+  const inputEl = document.getElementById(`pay-input-mob-${targetDebt.id}`) || document.getElementById(`pay-input-${targetDebt.id}`) || document.getElementById(`pay-input-${strId}`);
   if (!inputEl) return;
   const payAmount = parseAmount(inputEl.value);
 
@@ -4172,16 +4172,45 @@ function updateUI() {
 
       // Fila para tabla de historial
       const row = document.createElement('tr');
+      row.className = 'history-row';
+      const formattedDate = formatDateDisplay(t.date, t.time || t.createdAt);
+      const isIncome = t.type === 'income';
+      const amountColor = isIncome ? 'text-success' : 'text-danger';
+      const signPrefix = isIncome ? '+' : '-';
+      const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
+
       row.innerHTML = `
-        <td><small style="color: var(--text-muted);">${formatDateDisplay(t.date, t.time || t.createdAt)}</small></td>
-        <td><strong>${t.description}</strong></td>
-        <td><small style="color: var(--text-muted);">${t.category}</small></td>
-        <td>${mediumBadge}</td>
-        <td>${methodBadge}</td>
-        <td style="font-weight: 700;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">
+        <td class="col-date desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
+        <td class="col-desc desktop-only"><strong>${t.description}</strong></td>
+        <td class="col-cat desktop-only"><small style="color: var(--text-muted);">${t.category}</small></td>
+        <td class="col-med desktop-only">${mediumBadge}</td>
+        <td class="col-acc desktop-only">${methodBadge}</td>
+        <td class="col-amt desktop-only ${amountColor}" style="font-weight: 700;">
           ${formatCurrency(t.amount)}
         </td>
-        <td><button class="btn-delete" onclick="removeTransaction(${deleteIdentifier})">X</button></td>
+        <td class="col-act desktop-only"><button class="btn-delete" title="Eliminar" onclick="removeTransaction(${deleteIdentifier})">${deleteIconSvg}</button></td>
+
+        <!-- Celda integrada para móvil (iOS Card Row: 100% visible, sin cortes, botón eliminar táctil) -->
+        <td class="mobile-only-cell" colspan="7">
+          <div class="mobile-tx-card">
+            <div class="mobile-tx-left">
+              <div class="mobile-tx-title">${t.description}</div>
+              <div class="mobile-tx-meta">
+                <span class="mobile-tx-date">${formattedDate}</span>
+                <span class="tag-badge mobile-tag">${t.category}</span>
+                ${methodBadge}
+              </div>
+            </div>
+            <div class="mobile-tx-right">
+              <span class="mobile-tx-amount ${amountColor}">
+                ${signPrefix}${formatCurrency(t.amount)}
+              </span>
+              <button class="btn-delete mobile-delete-btn" title="Eliminar movimiento" aria-label="Eliminar transacción" onclick="removeTransaction(${deleteIdentifier})">
+                ${deleteIconSvg}
+              </button>
+            </div>
+          </div>
+        </td>
       `;
 
       const monthKey = `${tYear}-${tMonth}`;
@@ -4207,14 +4236,37 @@ function updateUI() {
 
       // Fila para resumen del dashboard
       const summaryRow = document.createElement('tr');
+      summaryRow.className = 'history-row';
       summaryRow.innerHTML = `
-        <td><small style="color: var(--text-muted);">${formatDateDisplay(t.date, t.time || t.createdAt)}</small></td>
-        <td><span class="tag-badge ${t.type === 'income' ? 'text-success' : 'text-danger'}">${t.type === 'income' ? 'INGRESO' : 'GASTO'}</span></td>
-        <td><strong>${t.description}</strong></td>
-        <td><small style="color: var(--text-muted);">${t.category}</small></td>
-        <td>${mediumBadge}</td>
-        <td>${methodBadge}</td>
-        <td style="font-weight: 700;" class="${t.type === 'income' ? 'text-success' : 'text-danger'}">${formatCurrency(t.amount)}</td>
+        <td class="desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
+        <td class="desktop-only"><span class="tag-badge ${amountColor}">${isIncome ? 'INGRESO' : 'GASTO'}</span></td>
+        <td class="desktop-only"><strong>${t.description}</strong></td>
+        <td class="desktop-only"><small style="color: var(--text-muted);">${t.category}</small></td>
+        <td class="desktop-only">${mediumBadge}</td>
+        <td class="desktop-only">${methodBadge}</td>
+        <td class="desktop-only ${amountColor}" style="font-weight: 700;">${formatCurrency(t.amount)}</td>
+
+        <!-- Celda integrada para móvil en dashboard -->
+        <td class="mobile-only-cell" colspan="7">
+          <div class="mobile-tx-card">
+            <div class="mobile-tx-left">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                <span class="tag-badge ${amountColor}" style="font-size: 0.65rem; padding: 2px 6px;">${isIncome ? 'INGRESO' : 'GASTO'}</span>
+                <span class="mobile-tx-title">${t.description}</span>
+              </div>
+              <div class="mobile-tx-meta">
+                <span class="mobile-tx-date">${formattedDate}</span>
+                <span class="tag-badge mobile-tag">${t.category}</span>
+                ${methodBadge}
+              </div>
+            </div>
+            <div class="mobile-tx-right">
+              <span class="mobile-tx-amount ${amountColor}">
+                ${signPrefix}${formatCurrency(t.amount)}
+              </span>
+            </div>
+          </div>
+        </td>
       `;
       dashboardSummaryList.appendChild(summaryRow);
     }
@@ -4320,19 +4372,22 @@ function updateUI() {
     const debtIdentifier = `'${d.id}'`;
 
     const row = document.createElement('tr');
+    row.className = 'history-row debt-row';
+    const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
+
     row.innerHTML = `
-      <td>
+      <td class="desktop-only">
         <strong>${d.name}</strong> ${interestBadge}
         <div>${dueDateStatus}</div>
       </td>
-      <td>
+      <td class="desktop-only">
         <small style="color: var(--text-muted);">${formatCurrency(paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%;"></div></div>
         ${accelerationHtml}
         ${historyHtml}
       </td>
-      <td class="text-purple" style="font-weight: 700;">${formatCurrency(pending)}</td>
-      <td>
+      <td class="desktop-only text-purple" style="font-weight: 700;">${formatCurrency(pending)}</td>
+      <td class="desktop-only">
         ${pending > 0 ? `
           <div style="display: flex; gap: 4px; align-items: center;">
             <input type="text" class="currency-input" id="pay-input-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 110px; padding: 4px 6px; font-size: 0.8rem;">
@@ -4340,7 +4395,45 @@ function updateUI() {
           </div>
         ` : '<span class="text-success" style="font-weight: 700;">LIQUIDADA</span>'}
       </td>
-      <td><button class="btn-delete" onclick="removeDebt(${debtIdentifier})">X</button></td>
+      <td class="desktop-only"><button class="btn-delete" title="Eliminar deuda" onclick="removeDebt(${debtIdentifier})">${deleteIconSvg}</button></td>
+
+      <!-- Celda adaptativa para móvil (iOS Card Row: 100% visible, sin cortes, botón eliminar táctil) -->
+      <td class="mobile-only-cell" colspan="5">
+        <div class="mobile-tx-card mobile-debt-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="mobile-tx-title" style="font-size: 0.92rem;">${d.name}</span>
+                ${interestBadge}
+              </div>
+              <div style="margin-top: 2px;">${dueDateStatus}</div>
+            </div>
+            <button class="btn-delete mobile-delete-btn" title="Eliminar deuda" aria-label="Eliminar deuda" onclick="removeDebt(${debtIdentifier})">
+              ${deleteIconSvg}
+            </button>
+          </div>
+          <div style="margin: 8px 0; width: 100%;">
+            <small style="color: var(--text-muted);">${formatCurrency(paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
+            <div class="progress-bar" style="margin-top: 4px;"><div class="progress-fill" style="width: ${progressPercent}%;"></div></div>
+            ${accelerationHtml}
+            ${historyHtml}
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px; width: 100%;">
+            <div>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">PENDIENTE:</small>
+              <div class="text-purple" style="font-weight: 700; font-size: 0.95rem;">${formatCurrency(pending)}</div>
+            </div>
+            <div>
+              ${pending > 0 ? `
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="text" class="currency-input" id="pay-input-mob-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 105px; padding: 6px 8px; font-size: 0.8rem; border-radius: 8px;">
+                  <button class="btn-pay" onclick="payDebt(${debtIdentifier})">ABONAR</button>
+                </div>
+              ` : '<span class="text-success" style="font-weight: 700;">LIQUIDADA</span>'}
+            </div>
+          </div>
+        </div>
+      </td>
     `;
     debtList.appendChild(row);
   });

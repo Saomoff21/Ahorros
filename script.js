@@ -552,6 +552,17 @@ const tabButtons = document.querySelectorAll('.tab-btn');
 const mobileNavButtons = document.querySelectorAll('.mobile-nav-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 
+const tabOrder = [
+  'tab-dashboard',
+  'tab-movements',
+  'tab-savings',
+  'tab-recurring',
+  'tab-charts',
+  'tab-debts',
+  'tab-shortcuts'
+];
+let currentActiveTabId = 'tab-dashboard';
+
 function activateTab(tabId) {
   if (!tabId) return;
   const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
@@ -559,13 +570,28 @@ function activateTab(tabId) {
   const target = document.getElementById(tabId);
   if (!target) return;
 
+  const prevIndex = tabOrder.indexOf(currentActiveTabId);
+  const nextIndex = tabOrder.indexOf(tabId);
+  let animationClass = 'tab-fade-enter';
+
+  if (prevIndex !== -1 && nextIndex !== -1 && prevIndex !== nextIndex) {
+    animationClass = nextIndex > prevIndex ? 'tab-slide-right' : 'tab-slide-left';
+  }
+
   tabButtons.forEach(b => b.classList.remove('active'));
   mobileNavButtons.forEach(b => b.classList.remove('active'));
-  tabContents.forEach(c => c.classList.remove('active'));
+  tabContents.forEach(c => {
+    c.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter');
+  });
 
   if (targetBtn) targetBtn.classList.add('active');
   if (targetMobileBtn) targetMobileBtn.classList.add('active');
+  
   target.classList.add('active');
+  void target.offsetWidth; // Forzar reflow para reiniciar la animación fluida
+  target.classList.add(animationClass);
+
+  currentActiveTabId = tabId;
   localStorage.setItem('ahorros_active_tab', tabId);
 
   // Scroll suave al inicio si es en móvil para evitar que quede descolocado
@@ -682,7 +708,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   if (btnPwaInstall) {
-    btnPwaInstall.innerHTML = '<span>✅</span> APP INSTALADA';
+    btnPwaInstall.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>App Instalada</span>';
     btnPwaInstall.classList.add('installed');
   }
 });
@@ -690,7 +716,7 @@ window.addEventListener('appinstalled', () => {
 // Detectar si ya corre como App nativa en standalone
 const isAppStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 if (isAppStandalone && btnPwaInstall) {
-  btnPwaInstall.innerHTML = '<span>✅</span> APP INSTALADA';
+  btnPwaInstall.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>App Instalada</span>';
   btnPwaInstall.classList.add('installed');
 }
 
@@ -715,7 +741,7 @@ if (btnPwaDirectInstall) {
     if (deferredInstallPrompt) {
       deferredInstallPrompt.prompt();
     } else {
-      alert('Para instalar en iPhone: pulsa el botón Compartir de Safari ⬆️ y luego "Agregar a pantalla de inicio" ➕.');
+      alert('Para instalar en iPhone: pulsa el botón Compartir de Safari y luego "Agregar a pantalla de inicio".');
     }
   });
 }
@@ -725,7 +751,7 @@ if (btnPwaDismiss) {
   btnPwaDismiss.addEventListener('click', () => {
     localStorage.setItem('ahorros_welcome_guide_dismissed', 'true');
     if (pwaInstallModal) pwaInstallModal.classList.add('hidden');
-    showQuickToast('✨ ¡Bienvenido a Ahorros SA! Puedes probar y usar la app libremente.');
+    showQuickToast('¡Bienvenido a Ahorros SA! Puedes probar y usar la app libremente.');
   });
 }
 
@@ -796,7 +822,9 @@ if (btnCopyVaultCode && vaultCodeText) {
   btnCopyVaultCode.addEventListener('click', () => {
     navigator.clipboard.writeText(activeVaultId).then(() => {
       btnCopyVaultCode.textContent = '¡Copiado!';
-      setTimeout(() => { btnCopyVaultCode.textContent = '📋 Copiar Código'; }, 2000);
+      setTimeout(() => {
+        btnCopyVaultCode.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copiar Código</span>';
+      }, 2000);
     });
   });
 }
@@ -808,7 +836,9 @@ if (btnShareVaultLink) {
     const directUrl = `${origin}${path}?boveda=${activeVaultId}`;
     navigator.clipboard.writeText(directUrl).then(() => {
       btnShareVaultLink.textContent = '¡Enlace Copiado!';
-      setTimeout(() => { btnShareVaultLink.textContent = '🔗 Copiar Enlace Directo'; }, 2000);
+      setTimeout(() => {
+        btnShareVaultLink.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> <span>Copiar Enlace Directo</span>';
+      }, 2000);
       alert(`¡Enlace directo copiado al portapapeles!\n\n${directUrl}\n\nÁbrelo en tu celular o envíatelo por WhatsApp para ingresar a tu bóveda sin tener que escribir el código.`);
     });
   });
@@ -1056,9 +1086,9 @@ updateShortcutCredentialsUI();
 if (btnCopyKey) {
   btnCopyKey.addEventListener('click', () => {
     navigator.clipboard.writeText(userApiKey).then(() => {
-      btnCopyKey.textContent = '✅ ¡COPIADA!';
-      showQuickToast('📋 Clave secreta de Atajo copiada al portapapeles');
-      setTimeout(() => { btnCopyKey.textContent = '📋 Copiar Clave'; }, 2000);
+      btnCopyKey.textContent = '¡Copiada!';
+      showQuickToast('Clave secreta de Atajo copiada al portapapeles');
+      setTimeout(() => { btnCopyKey.textContent = 'Copiar Clave'; }, 2000);
     });
   });
 }
@@ -1067,9 +1097,9 @@ if (btnCopyUrl) {
   btnCopyUrl.addEventListener('click', () => {
     const webhookUrl = `${publicSharedOrigin}/api/shortcut/transaction`;
     navigator.clipboard.writeText(webhookUrl).then(() => {
-      btnCopyUrl.textContent = '✅ ¡COPIADA!';
-      showQuickToast('📋 URL de Webhook limpia copiada al portapapeles');
-      setTimeout(() => { btnCopyUrl.textContent = '📋 Copiar URL'; }, 2000);
+      btnCopyUrl.textContent = '¡Copiada!';
+      showQuickToast('URL de Webhook copiada al portapapeles');
+      setTimeout(() => { btnCopyUrl.textContent = 'Copiar URL'; }, 2000);
     });
   });
 }

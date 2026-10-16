@@ -42,7 +42,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <!-- Chart.js para visualización de gráficos mensuales -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -242,14 +242,16 @@
             <h3 style="font-size: 0.85rem; font-weight: 800; color: var(--text-muted); letter-spacing: 0.03em; margin: 0;">
               SALDOS POR CUENTA Y MÉTODO DE PAGO:
             </h3>
-            <small style="color: var(--text-muted); font-size: 0.7rem;">Toca cualquier cuenta para filtrar tus movimientos</small>
+            <small style="color: var(--text-muted); font-size: 0.72rem;">Selecciona cualquier cuenta para filtrar tus transacciones</small>
           </div>
           <div class="accounts-actions">
             <button id="btn-open-transfer-modal" class="btn-account-action btn-transfer" title="Mover dinero entre cuentas o retirar a efectivo físico">
-              <span>🔄</span> Mover Dinero / Retiro Cajero
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+              <span>Transferir / Retirar</span>
             </button>
             <button id="btn-open-pay-card-modal" class="btn-account-action" title="Liquidar saldo gastado en tarjeta de crédito">
-              <span>💳</span> Pagar Tarjeta Crédito
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="3" ry="3"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+              <span>Pagar Tarjeta</span>
             </button>
           </div>
         </div>
@@ -257,63 +259,77 @@
         <div class="accounts-grid" id="accounts-summary-grid">
           <!-- 1. EFECTIVO FÍSICO EN MANO -->
           <div class="account-card" data-account="EFECTIVO" title="Haz clic para filtrar por Efectivo Físico">
-            <div class="account-icon">💵</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle><line x1="6" y1="12" x2="6.01" y2="12"></line><line x1="18" y1="12" x2="18.01" y2="12"></line></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">EFECTIVO (FÍSICO EN MANO)</span>
+              <span class="account-name">Efectivo en Mano</span>
               <span class="account-balance text-success" id="acc-efectivo">$ 0</span>
             </div>
           </div>
 
           <!-- 2. NEQUI -->
           <div class="account-card" data-account="NEQUI" title="Haz clic para filtrar por Nequi">
-            <div class="account-icon">📱</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">NEQUI</span>
+              <span class="account-name">Nequi</span>
               <span class="account-balance text-primary" id="acc-nequi">$ 0</span>
             </div>
           </div>
 
           <!-- 3. DAVIPLATA -->
           <div class="account-card" data-account="DAVIPLATA" title="Haz clic para filtrar por Daviplata">
-            <div class="account-icon">📱</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"></rect><circle cx="12" cy="11" r="2.5"></circle><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">DAVIPLATA</span>
+              <span class="account-name">Daviplata</span>
               <span class="account-balance text-primary" id="acc-daviplata">$ 0</span>
             </div>
           </div>
 
           <!-- 4. BANCO / CUENTA -->
           <div class="account-card" data-account="BANCO" title="Haz clic para filtrar por Banco / Ahorros">
-            <div class="account-icon">🏦</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M3 10h18"></path><path d="M5 6l7-3 7 3"></path><path d="M4 10v11"></path><path d="M20 10v11"></path><path d="M8 14v4"></path><path d="M12 14v4"></path><path d="M16 14v4"></path></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">BANCO / CUENTA</span>
+              <span class="account-name">Banco / Cuenta</span>
               <span class="account-balance text-primary" id="acc-banco">$ 0</span>
             </div>
           </div>
 
           <!-- 5. TARJETA DÉBITO -->
           <div class="account-card" data-account="TARJETA_DEBITO" title="Haz clic para filtrar por Tarjeta Débito">
-            <div class="account-icon">💳</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">TARJETA DÉBITO</span>
+              <span class="account-name">Tarjeta Débito</span>
               <span class="account-balance text-primary" id="acc-debito">$ 0</span>
             </div>
           </div>
 
           <!-- 6. TARJETA CRÉDITO -->
           <div class="account-card" data-account="TARJETA_CREDITO" title="Haz clic para filtrar por Tarjeta Crédito">
-            <div class="account-icon">💳</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">TARJETA CRÉDITO (GASTADO)</span>
+              <span class="account-name">Tarjeta Crédito (Gastado)</span>
               <span class="account-balance text-danger" id="acc-tarjeta">$ 0</span>
             </div>
           </div>
 
           <!-- 7. METAS DE AHORRO -->
           <div class="account-card" data-account="GOALS" style="cursor: pointer;" title="Ir a la pestaña de Metas de Ahorro">
-            <div class="account-icon">🎯</div>
+            <div class="account-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+            </div>
             <div class="account-info">
-              <span class="account-name">TOTAL EN METAS DE AHORRO</span>
+              <span class="account-name">Metas de Ahorro</span>
               <span class="account-balance text-success" id="acc-goals-total">$ 0</span>
             </div>
           </div>
@@ -352,7 +368,9 @@
       <!-- BARRA DE SELECCION Y NAVEGACION DE MES PARA INGRESOS Y GASTOS -->
       <div class="movements-month-nav">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 1.2rem;">📅</span>
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(120, 120, 128, 0.16); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </div>
           <div>
             <h3 style="font-size: 0.88rem; font-weight: 800; margin: 0;">Explorador de Movimientos por Mes y Año</h3>
             <small style="font-size: 0.7rem; color: var(--text-muted);">Carga y revisa tus ingresos y gastos separados mes a mes o consulta el año completo</small>
@@ -415,19 +433,19 @@
                 <div class="form-group">
                   <label for="income-payment-method">Cuenta de Destino</label>
                   <select id="income-payment-method" required>
-                    <option value="EFECTIVO">💵 EFECTIVO (Pago Físico en mano)</option>
-                    <option value="NEQUI">📱 NEQUI</option>
-                    <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                    <option value="BANCO">🏦 BANCO / PSE / CUENTA</option>
-                    <option value="TARJETA_DEBITO">💳 TARJETA DÉBITO</option>
-                    <option value="OTRO">🌐 OTRO MÉTODO</option>
+                    <option value="EFECTIVO">Efectivo en Mano</option>
+                    <option value="NEQUI">Nequi</option>
+                    <option value="DAVIPLATA">Daviplata</option>
+                    <option value="BANCO">Banco / PSE / Cuenta</option>
+                    <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+                    <option value="OTRO">Otro Método</option>
                   </select>
                 </div>
               </div>
 
               <!-- Indicador visual de medio de pago -->
-              <div id="income-medium-notice" style="font-size: 0.72rem; color: var(--success-color); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                <span>💵</span> <span>Medio: PAGO FÍSICO (Efectivo en mano)</span>
+              <div id="income-medium-notice" style="font-size: 0.72rem; color: var(--success-color); font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>Medio: Efectivo Físico</span>
               </div>
 
               <div class="form-group">
@@ -480,7 +498,7 @@
           <div class="panel-card border-danger">
             <div class="panel-header">
               <h2>Registrar Gasto</h2>
-              <span class="tag-badge text-danger">- Salida</span>
+              <span class="tag-badge text-danger">Salida</span>
             </div>
             <form id="expense-form" class="app-form">
               <div class="form-group">
@@ -502,20 +520,20 @@
                 <div class="form-group">
                   <label for="expense-payment-method">Método de Pago (Origen)</label>
                   <select id="expense-payment-method" required>
-                    <option value="EFECTIVO">💵 EFECTIVO (Pago Físico en mano)</option>
-                    <option value="NEQUI">📱 NEQUI</option>
-                    <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                    <option value="BANCO">🏦 BANCO / PSE</option>
-                    <option value="TARJETA_DEBITO">💳 TARJETA DÉBITO</option>
-                    <option value="TARJETA_CREDITO">💳 TARJETA DE CRÉDITO</option>
-                    <option value="OTRO">🌐 OTRO MÉTODO</option>
+                    <option value="EFECTIVO">Efectivo en Mano</option>
+                    <option value="NEQUI">Nequi</option>
+                    <option value="DAVIPLATA">Daviplata</option>
+                    <option value="BANCO">Banco / PSE</option>
+                    <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+                    <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                    <option value="OTRO">Otro Método</option>
                   </select>
                 </div>
               </div>
 
               <!-- Indicador visual de medio de gasto -->
-              <div id="expense-medium-notice" style="font-size: 0.72rem; color: var(--success-color); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                <span>💵</span> <span>Medio: PAGO FÍSICO (Efectivo en mano)</span>
+              <div id="expense-medium-notice" style="font-size: 0.72rem; color: var(--success-color); font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>Medio: Efectivo Físico</span>
               </div>
 
               <!-- Opciones adicionales si es tarjeta de crédito -->
@@ -590,7 +608,7 @@
         <div class="panel-card border-success">
           <div class="panel-header">
             <h2>Crear Meta de Ahorro / Bolsillo</h2>
-            <span class="tag-badge text-success">🎯 Objetivo</span>
+            <span class="tag-badge text-success">Objetivo</span>
           </div>
           <form id="goal-form" class="app-form">
             <div class="form-group">
@@ -613,10 +631,10 @@
             <div class="form-group">
               <label for="goal-source-account">Cuenta para Ahorro Inicial</label>
               <select id="goal-source-account">
-                <option value="EFECTIVO">💵 EFECTIVO (Físico en mano)</option>
-                <option value="NEQUI">📱 NEQUI</option>
-                <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                <option value="BANCO">🏦 BANCO / CUENTA</option>
+                <option value="EFECTIVO">Efectivo (Físico en mano)</option>
+                <option value="NEQUI">Nequi</option>
+                <option value="DAVIPLATA">Daviplata</option>
+                <option value="BANCO">Banco / Cuenta</option>
               </select>
             </div>
 
@@ -684,17 +702,17 @@
       <!-- BARRA RESUMEN DE COMPROMISOS FIJOS MENSUALES -->
       <div class="recurring-kpi-bar">
         <div class="kpi-card border-success">
-          <span class="kpi-label">🟢 TOTAL INGRESOS FIJOS (SUELDOS / ENTRADAS)</span>
+          <span class="kpi-label">TOTAL INGRESOS FIJOS (RECURRENTES)</span>
           <div id="recurring-total-income" class="kpi-value text-success">$ 0/mes</div>
           <small style="font-size: 0.7rem; color: var(--text-muted);">Sueldos, rentas o entradas periódicas</small>
         </div>
         <div class="kpi-card border-danger">
-          <span class="kpi-label">🔴 TOTAL GASTOS FIJOS & SUSCRIPCIONES</span>
+          <span class="kpi-label">TOTAL GASTOS FIJOS & SUSCRIPCIONES</span>
           <div id="recurring-total-expense" class="kpi-value text-danger">$ 0/mes</div>
           <small style="font-size: 0.7rem; color: var(--text-muted);">Alquiler, servicios, streaming, cuotas</small>
         </div>
         <div class="kpi-card border-primary">
-          <span class="kpi-label">⚖️ FLUJO FIJO NETO ESTIMADO</span>
+          <span class="kpi-label">FLUJO FIJO NETO DISPONIBLE</span>
           <div id="recurring-net-balance" class="kpi-value text-primary">$ 0/mes</div>
           <small style="font-size: 0.7rem; color: var(--text-muted);">Dinero libre tras cubrir costos fijos</small>
         </div>
@@ -705,7 +723,7 @@
         <div class="panel-card border-warning">
           <div class="panel-header">
             <h2 id="recurring-form-title">Registrar Gasto Fijo o Suscripción</h2>
-            <span class="tag-badge text-warning">🔄 Recurrente</span>
+            <span class="tag-badge text-warning">Recurrente</span>
           </div>
           <form id="recurring-form" class="app-form">
             <!-- SELECTOR SEGMENTADO DE TIPO: GASTO VS INGRESO -->
@@ -715,10 +733,10 @@
               </label>
               <div class="recurring-type-switch">
                 <button type="button" id="btn-type-expense" class="type-switch-btn active expense">
-                  <span>🔴 GASTO FIJO (Salida)</span>
+                  <span>Gasto Fijo</span>
                 </button>
                 <button type="button" id="btn-type-income" class="type-switch-btn income">
-                  <span>🟢 INGRESO FIJO (Sueldo/Entrada)</span>
+                  <span>Ingreso Fijo</span>
                 </button>
               </div>
               <input type="hidden" id="rec-type" value="expense">
@@ -768,11 +786,11 @@
             <div class="form-group">
               <label for="rec-method">Cuenta o Medio Habitual</label>
               <select id="rec-method">
-                <option value="NEQUI">📱 NEQUI</option>
-                <option value="DAVIPLATA">📱 DAVIPLATA</option>
-                <option value="BANCO">🏦 BANCO / DÉBITO AUTOMÁTICO</option>
-                <option value="TARJETA_CREDITO">💳 TARJETA DE CRÉDITO</option>
-                <option value="EFECTIVO">💵 EFECTIVO</option>
+                <option value="NEQUI">Nequi</option>
+                <option value="DAVIPLATA">Daviplata</option>
+                <option value="BANCO">Banco / Débito Automático</option>
+                <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                <option value="EFECTIVO">Efectivo</option>
               </select>
             </div>
 
@@ -791,8 +809,8 @@
               <!-- FILTROS RAPIDOS -->
               <div class="recurring-filter-pills">
                 <button type="button" class="recurring-pill-btn active" data-filter="ALL">Todos</button>
-                <button type="button" class="recurring-pill-btn" data-filter="income">🟢 Ingresos Fijos</button>
-                <button type="button" class="recurring-pill-btn" data-filter="expense">🔴 Gastos Fijos</button>
+                <button type="button" class="recurring-pill-btn" data-filter="income">Ingresos Fijos</button>
+                <button type="button" class="recurring-pill-btn" data-filter="expense">Gastos Fijos</button>
               </div>
 
               <div id="recurring-container" class="recurring-grid">
@@ -1015,12 +1033,12 @@
             </p>
 
             <!-- BOVEDA ACTIVA -->
-            <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
               <div>
-                <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block;">Bóveda Vinculada:</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; display: block;">Bóveda Vinculada:</span>
                 <strong style="color: var(--primary-color); font-size: 1.05rem;" id="shortcut-vault-tag">AHO-XXXX</strong>
               </div>
-              <span class="tag-badge text-primary" style="font-size: 0.72rem;">Sincronización en la Nube</span>
+              <span class="tag-badge text-primary" style="font-size: 0.72rem;">Sincronización Activa</span>
             </div>
 
             <!-- TU CLAVE DE ATAJO (API KEY) -->
@@ -1029,8 +1047,8 @@
               <div class="api-box-value">
                 <span id="shortcut-api-key" class="api-code">ahorros_key_cargando...</span>
                 <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                  <button id="btn-copy-key" class="btn-copy">📋 Copiar Clave</button>
-                  <button id="btn-regen-key" class="btn-copy" title="Generar nueva clave">🔄 Nueva</button>
+                  <button id="btn-copy-key" class="btn-copy">Copiar Clave</button>
+                  <button id="btn-regen-key" class="btn-copy" title="Generar nueva clave">Regenerar</button>
                 </div>
               </div>
               <small style="color: var(--text-muted); font-size: 0.68rem; display: block; margin-top: 4px;">
@@ -1043,7 +1061,7 @@
               <div class="api-box-label">URL DE WEBHOOK PARA TU IPHONE:</div>
               <div class="api-box-value">
                 <span id="shortcut-webhook-url" class="api-code" style="color: var(--primary-color);">https://.../api/shortcut/transaction</span>
-                <button id="btn-copy-url" class="btn-copy" style="flex-shrink: 0;">📋 Copiar URL</button>
+                <button id="btn-copy-url" class="btn-copy" style="flex-shrink: 0;">Copiar URL</button>
               </div>
               <small style="color: var(--text-muted); font-size: 0.68rem; display: block; margin-top: 4px;">
                 URL oficial limpia y válida para la acción <em>"Obtener contenido de URL"</em> en iOS Shortcuts.
@@ -1051,19 +1069,19 @@
             </div>
 
             <!-- BANNER PRINCIPAL DE DESCARGA DE LA GUÍA OFICIAL EN PDF -->
-            <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(16, 185, 129, 0.12)); border: 1.5px solid var(--primary-color); border-radius: 14px; padding: 18px 20px; margin-top: 20px;">
+            <div style="background: var(--surface-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; margin-top: 20px;">
               <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
                 <div style="flex: 1 1 280px;">
                   <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span style="font-size: 1.4rem;">📖</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-color);" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     <strong style="color: var(--text-main); font-size: 0.95rem;">Guía Oficial en PDF (Paso a Paso)</strong>
                   </div>
                   <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.45; margin: 0;">
                     Descarga el manual completo con la configuración exacta para tu iPhone, cómo insertar las variables mágicas sin errores de sintaxis, activación por voz con Siri y solución a posibles fallas.
                   </p>
                 </div>
-                <button id="btn-download-pdf-guide" class="btn-copy" style="background: linear-gradient(135deg, #06b6d4, #10b981); color: #000; font-weight: 800; padding: 12px 18px; font-size: 0.84rem; border-radius: 10px; box-shadow: 0 4px 14px var(--primary-glow); cursor: pointer;" title="Descargar Guía en PDF Visual">
-                  📄 Descargar Guía Oficial en PDF
+                <button id="btn-download-pdf-guide" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer;" title="Descargar Guía en PDF Visual">
+                  Descargar Guía en PDF
                 </button>
               </div>
             </div>
@@ -1180,10 +1198,10 @@
         <div class="form-group">
           <label for="modal-goal-account">Cuenta de Origen / Destino</label>
           <select id="modal-goal-account">
-            <option value="EFECTIVO">💵 EFECTIVO (Físico en mano)</option>
-            <option value="NEQUI">📱 NEQUI</option>
-            <option value="DAVIPLATA">📱 DAVIPLATA</option>
-            <option value="BANCO">🏦 BANCO / CUENTA</option>
+            <option value="EFECTIVO">Efectivo (Físico en mano)</option>
+            <option value="NEQUI">Nequi</option>
+            <option value="DAVIPLATA">Daviplata</option>
+            <option value="BANCO">Banco / Cuenta</option>
           </select>
         </div>
 
@@ -1199,7 +1217,9 @@
     <div class="modal-card" style="max-width: 460px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 1.5rem;">🔄</span>
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(10, 132, 255, 0.14); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+          </div>
           <div>
             <h2 style="font-size: 1.05rem; font-weight: 800;">Mover Dinero entre Cuentas</h2>
             <small style="color: var(--text-muted); font-size: 0.72rem;">Retiro de cajero a efectivo o transferencias internas</small>
@@ -1213,20 +1233,20 @@
           <div class="form-group">
             <label for="transfer-from">Desde la Cuenta (Origen)</label>
             <select id="transfer-from" required>
-              <option value="BANCO">🏦 BANCO / CUENTA</option>
-              <option value="NEQUI">📱 NEQUI</option>
-              <option value="DAVIPLATA">📱 DAVIPLATA</option>
-              <option value="EFECTIVO">💵 EFECTIVO FÍSICO</option>
+              <option value="BANCO">Banco / Cuenta</option>
+              <option value="NEQUI">Nequi</option>
+              <option value="DAVIPLATA">Daviplata</option>
+              <option value="EFECTIVO">Efectivo Físico</option>
             </select>
           </div>
 
           <div class="form-group">
             <label for="transfer-to">Hacia la Cuenta (Destino)</label>
             <select id="transfer-to" required>
-              <option value="EFECTIVO">💵 EFECTIVO FÍSICO (Retiro Cajero)</option>
-              <option value="NEQUI">📱 NEQUI</option>
-              <option value="DAVIPLATA">📱 DAVIPLATA</option>
-              <option value="BANCO">🏦 BANCO / CUENTA</option>
+              <option value="EFECTIVO">Efectivo Físico (Retiro Cajero)</option>
+              <option value="NEQUI">Nequi</option>
+              <option value="DAVIPLATA">Daviplata</option>
+              <option value="BANCO">Banco / Cuenta</option>
             </select>
           </div>
         </div>
@@ -1265,7 +1285,9 @@
     <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 1.5rem;">💳</span>
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 69, 58, 0.14); display: flex; align-items: center; justify-content: center; color: var(--danger-color);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="3" ry="3"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          </div>
           <div>
             <h2 style="font-size: 1.05rem; font-weight: 800;">Pagar Tarjeta de Crédito</h2>
             <small id="pay-card-current-spent" style="color: var(--danger-color); font-weight: 700; font-size: 0.72rem;">Saldo Gastado: $ 0</small>
@@ -1283,10 +1305,10 @@
         <div class="form-group">
           <label for="pay-card-source">Pagar desde la Cuenta</label>
           <select id="pay-card-source" required>
-            <option value="BANCO">🏦 BANCO / PSE / CUENTA</option>
-            <option value="NEQUI">📱 NEQUI</option>
-            <option value="DAVIPLATA">📱 DAVIPLATA</option>
-            <option value="EFECTIVO">💵 EFECTIVO FÍSICO</option>
+            <option value="BANCO">Banco / PSE / Cuenta</option>
+            <option value="NEQUI">Nequi</option>
+            <option value="DAVIPLATA">Daviplata</option>
+            <option value="EFECTIVO">Efectivo Físico</option>
           </select>
         </div>
 
@@ -1307,10 +1329,12 @@
     <div class="modal-card" style="max-width: 500px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 1.5rem;">🔐</span>
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(48, 209, 88, 0.14); display: flex; align-items: center; justify-content: center; color: var(--success-color);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
           <div>
             <h2 style="font-size: 1.1rem; font-weight: 800;">Mi Bóveda Financiera</h2>
-            <small id="vault-status-badge" style="color: var(--success-color); font-weight: 700; font-size: 0.72rem;">🟢 Nube Conectada y Protegida</small>
+            <small id="vault-status-badge" style="color: var(--success-color); font-weight: 700; font-size: 0.72rem;">Nube Conectada y Protegida</small>
           </div>
         </div>
         <button id="btn-close-vault-modal" class="modal-close-btn" title="Cerrar">&times;</button>
@@ -1330,28 +1354,33 @@
           
           <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
             <button id="btn-copy-vault-code" class="btn btn-primary" style="font-size: 0.78rem; padding: 8px 14px;">
-              📋 Copiar Código
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span>Copiar Código</span>
             </button>
             <button id="btn-share-vault-link" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px;">
-              🔗 Copiar Enlace Directo
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+              <span>Copiar Enlace Directo</span>
             </button>
             <button id="btn-test-cloud-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; border-color: var(--success-color); color: var(--success-color);" title="Verificar lectura y escritura directa en Firebase Firestore">
-              🧪 Probar Nube en Vivo
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+              <span>Probar Nube</span>
             </button>
             <button id="btn-new-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; color: var(--text-muted);" title="Iniciar una nueva bóveda en blanco con código nuevo">
-              ➕ Nueva Bóveda
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Nueva Bóveda</span>
             </button>
           </div>
           <div id="vault-test-result" style="display: none; margin-top: 10px; padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; text-align: left;"></div>
           <small style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-top: 8px;">
-            💡 El enlace directo abre la app en tu celular y conecta tu bóveda automáticamente sin escribir nada.
+            El enlace directo abre la app en tu celular y conecta tu bóveda automáticamente sin escribir nada.
           </small>
         </div>
 
         <!-- CODIGO QR PARA ESCANEAR CON CELULAR Y CONECTARSE DIRECTO -->
         <div class="vault-section-box" style="margin-bottom: 14px; text-align: center;">
           <h3 style="font-size: 0.85rem; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <span>📷</span> Escanea con la Cámara de tu Celular
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Escanea con la Cámara de tu Celular</span>
           </h3>
           <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">
             Apunta la cámara de tu celular a este código QR para abrir tus finanzas y sincronizar esta misma bóveda al instante:
@@ -1365,7 +1394,8 @@
         <!-- INGRESAR / VINCULAR A OTRA BOVEDA EXISTENTE -->
         <div class="vault-section-box">
           <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-            <span>📲</span> Ingresar a tus Ahorros con tu Código
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            <span>Ingresar con Código de Bóveda</span>
           </h3>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
             ¿Tienes tus datos en otro celular o guardaste tu código anterior? Escríbelo aquí para cargar tus finanzas:
@@ -1373,7 +1403,7 @@
           <div style="display: flex; gap: 8px;">
             <input type="text" id="vault-link-code-input" placeholder="Ej: AHORRO-XXXXXX" style="flex: 1; font-family: monospace; text-transform: uppercase; font-weight: 700; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-main); font-size: 0.9rem;">
             <button id="btn-link-vault" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.8rem; font-weight: 800; white-space: nowrap;">
-              🔓 Cargar Bóveda
+              Cargar Bóveda
             </button>
           </div>
           <div id="vault-link-feedback" style="font-size: 0.75rem; margin-top: 8px; display: none;"></div>
@@ -1382,7 +1412,8 @@
         <!-- COPIA DE SEGURIDAD CON GOOGLE (OPCIONAL) -->
         <div class="vault-section-box" style="margin-top: 14px;">
           <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-            <span>☁️</span> Respaldo con Cuenta de Google (Opcional)
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+            <span>Respaldo con Cuenta de Google (Opcional)</span>
           </h3>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
             Si deseas asociar tu correo para recordar tu código en cualquier navegador:
@@ -1401,13 +1432,15 @@
         <!-- ZONA DE PELIGRO: ELIMINAR BÓVEDA DEFINITIVAMENTE -->
         <div class="vault-section-box danger-zone-box" style="margin-top: 18px; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.06); padding: 14px; border-radius: 12px;">
           <h3 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; color: var(--danger-color); display: flex; align-items: center; gap: 6px;">
-            <span>⚠️</span> Zona de Peligro: Eliminar Mi Bóveda
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>Zona de Peligro: Eliminar Mi Bóveda</span>
           </h3>
           <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.45;">
             Esta acción es irreversible y borrará permanentemente todos tus ingresos, gastos, deudas y metas asociados a este código de bóveda en todos tus dispositivos y en la nube:
           </p>
           <button type="button" id="btn-delete-active-vault" class="btn btn-danger" style="font-size: 0.8rem; padding: 10px 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
-            <span>🗑️</span> Eliminar Mi Bóveda Definitivamente
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span>Eliminar Mi Bóveda Definitivamente</span>
           </button>
         </div>
 
@@ -1432,29 +1465,30 @@
       <div class="pwa-modal-body">
         <div class="pwa-platform-card">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span style="font-size: 1.4rem;">🍎</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-color);" aria-hidden="true"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"></path><path d="M10 2c1 .5 2 2 2 5"></path></svg>
             <h3 style="font-size: 0.95rem; font-weight: 800;">En iPhone / iPad (Safari)</h3>
           </div>
           <ol style="font-size: 0.8rem; color: var(--text-muted); padding-left: 20px; line-height: 1.6; margin: 0;">
-            <li>En Safari, toca el botón <strong>Compartir</strong> (ícono cuadrado con flecha hacia arriba ⬆️ en la barra inferior).</li>
-            <li>Desliza hacia abajo y toca <strong>"Agregar a pantalla de inicio"</strong> (➕).</li>
+            <li>En Safari, toca el botón <strong>Compartir</strong> (ícono cuadrado con flecha hacia arriba en la barra inferior).</li>
+            <li>Desliza hacia abajo y toca <strong>"Agregar a pantalla de inicio"</strong> (+).</li>
             <li>Toca <strong>"Agregar"</strong> en la esquina superior derecha.</li>
           </ol>
-          <div style="margin-top: 10px; padding: 8px 12px; background: rgba(16,185,129,0.1); border-radius: 8px; border: 1px solid rgba(16,185,129,0.2); font-size: 0.75rem; color: var(--success-color); font-weight: 700;">
-            ✨ Se abrirá en pantalla completa sin barra de navegación, con su propio ícono oficial.
+          <div style="margin-top: 10px; padding: 8px 12px; background: rgba(48,209,88,0.1); border-radius: 8px; border: 1px solid rgba(48,209,88,0.2); font-size: 0.75rem; color: var(--success-color); font-weight: 700;">
+            Se abrirá en pantalla completa sin barra de navegación, con su propio ícono oficial.
           </div>
         </div>
 
         <div class="pwa-platform-card" style="margin-top: 14px;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span style="font-size: 1.4rem;">🤖</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--success-color);" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
             <h3 style="font-size: 0.95rem; font-weight: 800;">En Android o Computador (Chrome/Edge)</h3>
           </div>
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
             Instala la aplicación directamente con 1 toque en este navegador:
           </p>
           <button id="btn-pwa-direct-install" class="btn btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span>📲</span> Instalar Ahora en este Dispositivo
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Instalar Ahora en este Dispositivo</span>
           </button>
         </div>
 
@@ -1475,7 +1509,7 @@
         <!-- BOTÓN PRINCIPAL PARA CERRAR Y PROBAR LA APLICACIÓN -->
         <div style="margin-top: 18px;">
           <button type="button" id="btn-pwa-dismiss" class="btn btn-primary" style="width: 100%; padding: 13px; font-weight: 800; font-size: 0.95rem; justify-content: center; box-shadow: 0 4px 14px var(--primary-glow); border-radius: 12px; cursor: pointer;">
-            🚀 ¡Entendido! Entrar y Probar la Aplicación
+            Entendido, Continuar
           </button>
         </div>
       </div>

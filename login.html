@@ -7,20 +7,20 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #090a0f;
-      --card-bg: #11131a;
-      --card-border: rgba(255, 255, 255, 0.08);
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --primary-glow: rgba(37, 99, 235, 0.12);
-      --success: #10b981;
-      --danger: #ef4444;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --input-bg: #090a0f;
+      --bg-color: #000000;
+      --card-bg: #1c1c1e;
+      --card-border: rgba(255, 255, 255, 0.12);
+      --primary: #0a84ff;
+      --primary-hover: #0071e3;
+      --primary-glow: rgba(10, 132, 255, 0.18);
+      --success: #30d158;
+      --danger: #ff453a;
+      --text: #ffffff;
+      --text-muted: rgba(235, 235, 245, 0.6);
+      --input-bg: rgba(120, 120, 128, 0.14);
       --input-border: rgba(255, 255, 255, 0.12);
     }
 
@@ -32,7 +32,7 @@
     body {
       background: var(--bg-color);
       color: var(--text);
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Inter", system-ui, -system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -42,6 +42,9 @@
       position: relative;
       overflow-x: hidden;
       touch-action: manipulation;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.012em;
     }
 
     .auth-container {
@@ -54,38 +57,39 @@
 
     .brand-header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 22px;
     }
 
     .brand-logo {
-      width: 44px;
-      height: 44px;
-      border-radius: 8px;
-      border: 1px solid var(--card-border);
-      margin-bottom: 10px;
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      border: 0.5px solid var(--card-border);
+      margin-bottom: 12px;
       display: inline-block;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     }
 
     .brand-title {
-      font-size: 1.35rem;
+      font-size: 1.4rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.025em;
       color: var(--text);
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
 
     .brand-subtitle {
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      letter-spacing: 0.02em;
+      letter-spacing: -0.01em;
     }
 
     .auth-card {
       background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 24px 20px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      border: 0.5px solid var(--card-border);
+      border-radius: 20px;
+      padding: 26px 22px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
       width: 100%;
     }
 
@@ -94,127 +98,131 @@
         padding: 12px;
       }
       .auth-card {
-        padding: 20px 16px;
+        padding: 22px 18px;
+        border-radius: 18px;
       }
       .brand-title {
         font-size: 1.25rem;
       }
     }
 
-    /* Tab Switcher */
+    /* Tab Switcher - Apple Segmented Control */
     .auth-tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 4px;
-      background: #171b24;
-      padding: 4px;
-      border-radius: 8px;
-      border: 1px solid var(--card-border);
-      margin-bottom: 20px;
+      gap: 3px;
+      background: rgba(118, 118, 128, 0.18);
+      padding: 3px;
+      border-radius: 12px;
+      border: 0.5px solid var(--card-border);
+      margin-bottom: 22px;
     }
 
     .auth-tab-btn {
       background: transparent;
-      border: 1px solid transparent;
+      border: none;
       color: var(--text-muted);
       padding: 8px 6px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      border-radius: 9px;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       font-family: inherit;
       text-align: center;
     }
 
     .auth-tab-btn.active {
-      background: #202634;
+      background: #2c2c2e;
       color: #fff;
-      border-color: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      font-weight: 600;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.15);
     }
 
     .form-group {
-      margin-bottom: 14px;
+      margin-bottom: 15px;
       text-align: left;
     }
 
     .form-label {
       display: block;
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 5px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
     }
 
     /* IMPORTANTE: font-size: 16px para evitar auto-zoom involuntario en Safari iOS */
     .form-input {
       width: 100%;
-      padding: 10px 12px;
+      padding: 11px 14px;
       background: var(--input-bg);
-      border: 1px solid var(--input-border);
-      border-radius: 8px;
+      border: 0.5px solid var(--input-border);
+      border-radius: 12px;
       color: #fff;
       font-size: 16px !important;
       font-family: inherit;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
       -webkit-appearance: none;
       appearance: none;
     }
 
     .form-input:focus {
-      outline: 1px solid var(--primary);
+      outline: none;
       border-color: var(--primary);
+      background: rgba(120, 120, 128, 0.2);
+      box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
     }
 
     .form-input::placeholder {
-      color: #64748b;
-      font-size: 0.82rem;
+      color: rgba(235, 235, 245, 0.35);
+      font-size: 0.84rem;
     }
 
     .btn-submit {
       width: 100%;
-      padding: 11px;
-      margin-top: 8px;
+      padding: 12px;
+      margin-top: 10px;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
       background: var(--primary);
       color: #fff;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       font-weight: 600;
+      letter-spacing: -0.01em;
       cursor: pointer;
-      transition: background-color 0.15s;
+      transition: all 0.15s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
       font-family: inherit;
+      box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25);
     }
 
     .btn-submit:hover {
-      background: var(--primary-hover);
+      filter: brightness(1.08);
     }
 
     .btn-submit:active {
-      transform: scale(0.98);
+      transform: scale(0.975);
     }
 
     .btn-submit:disabled {
-      opacity: 0.6;
+      opacity: 0.5;
       cursor: not-allowed;
       transform: none;
     }
 
     .security-notice {
       margin-top: 20px;
-      padding: 12px;
-      background: rgba(16, 185, 129, 0.08);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-      border-radius: 10px;
+      padding: 12px 14px;
+      background: rgba(48, 209, 88, 0.12);
+      border: 0.5px solid rgba(48, 209, 88, 0.25);
+      border-radius: 12px;
       font-size: 0.74rem;
-      color: #a7f3d0;
+      color: #30d158;
       line-height: 1.45;
       text-align: center;
       display: flex;
@@ -383,12 +391,12 @@
         </div>
 
         <button type="submit" id="btn-reg-submit" class="btn-submit">
-          <span>Crear Cuenta & Generar Mi Código</span> 🎯
+          <span>Crear Cuenta & Generar Mi Código</span>
         </button>
       </form>
 
       <div class="security-notice">
-        <span>🛡️</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         <span>Tus finanzas se enlazan permanentemente a tu Código Único y se sincronizan en la nube.</span>
       </div>
     </div>
@@ -397,7 +405,9 @@
   <!-- MODAL DE EXITO AL REGISTRAR -->
   <div id="success-modal" class="success-modal">
     <div class="success-modal-card">
-      <div style="font-size: 2.5rem; margin-bottom: 10px;">🎉</div>
+      <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(48, 209, 88, 0.15); color: #30d158; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
       <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px; color: #fff;">¡Cuenta Creada con Éxito!</h2>
       <p style="font-size: 0.82rem; color: var(--text-muted);">
         Bienvenido(a) a Ahorros SA, <strong id="success-username" style="color: #fff;"></strong>. Tu cuenta está protegida con tu código único:

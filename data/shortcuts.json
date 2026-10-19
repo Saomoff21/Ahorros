@@ -37,6 +37,14 @@
       "totalIncome": 0,
       "totalExpense": 100000,
       "lastUpdated": "2026-10-13T14:04:32.863Z"
+    },
+    "AHO-SC-LUPVDJ": {
+      "apiKey": "AHO-SC-LUPVDJ",
+      "balance": 0,
+      "totalIncome": 0,
+      "totalExpense": 0,
+      "pendingDebts": 0,
+      "lastUpdated": "2026-10-19T02:27:05.240Z"
     }
   },
   "transactions": [

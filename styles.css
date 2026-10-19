@@ -1074,6 +1074,44 @@ body {
   font-weight: 450;
   outline: none;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 14px;
+  padding-right: 38px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.form-group select option {
+  background-color: var(--surface-color);
+  color: var(--text-main);
+  padding: 10px 12px;
+  font-size: 0.88rem;
+}
+
+:root[data-theme="dark"] .form-group select option,
+:root[data-theme="carbon"] .form-group select option,
+:root[data-theme="slate"] .form-group select option,
+:root[data-theme="nord"] .form-group select option {
+  background-color: #1c1c1e;
+  color: #f2f2f7;
+}
+
+:root[data-theme="light"] .form-group select option,
+:root[data-theme="gold"] .form-group select option {
+  background-color: #ffffff;
+  color: #1c1c1e;
 }
 
 .form-group input:focus,
@@ -1081,6 +1119,135 @@ body {
   border-color: var(--primary-color);
   background: rgba(120, 120, 128, 0.18);
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.22);
+}
+
+/* SELECTORES RÁPIDOS ADAPTABLES PARA MÓVIL Y ESCRITORIO (CUENTAS Y CATEGORÍAS) */
+.quick-chip-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+.quick-chip {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--text-muted);
+  border: 0.5px solid var(--border-color);
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quick-chip:hover {
+  background: rgba(120, 120, 128, 0.2);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.quick-chip:active {
+  transform: scale(0.95);
+}
+
+.quick-chip.active {
+  background: var(--surface-color);
+  color: var(--text-main);
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25), 0 0 0 1px var(--primary-color);
+  font-weight: 600;
+}
+
+#expense-category-chips .quick-chip.active,
+#expense-account-chips .quick-chip.active {
+  border-color: var(--danger-color);
+  box-shadow: 0 2px 8px rgba(255, 69, 58, 0.25), 0 0 0 1px var(--danger-color);
+  color: #fff;
+  background: rgba(255, 69, 58, 0.16);
+}
+
+#income-category-chips .quick-chip.active,
+#income-account-chips .quick-chip.active {
+  border-color: var(--success-color);
+  box-shadow: 0 2px 8px rgba(48, 209, 88, 0.25), 0 0 0 1px var(--success-color);
+  color: #fff;
+  background: rgba(48, 209, 88, 0.16);
+}
+
+/* BARRA DE KPIS DE DEUDAS (DEBO vs ME DEBEN) */
+.debts-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+/* SELECTOR DE TIPO DE DEUDA: DEBO vs ME DEBEN */
+.debt-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.debt-type-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.1);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.debt-type-btn:active {
+  transform: scale(0.97);
+}
+
+.debt-type-btn.active#btn-debt-type-payable {
+  background: rgba(255, 69, 58, 0.14);
+  border-color: var(--danger-color);
+  box-shadow: 0 3px 12px rgba(255, 69, 58, 0.22);
+}
+
+.debt-type-btn.active#btn-debt-type-receivable {
+  background: rgba(48, 209, 88, 0.14);
+  border-color: var(--success-color);
+  box-shadow: 0 3px 12px rgba(48, 209, 88, 0.22);
+}
+
+.debt-type-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.debt-type-text strong {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.debt-type-text small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .btn {
@@ -2752,7 +2919,33 @@ body[data-device="desktop"] .goals-layout-grid {
   /* FORMULARIOS Y GRID SIMPLE */
   .form-row {
     grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .form-group select,
+  .form-group input {
+    font-size: 16px !important; /* Evita el zoom automático no deseado en iOS Safari */
+    min-height: 44px !important; /* Altura táctil recomendada Apple Human Interface */
+    padding: 10px 12px !important;
+  }
+
+  .form-group select {
+    padding-right: 36px !important;
+  }
+
+  .debt-type-selector {
+    grid-template-columns: 1fr !important;
     gap: 8px !important;
+  }
+
+  .debts-kpi-bar {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .quick-chip {
+    padding: 7px 11px !important;
+    font-size: 0.76rem !important;
   }
 
   .panel-card {

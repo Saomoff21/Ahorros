@@ -436,13 +436,22 @@
                 <div class="form-group">
                   <label for="income-payment-method">Cuenta de Destino</label>
                   <select id="income-payment-method" required>
-                    <option value="EFECTIVO">Efectivo en Mano</option>
-                    <option value="NEQUI">Nequi</option>
-                    <option value="DAVIPLATA">Daviplata</option>
-                    <option value="BANCO">Banco / PSE / Cuenta</option>
-                    <option value="TARJETA_DEBITO">Tarjeta Débito</option>
-                    <option value="OTRO">Otro Método</option>
+                    <option value="EFECTIVO">💵 Efectivo en Mano</option>
+                    <option value="NEQUI">🟣 Nequi</option>
+                    <option value="DAVIPLATA">🔴 Daviplata</option>
+                    <option value="BANCO">🏦 Banco / PSE / Cuenta</option>
+                    <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+                    <option value="OTRO">⚙️ Otro Método</option>
                   </select>
+                  <!-- Selector visual táctil de Cuentas para Ingreso -->
+                  <div class="quick-chip-selector" id="income-account-chips" aria-label="Selección rápida de cuenta">
+                    <button type="button" class="quick-chip active" data-val="EFECTIVO">💵 Efectivo</button>
+                    <button type="button" class="quick-chip" data-val="NEQUI">🟣 Nequi</button>
+                    <button type="button" class="quick-chip" data-val="DAVIPLATA">🔴 Daviplata</button>
+                    <button type="button" class="quick-chip" data-val="BANCO">🏦 Banco</button>
+                    <button type="button" class="quick-chip" data-val="TARJETA_DEBITO">💳 Débito</button>
+                    <button type="button" class="quick-chip" data-val="OTRO">⚙️ Otro</button>
+                  </div>
                 </div>
               </div>
 
@@ -454,13 +463,22 @@
               <div class="form-group">
                 <label for="income-category">Categoría</label>
                 <select id="income-category" class="category-select" data-other="income-other-group" required>
-                  <option value="SALARIO / TRABAJO">SALARIO / TRABAJO</option>
-                  <option value="INVERSIONES">INVERSIONES</option>
-                  <option value="VENTAS / NEGOCIO">VENTAS / NEGOCIO</option>
-                  <option value="REEMBOLSOS">REEMBOLSOS</option>
-                  <option value="REGALOS / PREMIOS">REGALOS / PREMIOS</option>
-                  <option value="OTROS">OTROS</option>
+                  <option value="SALARIO / TRABAJO">💼 SALARIO / TRABAJO</option>
+                  <option value="INVERSIONES">📈 INVERSIONES</option>
+                  <option value="VENTAS / NEGOCIO">🛍️ VENTAS / NEGOCIO</option>
+                  <option value="REEMBOLSOS">🔄 REEMBOLSOS</option>
+                  <option value="REGALOS / PREMIOS">🎁 REGALOS / PREMIOS</option>
+                  <option value="OTROS">🏷️ OTROS</option>
                 </select>
+                <!-- Selector visual táctil de Categorías para Ingreso -->
+                <div class="quick-chip-selector category-chips" id="income-category-chips" aria-label="Selección rápida de categoría">
+                  <button type="button" class="quick-chip active" data-val="SALARIO / TRABAJO">💼 Salario</button>
+                  <button type="button" class="quick-chip" data-val="INVERSIONES">📈 Inversión</button>
+                  <button type="button" class="quick-chip" data-val="VENTAS / NEGOCIO">🛍️ Ventas</button>
+                  <button type="button" class="quick-chip" data-val="REEMBOLSOS">🔄 Reembolsos</button>
+                  <button type="button" class="quick-chip" data-val="REGALOS / PREMIOS">🎁 Premios</button>
+                  <button type="button" class="quick-chip" data-val="OTROS">🏷️ Otros</button>
+                </div>
               </div>
 
               <div class="form-group hidden" id="income-other-group">
@@ -523,14 +541,24 @@
                 <div class="form-group">
                   <label for="expense-payment-method">Método de Pago (Origen)</label>
                   <select id="expense-payment-method" required>
-                    <option value="EFECTIVO">Efectivo en Mano</option>
-                    <option value="NEQUI">Nequi</option>
-                    <option value="DAVIPLATA">Daviplata</option>
-                    <option value="BANCO">Banco / PSE</option>
-                    <option value="TARJETA_DEBITO">Tarjeta Débito</option>
-                    <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
-                    <option value="OTRO">Otro Método</option>
+                    <option value="EFECTIVO">💵 Efectivo en Mano</option>
+                    <option value="NEQUI">🟣 Nequi</option>
+                    <option value="DAVIPLATA">🔴 Daviplata</option>
+                    <option value="BANCO">🏦 Banco / PSE</option>
+                    <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+                    <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
+                    <option value="OTRO">⚙️ Otro Método</option>
                   </select>
+                  <!-- Selector visual táctil de Cuentas para Gasto -->
+                  <div class="quick-chip-selector" id="expense-account-chips" aria-label="Selección rápida de cuenta">
+                    <button type="button" class="quick-chip active" data-val="EFECTIVO">💵 Efectivo</button>
+                    <button type="button" class="quick-chip" data-val="NEQUI">🟣 Nequi</button>
+                    <button type="button" class="quick-chip" data-val="DAVIPLATA">🔴 Daviplata</button>
+                    <button type="button" class="quick-chip" data-val="BANCO">🏦 Banco</button>
+                    <button type="button" class="quick-chip" data-val="TARJETA_DEBITO">💳 Débito</button>
+                    <button type="button" class="quick-chip" data-val="TARJETA_CREDITO">💳 Crédito</button>
+                    <button type="button" class="quick-chip" data-val="OTRO">⚙️ Otro</button>
+                  </div>
                 </div>
               </div>
 
@@ -556,16 +584,28 @@
               <div class="form-group">
                 <label for="expense-category">Categoría</label>
                 <select id="expense-category" class="category-select" data-other="expense-other-group" required>
-                  <option value="ALIMENTACION">ALIMENTACION</option>
-                  <option value="TRANSPORTE">TRANSPORTE</option>
-                  <option value="VIVIENDA Y SERVICIOS">VIVIENDA Y SERVICIOS</option>
-                  <option value="SALUD Y BIENESTAR">SALUD Y BIENESTAR</option>
-                  <option value="ENTRETENIMIENTO Y OCIO">ENTRETENIMIENTO Y OCIO</option>
-                  <option value="EDUCACION">EDUCACION</option>
-                  <option value="ROPA Y CALZADO">ROPA Y CALZADO</option>
-                  <option value="PAREJA">PAREJA</option>
-                  <option value="OTROS">OTROS</option>
+                  <option value="ALIMENTACION">🍔 ALIMENTACION</option>
+                  <option value="TRANSPORTE">🚗 TRANSPORTE</option>
+                  <option value="VIVIENDA Y SERVICIOS">🏠 VIVIENDA Y SERVICIOS</option>
+                  <option value="SALUD Y BIENESTAR">🩺 SALUD Y BIENESTAR</option>
+                  <option value="ENTRETENIMIENTO Y OCIO">🎬 ENTRETENIMIENTO Y OCIO</option>
+                  <option value="EDUCACION">📚 EDUCACION</option>
+                  <option value="ROPA Y CALZADO">👕 ROPA Y CALZADO</option>
+                  <option value="PAREJA">💑 PAREJA</option>
+                  <option value="OTROS">🏷️ OTROS</option>
                 </select>
+                <!-- Selector visual táctil de Categorías para Gasto -->
+                <div class="quick-chip-selector category-chips" id="expense-category-chips" aria-label="Selección rápida de categoría">
+                  <button type="button" class="quick-chip active" data-val="ALIMENTACION">🍔 Alimentos</button>
+                  <button type="button" class="quick-chip" data-val="TRANSPORTE">🚗 Transporte</button>
+                  <button type="button" class="quick-chip" data-val="VIVIENDA Y SERVICIOS">🏠 Vivienda</button>
+                  <button type="button" class="quick-chip" data-val="SALUD Y BIENESTAR">🩺 Salud</button>
+                  <button type="button" class="quick-chip" data-val="ENTRETENIMIENTO Y OCIO">🎬 Ocio</button>
+                  <button type="button" class="quick-chip" data-val="EDUCACION">📚 Educación</button>
+                  <button type="button" class="quick-chip" data-val="ROPA Y CALZADO">👕 Ropa</button>
+                  <button type="button" class="quick-chip" data-val="PAREJA">💑 Pareja</button>
+                  <button type="button" class="quick-chip" data-val="OTROS">🏷️ Otros</button>
+                </div>
               </div>
 
               <div class="form-group hidden" id="expense-other-group">
@@ -908,6 +948,25 @@
 
     <!-- PESTAÑA 6: CONTROL DE DEUDAS Y CALENDARIO -->
     <section id="tab-debts" class="tab-content">
+      <!-- RESUMEN DE SALDOS: LO QUE DEBO VS LO QUE ME DEBEN -->
+      <div class="debts-kpi-bar">
+        <div class="kpi-card border-danger">
+          <span class="kpi-label">TOTAL QUE DEBO (POR PAGAR)</span>
+          <div id="debts-total-payable" class="kpi-value text-danger">$ 0</div>
+          <small style="color: var(--text-muted); font-size: 0.7rem;">Obligaciones y préstamos pendientes</small>
+        </div>
+        <div class="kpi-card border-success">
+          <span class="kpi-label">TOTAL QUE ME DEBEN (POR COBRAR)</span>
+          <div id="debts-total-receivable" class="kpi-value text-success">$ 0</div>
+          <small style="color: var(--text-muted); font-size: 0.7rem;">Dinero prestado a favor por cobrar</small>
+        </div>
+        <div class="kpi-card border-purple">
+          <span class="kpi-label">BALANCE NETO DE OBLIGACIONES</span>
+          <div id="debts-net-balance" class="kpi-value text-purple">$ 0</div>
+          <small id="debts-net-subtitle" style="color: var(--text-muted); font-size: 0.7rem;">Saldo a favor o pasivo total</small>
+        </div>
+      </div>
+
       <div class="debts-layout-grid">
         
         <!-- FORMULARIO CREAR DEUDA -->
@@ -917,9 +976,31 @@
               <h2>Registrar Obligación / Deuda</h2>
             </div>
             <form id="debt-form" class="app-form">
+              <!-- SELECTOR DE TIPO: DEBO vs ME DEBEN -->
               <div class="form-group">
-                <label for="debt-name">Nombre de la Obligación / Acreedor</label>
-                <input type="text" id="debt-name" placeholder="Ej: Banco, préstamo o persona" required>
+                <label>Tipo de Obligación Financiera</label>
+                <div class="debt-type-selector">
+                  <button type="button" class="debt-type-btn active" data-type="debt_payable" id="btn-debt-type-payable">
+                    <span class="debt-type-icon">🔻</span>
+                    <div class="debt-type-text">
+                      <strong>Debo (Por Pagar)</strong>
+                      <small>Préstamo o compra que debo pagar (Gasto al abonar)</small>
+                    </div>
+                  </button>
+                  <button type="button" class="debt-type-btn" data-type="debt_receivable" id="btn-debt-type-receivable">
+                    <span class="debt-type-icon">🟢</span>
+                    <div class="debt-type-text">
+                      <strong>Me Deben (Por Cobrar)</strong>
+                      <small>Dinero que presté a alguien (Ingreso al recaudar)</small>
+                    </div>
+                  </button>
+                </div>
+                <input type="hidden" id="debt-type" value="debt_payable">
+              </div>
+
+              <div class="form-group">
+                <label for="debt-name" id="debt-name-label">Nombre de la Obligación / Acreedor (¿A quién le debes?)</label>
+                <input type="text" id="debt-name" placeholder="Ej: Banco, tarjeta de crédito, familiar..." required>
               </div>
 
               <div class="form-group">
@@ -929,7 +1010,7 @@
 
               <div class="form-row">
                 <div class="form-group">
-                  <label for="debt-interest">% Interés</label>
+                  <label for="debt-interest">% Interés (Opcional)</label>
                   <input type="number" id="debt-interest" min="0" max="100" step="0.1" value="0">
                 </div>
 
@@ -944,7 +1025,7 @@
                 <input type="date" id="debt-start-date" required>
               </div>
 
-              <button type="submit" class="btn btn-purple">Crear Obligación</button>
+              <button type="submit" class="btn btn-purple" id="debt-submit-btn">Crear Obligación por Pagar</button>
             </form>
           </div>
         </div>
@@ -1210,6 +1291,80 @@
         </div>
 
         <button type="submit" id="modal-goal-submit-btn" class="btn btn-success" style="margin-top: 10px;">
+          Confirmar Abono
+        </button>
+      </form>
+  <!-- MODAL: GESTIONAR ABONO A DEUDA / OBLIGACIÓN (MONTO PERSONALIZADO LIBRE) -->
+  <div id="debt-action-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div id="modal-debt-icon-wrap" style="width: 38px; height: 38px; border-radius: 10px; background: rgba(175, 82, 222, 0.16); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            💳
+          </div>
+          <div>
+            <h2 id="modal-debt-title" style="font-size: 1.05rem; font-weight: 800; margin: 0;">Abonar a Obligación</h2>
+            <small id="modal-debt-subtitle" style="color: var(--text-muted); font-size: 0.72rem;">Abono libre o cuota personalizada</small>
+          </div>
+        </div>
+        <button id="btn-close-debt-modal" class="modal-close-btn" type="button">&times;</button>
+      </div>
+
+      <form id="debt-action-form" class="app-form" style="padding: 0;">
+        <input type="hidden" id="modal-debt-id">
+
+        <!-- Banner informativo de saldo y tipo -->
+        <div id="modal-debt-info-banner" style="background: var(--surface-secondary); border: 0.5px solid var(--border-color); border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <div style="min-width: 0;">
+            <div id="modal-debt-type-badge" class="tag-badge text-purple">DEUDA POR PAGAR</div>
+            <div id="modal-debt-name" style="font-size: 0.92rem; font-weight: 700; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nombre de la deuda</div>
+          </div>
+          <div style="text-align: right; flex-shrink: 0;">
+            <small style="color: var(--text-muted); font-size: 0.68rem; font-weight: 600;">SALDO PENDIENTE</small>
+            <div id="modal-debt-pending-amount" style="font-size: 1.05rem; font-weight: 800; color: var(--primary-color);">$ 0</div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label for="modal-debt-amount" id="modal-debt-amount-label">Monto que deseas abonar ($ COP)</label>
+          <input type="text" id="modal-debt-amount" class="currency-input" placeholder="Ej: 100.000" style="font-size: 1.15rem; font-weight: 700;" required>
+          <small style="color: var(--text-muted); font-size: 0.7rem;">Puedes ingresar libremente cualquier valor que desees abonar hoy.</small>
+        </div>
+
+        <!-- Chips de montos rápidos -->
+        <div class="amount-chips-row" id="debt-amount-chips">
+          <button type="button" class="amount-chip" id="chip-debt-suggested">Cuota Sugerida</button>
+          <button type="button" class="amount-chip debt-quick-chip" data-add="20000">+ $ 20.000</button>
+          <button type="button" class="amount-chip debt-quick-chip" data-add="50000">+ $ 50.000</button>
+          <button type="button" class="amount-chip debt-quick-chip" data-add="100000">+ $ 100.000</button>
+          <button type="button" class="amount-chip debt-quick-chip" data-add="200000">+ $ 200.000</button>
+          <button type="button" class="amount-chip" id="chip-debt-liquidate" style="border-color: var(--success-color); color: var(--success-color);">Liquidar Saldo</button>
+        </div>
+
+        <div class="form-group">
+          <label for="modal-debt-account" id="modal-debt-account-label">Cuenta de Pago (¿De dónde sale el dinero?)</label>
+          <select id="modal-debt-account" required>
+            <option value="BANCO">🏦 Banco / PSE / Cuenta</option>
+            <option value="EFECTIVO">💵 Efectivo (Físico en mano)</option>
+            <option value="NEQUI">🟣 Nequi</option>
+            <option value="DAVIPLATA">🔴 Daviplata</option>
+            <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+            <option value="OTRO">⚙️ Otro Método</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="modal-debt-date">Fecha del Registro</label>
+            <input type="date" id="modal-debt-date" required>
+          </div>
+          <div class="form-group">
+            <label for="modal-debt-note">Nota u Observación (Opcional)</label>
+            <input type="text" id="modal-debt-note" placeholder="Ej: Abono quincenal, pago libre...">
+          </div>
+        </div>
+
+        <button type="submit" id="modal-debt-submit-btn" class="btn btn-purple" style="margin-top: 10px; width: 100%; font-size: 0.95rem; font-weight: 700; padding: 12px;">
           Confirmar Abono
         </button>
       </form>

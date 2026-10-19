@@ -1168,10 +1168,18 @@ if (expensePaymentMethodEl) {
   updateMediumNotice(expensePaymentMethodEl, expenseMediumNotice, true);
 }
 
-// CHIPS RAPIDOS DE MONTO (METAS DE AHORRO Y TRANSFERENCIAS)
+// CHIPS RAPIDOS DE MONTO (METAS DE AHORRO, TRANSFERENCIAS Y DEUDAS)
 document.querySelectorAll('.amount-chip').forEach(chip => {
   chip.addEventListener('click', () => {
     const addAmt = parseInt(chip.dataset.add, 10) || 0;
+    if (chip.classList.contains('debt-quick-chip')) {
+      const targetInput = document.getElementById('modal-debt-amount');
+      if (!targetInput) return;
+      const currentVal = parseAmount(targetInput.value) || 0;
+      const newVal = currentVal + addAmt;
+      targetInput.value = new Intl.NumberFormat('es-CO').format(newVal);
+      return;
+    }
     const isTransfer = chip.classList.contains('transfer-chip');
     const targetInput = isTransfer ? transferAmount : modalGoalAmount;
     if (!targetInput) return;
@@ -1181,6 +1189,301 @@ document.querySelectorAll('.amount-chip').forEach(chip => {
     targetInput.value = new Intl.NumberFormat('es-CO').format(newVal);
   });
 });
+
+// SINCRONIZACIÓN DE SELECTORES VISUALES TÁCTILES (CHIPS) CON LOS SELECTS DE CUENTA Y CATEGORÍA
+function setupQuickChipSync(chipsContainerId, selectElementId) {
+  const container = document.getElementById(chipsContainerId);
+  const select = document.getElementById(selectElementId);
+  if (!container || !select) return;
+
+  const chips = container.querySelectorAll('.quick-chip');
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const val = chip.dataset.val;
+      select.value = val;
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
+  select.addEventListener('change', () => {
+    chips.forEach(chip => {
+      if (chip.dataset.val === select.value) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+  });
+}
+
+setupQuickChipSync('income-account-chips', 'income-payment-method');
+setupQuickChipSync('income-category-chips', 'income-category');
+setupQuickChipSync('expense-account-chips', 'expense-payment-method');
+setupQuickChipSync('expense-category-chips', 'expense-category');
+
+// SELECTOR DE TIPO DE DEUDA: DEBO (POR PAGAR) vs ME DEBEN (POR COBRAR)
+const debtTypeInput = document.getElementById('debt-type');
+const btnDebtTypePayable = document.getElementById('btn-debt-type-payable');
+const btnDebtTypeReceivable = document.getElementById('btn-debt-type-receivable');
+const debtNameLabel = document.getElementById('debt-name-label');
+const debtNameInput = document.getElementById('debt-name');
+const debtSubmitBtn = document.getElementById('debt-submit-btn');
+
+function setDebtType(type) {
+  if (!debtTypeInput) return;
+  debtTypeInput.value = type;
+  if (type === 'debt_receivable') {
+    btnDebtTypeReceivable?.classList.add('active');
+    btnDebtTypePayable?.classList.remove('active');
+    if (debtNameLabel) debtNameLabel.textContent = 'Persona o Entidad que te debe (Deudor)';
+    if (debtNameInput) debtNameInput.placeholder = 'Ej: Carlos Gómez, cliente, amigo a quien presté';
+    if (debtSubmitBtn) {
+      debtSubmitBtn.textContent = 'Registrar Dinero por Cobrar';
+      debtSubmitBtn.className = 'btn btn-success';
+    }
+  } else {
+    btnDebtTypePayable?.classList.add('active');
+    btnDebtTypeReceivable?.classList.remove('active');
+    if (debtNameLabel) debtNameLabel.textContent = 'Nombre de la Obligación / Acreedor (¿A quién le debes?)';
+    if (debtNameInput) debtNameInput.placeholder = 'Ej: Banco, préstamo, tarjeta o familiar';
+    if (debtSubmitBtn) {
+      debtSubmitBtn.textContent = 'Registrar Deuda por Pagar';
+      debtSubmitBtn.className = 'btn btn-purple';
+    }
+  }
+}
+
+if (btnDebtTypePayable && btnDebtTypeReceivable) {
+  btnDebtTypePayable.addEventListener('click', () => setDebtType('debt_payable'));
+  btnDebtTypeReceivable.addEventListener('click', () => setDebtType('debt_receivable'));
+}
+
+// GESTIÓN DEL MODAL DE ABONO LIBRE A DEUDAS (PAGO / COBRO)
+const debtActionModal = document.getElementById('debt-action-modal');
+const btnCloseDebtModal = document.getElementById('btn-close-debt-modal');
+const debtActionForm = document.getElementById('debt-action-form');
+const modalDebtId = document.getElementById('modal-debt-id');
+const modalDebtTitle = document.getElementById('modal-debt-title');
+const modalDebtSubtitle = document.getElementById('modal-debt-subtitle');
+const modalDebtTypeBadge = document.getElementById('modal-debt-type-badge');
+const modalDebtName = document.getElementById('modal-debt-name');
+const modalDebtPendingAmount = document.getElementById('modal-debt-pending-amount');
+const modalDebtAmountInput = document.getElementById('modal-debt-amount');
+const modalDebtAmountLabel = document.getElementById('modal-debt-amount-label');
+const modalDebtAccount = document.getElementById('modal-debt-account');
+const modalDebtAccountLabel = document.getElementById('modal-debt-account-label');
+const modalDebtDate = document.getElementById('modal-debt-date');
+const modalDebtNote = document.getElementById('modal-debt-note');
+const modalDebtSubmitBtn = document.getElementById('modal-debt-submit-btn');
+const chipDebtSuggested = document.getElementById('chip-debt-suggested');
+const chipDebtLiquidate = document.getElementById('chip-debt-liquidate');
+
+let activeModalDebt = null;
+
+window.openDebtActionModal = function(idOrIndex, defaultAmount = null) {
+  const strId = String(idOrIndex).trim();
+  let targetDebt = debts.find(d => 
+    d && (
+      String(d.id) === strId ||
+      String(d.firestoreId) === strId ||
+      String(d.localId) === strId ||
+      String(d.tempId) === strId
+    )
+  );
+  if (!targetDebt && !isNaN(parseInt(idOrIndex, 10)) && debts[parseInt(idOrIndex, 10)]) {
+    targetDebt = debts[parseInt(idOrIndex, 10)];
+  }
+
+  if (!targetDebt) return;
+  activeModalDebt = targetDebt;
+
+  const interestRate = targetDebt.interest || 0;
+  const totalWithInterest = targetDebt.total + (targetDebt.total * (interestRate / 100));
+  const currentPaid = targetDebt.paid || 0;
+  const pending = Math.max(0, totalWithInterest - currentPaid);
+  const totalQuotas = targetDebt.installments || 1;
+  const suggestedQuota = Math.round(totalWithInterest / totalQuotas);
+
+  const isReceivable = targetDebt.type === 'debt_receivable';
+
+  if (modalDebtId) modalDebtId.value = targetDebt.id || strId;
+  if (modalDebtName) modalDebtName.textContent = targetDebt.name;
+  if (modalDebtPendingAmount) modalDebtPendingAmount.textContent = formatCurrency(pending);
+
+  if (isReceivable) {
+    if (modalDebtTitle) modalDebtTitle.textContent = 'Registrar Cobro / Abono Recibido';
+    if (modalDebtSubtitle) modalDebtSubtitle.textContent = `Deudor: ${targetDebt.name}`;
+    if (modalDebtTypeBadge) {
+      modalDebtTypeBadge.textContent = '🟢 DINERO POR COBRAR (A FAVOR)';
+      modalDebtTypeBadge.className = 'tag-badge text-success';
+    }
+    if (modalDebtAmountLabel) modalDebtAmountLabel.textContent = 'Monto recaudado o que te pagaron hoy ($ COP)';
+    if (modalDebtAccountLabel) modalDebtAccountLabel.textContent = 'Cuenta de Destino (¿A dónde entra el dinero?)';
+    if (modalDebtSubmitBtn) {
+      modalDebtSubmitBtn.textContent = 'Confirmar Cobro Recibido (Ingreso)';
+      modalDebtSubmitBtn.className = 'btn btn-success';
+    }
+  } else {
+    if (modalDebtTitle) modalDebtTitle.textContent = 'Registrar Abono a Obligación';
+    if (modalDebtSubtitle) modalDebtSubtitle.textContent = `Acreedor: ${targetDebt.name}`;
+    if (modalDebtTypeBadge) {
+      modalDebtTypeBadge.textContent = '🔻 DEUDA POR PAGAR (PASIVO)';
+      modalDebtTypeBadge.className = 'tag-badge text-danger';
+    }
+    if (modalDebtAmountLabel) modalDebtAmountLabel.textContent = 'Monto que deseas abonar hoy ($ COP)';
+    if (modalDebtAccountLabel) modalDebtAccountLabel.textContent = 'Cuenta de Pago (¿De dónde sale el dinero?)';
+    if (modalDebtSubmitBtn) {
+      modalDebtSubmitBtn.textContent = 'Confirmar Abono (Gasto)';
+      modalDebtSubmitBtn.className = 'btn btn-purple';
+    }
+  }
+
+  // Prellenar monto si se pasó un monto explícito o cuota sugerida
+  let initialAmount = pending > 0 ? Math.min(pending, suggestedQuota) : 0;
+  if (defaultAmount !== null && defaultAmount !== undefined) {
+    const parsed = parseAmount(String(defaultAmount));
+    if (parsed && parsed > 0) initialAmount = parsed;
+  }
+
+  if (modalDebtAmountInput) {
+    modalDebtAmountInput.value = initialAmount > 0 ? new Intl.NumberFormat('es-CO').format(initialAmount) : '';
+  }
+
+  if (chipDebtSuggested) {
+    chipDebtSuggested.textContent = `Cuota Sugerida (${formatCurrency(suggestedQuota)})`;
+    chipDebtSuggested.onclick = () => {
+      if (modalDebtAmountInput) {
+        modalDebtAmountInput.value = new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuota));
+      }
+    };
+  }
+
+  if (chipDebtLiquidate) {
+    chipDebtLiquidate.textContent = `Liquidar Total (${formatCurrency(pending)})`;
+    chipDebtLiquidate.onclick = () => {
+      if (modalDebtAmountInput) {
+        modalDebtAmountInput.value = new Intl.NumberFormat('es-CO').format(pending);
+      }
+    };
+  }
+
+  if (modalDebtDate) modalDebtDate.value = getTodayStr();
+  if (modalDebtNote) modalDebtNote.value = '';
+
+  if (debtActionModal) debtActionModal.classList.remove('hidden');
+  setTimeout(() => modalDebtAmountInput?.focus(), 100);
+};
+
+if (btnCloseDebtModal && debtActionModal) {
+  btnCloseDebtModal.addEventListener('click', () => {
+    debtActionModal.classList.add('hidden');
+    activeModalDebt = null;
+  });
+
+  debtActionModal.addEventListener('click', (e) => {
+    if (e.target === debtActionModal) {
+      debtActionModal.classList.add('hidden');
+      activeModalDebt = null;
+    }
+  });
+}
+
+if (debtActionForm) {
+  debtActionForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeModalDebt) return;
+
+    const payAmount = parseAmount(modalDebtAmountInput.value);
+    if (!payAmount || payAmount <= 0) return alert('Por favor ingresa un monto de abono válido.');
+
+    const interestRate = activeModalDebt.interest || 0;
+    const totalWithInterest = activeModalDebt.total + (activeModalDebt.total * (interestRate / 100));
+    const currentPaid = activeModalDebt.paid || 0;
+    const pending = Math.max(0, totalWithInterest - currentPaid);
+
+    if (payAmount > pending) {
+      const confirmed = await appConfirm(
+        `El monto ($ ${formatCurrency(payAmount)}) supera el saldo restante ($ ${formatCurrency(pending)}). ¿Deseas liquidar el saldo exacto restante?`,
+        {
+          title: 'Liquidar Saldo',
+          icon: '💳',
+          okText: 'Liquidar Total',
+          isDanger: false
+        }
+      );
+      if (!confirmed) return;
+    }
+
+    const finalAbono = Math.min(payAmount, pending);
+    const newPaid = currentPaid + finalAbono;
+    const paymentAccountVal = modalDebtAccount?.value || 'BANCO';
+    const paymentDateVal = modalDebtDate?.value || getTodayStr();
+    const noteVal = modalDebtNote?.value?.trim() || '';
+
+    let historyArr = [];
+    try {
+      historyArr = typeof activeModalDebt.history === 'string' ? JSON.parse(activeModalDebt.history) : (activeModalDebt.history || []);
+    } catch (err) { historyArr = []; }
+
+    historyArr.push({
+      date: paymentDateVal,
+      amount: finalAbono,
+      account: paymentAccountVal,
+      note: noteVal
+    });
+
+    activeModalDebt.paid = newPaid;
+    activeModalDebt.history = JSON.stringify(historyArr);
+
+    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+    updateUI();
+
+    const isReceivable = activeModalDebt.type === 'debt_receivable';
+
+    if (isReceivable) {
+      // Dinero que me debían: el abono entra a mi cuenta como un INGRESO
+      await addTransactionLocallyOrCloud({
+        type: 'income',
+        date: paymentDateVal,
+        description: `ABONO RECIBIDO DE: ${activeModalDebt.name}${noteVal ? ` (${noteVal})` : ''}`,
+        amount: finalAbono,
+        category: 'REEMBOLSOS',
+        paymentMethod: paymentAccountVal
+      });
+      showQuickToast(`✅ Cobro de ${formatCurrency(finalAbono)} recibido de "${activeModalDebt.name}" registrado como Ingreso`);
+    } else {
+      // Deuda que debo: el abono sale de mi cuenta como un GASTO
+      await addTransactionLocallyOrCloud({
+        type: 'expense',
+        date: paymentDateVal,
+        description: `ABONO A ${activeModalDebt.name}${noteVal ? ` (${noteVal})` : ''}`,
+        amount: finalAbono,
+        category: 'PAGO DE DEUDAS',
+        paymentMethod: paymentAccountVal
+      });
+      showQuickToast(`✅ Abono de ${formatCurrency(finalAbono)} a "${activeModalDebt.name}" registrado como Gasto`);
+    }
+
+    try {
+      const dRef = doc(db, 'vaults', activeVaultId, 'debts', activeModalDebt.id);
+      await setDoc(dRef, {
+        vaultId: activeVaultId,
+        ...activeModalDebt,
+        paid: newPaid,
+        history: JSON.stringify(historyArr)
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Error actualizando deuda en Firestore:', err);
+    }
+
+    debtActionModal.classList.add('hidden');
+    debtActionForm.reset();
+    activeModalDebt = null;
+    syncClientTotalsToServer();
+  });
+}
 
 
 
@@ -3211,15 +3514,17 @@ if (payCardForm) {
 }
 
 // FORMULARIO DE CREAR DEUDA
+// FORMULARIO DE CREAR DEUDA / OBLIGACIÓN (DEBO vs ME DEBEN)
 debtForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const typeVal = document.getElementById('debt-type')?.value || 'debt_payable';
   const nameVal = document.getElementById('debt-name').value.trim();
   const totalVal = parseAmount(document.getElementById('debt-total').value);
   const interestVal = parseFloat(document.getElementById('debt-interest').value) || 0;
   const installmentsVal = parseInt(document.getElementById('debt-installments').value) || 1;
   const startDateVal = document.getElementById('debt-start-date').value || getTodayStr();
 
-  if (!totalVal) return alert('Por favor ingresa un monto de deuda válido.');
+  if (!totalVal) return alert('Por favor ingresa un monto válido.');
 
   const localId = 'debt_' + Date.now();
   const debtData = {
@@ -3227,6 +3532,7 @@ debtForm.addEventListener('submit', async (e) => {
     localId: localId,
     tempId: localId,
     firestoreId: localId,
+    type: typeVal, // 'debt_payable' | 'debt_receivable'
     name: nameVal,
     total: totalVal,
     paid: 0,
@@ -3240,7 +3546,11 @@ debtForm.addEventListener('submit', async (e) => {
   debts.push(debtData);
   localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
   updateUI();
-  showQuickToast(`✅ Deuda "${debtData.name}" registrada`);
+
+  const successMsg = typeVal === 'debt_receivable'
+    ? `✅ Dinero por cobrar "${debtData.name}" registrado correctamente`
+    : `✅ Deuda por pagar "${debtData.name}" registrada correctamente`;
+  showQuickToast(successMsg);
 
   try {
     const debtsColl = collection(db, 'vaults', activeVaultId, 'debts');
@@ -3257,6 +3567,7 @@ debtForm.addEventListener('submit', async (e) => {
   }
 
   debtForm.reset();
+  setDebtType('debt_payable');
   document.getElementById('debt-start-date').value = todayStr;
   syncClientTotalsToServer();
 });
@@ -3840,8 +4151,8 @@ window.deleteRecurringPayment = async function(idOrIndex) {
 window.deleteRecurring = window.deleteRecurringPayment;
 window.removeRecurringPayment = window.deleteRecurringPayment;
 
-// ABONAR A DEUDA
-window.payDebt = async function(idOrIndex) {
+// ABONAR A DEUDA (ABRE EL MODAL DE ABONO LIBRE CON MONTO Y CUENTA PERSONALIZABLES)
+window.payDebt = function(idOrIndex, defaultAmount = null) {
   const strId = String(idOrIndex);
   let targetDebt = debts.find(d => String(d.id) === strId || String(d.firestoreId) === strId);
   if (!targetDebt && !isNaN(parseInt(idOrIndex, 10))) {
@@ -3850,69 +4161,15 @@ window.payDebt = async function(idOrIndex) {
 
   if (!targetDebt) return;
 
-  const inputEl = document.getElementById(`pay-input-mob-${targetDebt.id}`) || document.getElementById(`pay-input-${targetDebt.id}`) || document.getElementById(`pay-input-${strId}`);
-  if (!inputEl) return;
-  const payAmount = parseAmount(inputEl.value);
-
-  if (!payAmount || payAmount <= 0) return alert('Ingresa un monto de abono válido');
-
-  const interestRate = targetDebt.interest || 0;
-  const totalWithInterest = targetDebt.total + (targetDebt.total * (interestRate / 100));
-  const currentPaid = targetDebt.paid || 0;
-  const pending = Math.max(0, totalWithInterest - currentPaid);
-
-  if (payAmount > pending) {
-    const confirmed = await appConfirm(`El monto ($ ${formatCurrency(payAmount)}) supera el saldo pendiente ($ ${formatCurrency(pending)}). ¿Deseas liquidar la deuda por el saldo exacto?`, {
-      title: 'Liquidar Saldo Pendiente',
-      icon: '💳',
-      okText: 'Liquidar Total',
-      isDanger: false
-    });
-    if (!confirmed) {
-      return;
+  let amountToPass = defaultAmount;
+  if (!amountToPass) {
+    const inputEl = document.getElementById(`pay-input-mob-${targetDebt.id}`) || document.getElementById(`pay-input-${targetDebt.id}`) || document.getElementById(`pay-input-${strId}`);
+    if (inputEl && inputEl.value) {
+      amountToPass = inputEl.value;
     }
   }
 
-  const finalAbono = Math.min(payAmount, pending);
-  const newPaid = currentPaid + finalAbono;
-
-  let historyArr = [];
-  try {
-    historyArr = typeof targetDebt.history === 'string' ? JSON.parse(targetDebt.history) : (targetDebt.history || []);
-  } catch (e) { historyArr = []; }
-
-  historyArr.push({
-    date: getTodayStr(),
-    amount: finalAbono
-  });
-
-  targetDebt.paid = newPaid;
-  targetDebt.history = JSON.stringify(historyArr);
-  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-  updateUI();
-
-  await addTransactionLocallyOrCloud({
-    type: 'expense',
-    date: getTodayStr(),
-    description: `ABONO A ${targetDebt.name}`,
-    amount: finalAbono,
-    category: 'PAGO DE DEUDAS',
-    paymentMethod: 'BANCO'
-  });
-
-  try {
-    const dRef = doc(db, 'vaults', activeVaultId, 'debts', targetDebt.id);
-    await setDoc(dRef, {
-      vaultId: activeVaultId,
-      ...targetDebt,
-      paid: newPaid,
-      history: JSON.stringify(historyArr)
-    }, { merge: true });
-  } catch (e) {
-    console.warn('Error actualizando deuda en Firestore:', e);
-  }
-
-  syncClientTotalsToServer();
+  window.openDebtActionModal(targetDebt.id, amountToPass);
 };
 
 // ELIMINAR DEUDA
@@ -3968,6 +4225,8 @@ window.removeDebt = async function(idOrIndex) {
     const txsToDelete = transactions.filter(t => 
       t.description && (
         t.description.toUpperCase().includes(`ABONO A ${debtNameUpper}`) ||
+        t.description.toUpperCase().includes(`ABONO RECIBIDO DE: ${debtNameUpper}`) ||
+        t.description.toUpperCase().includes(`COBRO DE: ${debtNameUpper}`) ||
         t.description.toUpperCase().includes(`PAGO DE DEUDA: ${debtNameUpper}`) ||
         t.description.toUpperCase().includes(`DEUDA: ${debtNameUpper}`)
       )
@@ -4322,14 +4581,22 @@ function updateUI() {
   if (movementsMonthSelect && movementsMonthSelect.value !== activeMonth) movementsMonthSelect.value = activeMonth;
   if (movementsYearSelect && movementsYearSelect.value !== activeYear) movementsYearSelect.value = activeYear;
 
-  // RENDER DEUDAS
-  let totalDebtPendingSum = 0;
+  // RENDER DEUDAS (DEBO vs ME DEBEN)
+  let totalPayablePendingSum = 0;
+  let totalReceivablePendingSum = 0;
+
   debts.forEach((d, idx) => {
+    const isReceivable = d.type === 'debt_receivable';
     const interestRate = d.interest || 0;
     const totalWithInterest = d.total + (d.total * (interestRate / 100));
     const paid = d.paid || 0;
     const pending = Math.max(0, totalWithInterest - paid);
-    totalDebtPendingSum += pending;
+
+    if (isReceivable) {
+      totalReceivablePendingSum += pending;
+    } else {
+      totalPayablePendingSum += pending;
+    }
 
     const progressPercent = Math.min(100, Math.round((paid / totalWithInterest) * 100));
 
@@ -4352,15 +4619,15 @@ function updateUI() {
         dueDateStatus = `<span class="tag-badge text-warning">CUOTA ${currentQuotaNumber}/${totalInstallments}: VENCE HOY</span>`;
         showAlert(`RECORDATORIO: HOY VENCE LA CUOTA ${currentQuotaNumber} DE ${d.name}.`, 'warning');
       } else {
-        dueDateStatus = `<span class="tag-badge">PROXIMO PAGO (${currentQuotaNumber}/${totalInstallments}): ${formatDateDisplay(nextDueDateStr)}</span>`;
+        dueDateStatus = `<span class="tag-badge">PROXIMO ${isReceivable ? 'COBRO' : 'PAGO'} (${currentQuotaNumber}/${totalInstallments}): ${formatDateDisplay(nextDueDateStr)}</span>`;
       }
     }
 
     let historyHtml = '';
     if (historyArr.length > 0) {
-      historyHtml = '<div style="font-size: 0.72rem; margin-top: 6px; color: var(--text-muted);"><strong>ABONOS REALIZADOS:</strong> ';
+      historyHtml = `<div style="font-size: 0.72rem; margin-top: 6px; color: var(--text-muted);"><strong>${isReceivable ? 'COBROS / RECAUDOS RECIBIDOS:' : 'ABONOS REALIZADOS:'}</strong> `;
       historyArr.forEach((h, hIdx) => {
-        historyHtml += `<span class="tag-badge">CUOTA ${hIdx + 1} (${formatDateDisplay(h.date)}): ${formatCurrency(h.amount)}</span> `;
+        historyHtml += `<span class="tag-badge">C${hIdx + 1} (${formatDateDisplay(h.date)}): ${formatCurrency(h.amount)}</span> `;
       });
       historyHtml += '</div>';
     }
@@ -4368,6 +4635,10 @@ function updateUI() {
     const suggestedQuotaAmount = Math.round(totalWithInterest / totalInstallments);
     const accelerationHtml = renderAccelerationSuggestions(pending);
     const interestBadge = interestRate > 0 ? `<span class="tag-badge text-warning">+${interestRate}% INT.</span>` : '';
+    const typeBadge = isReceivable
+      ? `<span class="tag-badge text-success" style="background: rgba(48, 209, 88, 0.12); border: 0.5px solid rgba(48, 209, 88, 0.3);">🟢 POR COBRAR (A FAVOR)</span>`
+      : `<span class="tag-badge text-purple" style="background: rgba(175, 82, 222, 0.12); border: 0.5px solid rgba(175, 82, 222, 0.3);">🔻 DEBO (POR PAGAR)</span>`;
+
     if (!d.id) d.id = 'debt_' + Math.random().toString(36).substr(2, 9);
     const debtIdentifier = `'${d.id}'`;
 
@@ -4377,59 +4648,64 @@ function updateUI() {
 
     row.innerHTML = `
       <td class="desktop-only">
-        <strong>${d.name}</strong> ${interestBadge}
-        <div>${dueDateStatus}</div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <strong>${d.name}</strong>
+          ${typeBadge}
+          ${interestBadge}
+        </div>
+        <div style="margin-top: 4px;">${dueDateStatus}</div>
       </td>
       <td class="desktop-only">
         <small style="color: var(--text-muted);">${formatCurrency(paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
-        <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%;"></div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%; background: ${isReceivable ? 'var(--success-color)' : 'var(--primary-color)'};"></div></div>
         ${accelerationHtml}
         ${historyHtml}
       </td>
-      <td class="desktop-only text-purple" style="font-weight: 700;">${formatCurrency(pending)}</td>
+      <td class="desktop-only ${isReceivable ? 'text-success' : 'text-purple'}" style="font-weight: 700;">${formatCurrency(pending)}</td>
       <td class="desktop-only">
         ${pending > 0 ? `
           <div style="display: flex; gap: 4px; align-items: center;">
-            <input type="text" class="currency-input" id="pay-input-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 110px; padding: 4px 6px; font-size: 0.8rem;">
-            <button class="btn-pay" onclick="payDebt(${debtIdentifier})">ABONAR</button>
+            <input type="text" class="currency-input" id="pay-input-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 110px; padding: 4px 6px; font-size: 0.8rem;" title="Monto libre a abonar">
+            <button class="${isReceivable ? 'btn btn-success' : 'btn-pay'}" style="${isReceivable ? 'padding: 4px 10px; font-size: 0.78rem; border-radius: 8px;' : ''}" onclick="payDebt(${debtIdentifier})">${isReceivable ? 'COBRAR' : 'ABONAR'}</button>
           </div>
-        ` : '<span class="text-success" style="font-weight: 700;">LIQUIDADA</span>'}
+        ` : `<span class="text-success" style="font-weight: 700;">${isReceivable ? 'RECAUDADA' : 'LIQUIDADA'}</span>`}
       </td>
-      <td class="desktop-only"><button class="btn-delete" title="Eliminar deuda" onclick="removeDebt(${debtIdentifier})">${deleteIconSvg}</button></td>
+      <td class="desktop-only"><button class="btn-delete" title="Eliminar registro" onclick="removeDebt(${debtIdentifier})">${deleteIconSvg}</button></td>
 
       <!-- Celda adaptativa para móvil (iOS Card Row: 100% visible, sin cortes, botón eliminar táctil) -->
       <td class="mobile-only-cell" colspan="5">
         <div class="mobile-tx-card mobile-debt-card">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%;">
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <span class="mobile-tx-title" style="font-size: 0.92rem;">${d.name}</span>
+                ${typeBadge}
                 ${interestBadge}
               </div>
-              <div style="margin-top: 2px;">${dueDateStatus}</div>
+              <div style="margin-top: 3px;">${dueDateStatus}</div>
             </div>
-            <button class="btn-delete mobile-delete-btn" title="Eliminar deuda" aria-label="Eliminar deuda" onclick="removeDebt(${debtIdentifier})">
+            <button class="btn-delete mobile-delete-btn" title="Eliminar registro" aria-label="Eliminar registro" onclick="removeDebt(${debtIdentifier})">
               ${deleteIconSvg}
             </button>
           </div>
           <div style="margin: 8px 0; width: 100%;">
             <small style="color: var(--text-muted);">${formatCurrency(paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
-            <div class="progress-bar" style="margin-top: 4px;"><div class="progress-fill" style="width: ${progressPercent}%;"></div></div>
+            <div class="progress-bar" style="margin-top: 4px;"><div class="progress-fill" style="width: ${progressPercent}%; background: ${isReceivable ? 'var(--success-color)' : 'var(--primary-color)'};"></div></div>
             ${accelerationHtml}
             ${historyHtml}
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px; width: 100%;">
             <div>
-              <small style="color: var(--text-muted); font-size: 0.7rem;">PENDIENTE:</small>
-              <div class="text-purple" style="font-weight: 700; font-size: 0.95rem;">${formatCurrency(pending)}</div>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">${isReceivable ? 'POR COBRAR:' : 'POR PAGAR:'}</small>
+              <div class="${isReceivable ? 'text-success' : 'text-purple'}" style="font-weight: 700; font-size: 0.95rem;">${formatCurrency(pending)}</div>
             </div>
             <div>
               ${pending > 0 ? `
                 <div style="display: flex; gap: 6px; align-items: center;">
-                  <input type="text" class="currency-input" id="pay-input-mob-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 105px; padding: 6px 8px; font-size: 0.8rem; border-radius: 8px;">
-                  <button class="btn-pay" onclick="payDebt(${debtIdentifier})">ABONAR</button>
+                  <input type="text" class="currency-input" id="pay-input-mob-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 105px; padding: 6px 8px; font-size: 0.8rem; border-radius: 8px;" title="Monto libre a abonar">
+                  <button class="${isReceivable ? 'btn btn-success' : 'btn-pay'}" style="${isReceivable ? 'padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;' : ''}" onclick="payDebt(${debtIdentifier})">${isReceivable ? 'COBRAR' : 'ABONAR'}</button>
                 </div>
-              ` : '<span class="text-success" style="font-weight: 700;">LIQUIDADA</span>'}
+              ` : `<span class="text-success" style="font-weight: 700;">${isReceivable ? 'RECAUDADA' : 'LIQUIDADA'}</span>`}
             </div>
           </div>
         </div>
@@ -4438,8 +4714,42 @@ function updateUI() {
     debtList.appendChild(row);
   });
 
-  totalDebtPendingEl.textContent = formatCurrency(totalDebtPendingSum);
-  debtsCountBadge.textContent = `${debts.length} ACTIVAS`;
+  // Habilitar máscara de moneda en inputs dinámicos de abono
+  debtList.querySelectorAll('.currency-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value) {
+        e.target.value = new Intl.NumberFormat('es-CO').format(parseInt(value, 10));
+      }
+    });
+  });
+
+  // Actualizar KPIs de deudas en Dashboard y en Tab Deudas
+  const totalDebtsNetBalance = totalReceivablePendingSum - totalPayablePendingSum;
+  totalDebtPendingEl.textContent = formatCurrency(totalPayablePendingSum);
+
+  const debtsPayableEl = document.getElementById('debts-total-payable');
+  if (debtsPayableEl) debtsPayableEl.textContent = formatCurrency(totalPayablePendingSum);
+
+  const debtsReceivableEl = document.getElementById('debts-total-receivable');
+  if (debtsReceivableEl) debtsReceivableEl.textContent = formatCurrency(totalReceivablePendingSum);
+
+  const debtsNetEl = document.getElementById('debts-net-balance');
+  if (debtsNetEl) {
+    debtsNetEl.textContent = (totalDebtsNetBalance >= 0 ? '+ ' : '') + formatCurrency(totalDebtsNetBalance);
+    debtsNetEl.className = totalDebtsNetBalance >= 0 ? 'kpi-value text-success' : 'kpi-value text-danger';
+  }
+
+  const debtsNetSub = document.getElementById('debts-net-subtitle');
+  if (debtsNetSub) {
+    debtsNetSub.textContent = totalDebtsNetBalance >= 0
+      ? 'Saldo a favor (Te deben más de lo que debes)'
+      : 'Pasivo neto (Debes más de lo que te deben)';
+  }
+
+  const countPayable = debts.filter(d => d.type !== 'debt_receivable').length;
+  const countReceivable = debts.filter(d => d.type === 'debt_receivable').length;
+  debtsCountBadge.textContent = `${debts.length} ACTIVAS (${countPayable} por pagar, ${countReceivable} por cobrar)`;
 
   renderCharts();
   renderCalendar();
@@ -4828,12 +5138,14 @@ function renderCalendar() {
     dayDues.forEach(due => {
       const badge = document.createElement('div');
       badge.className = `due-badge ${due.status}`;
-      badge.title = `${due.debt.name} (Cuota ${due.quotaNum}/${due.totalQuotas}): ${formatCurrency(due.amount)}`;
+      const actionLabel = due.debt.type === 'debt_receivable' ? 'Cobrar' : 'Abonar';
+      badge.title = `${due.debt.name} (Cuota ${due.quotaNum}/${due.totalQuotas}): ${formatCurrency(due.amount)} - Clic para ${actionLabel} monto libre`;
+      badge.style.cursor = 'pointer';
       badge.innerHTML = `<strong>${due.debt.name.substring(0, 10)}</strong>: C${due.quotaNum}`;
 
       badge.addEventListener('click', (e) => {
         e.stopPropagation();
-        alert(`OBLIGACION: ${due.debt.name}\nCUOTA: ${due.quotaNum} de ${due.totalQuotas}\nFECHA: ${formatDateDisplay(dayStr)}\nMONTO ESTIMADO: ${formatCurrency(due.amount)}\nESTADO: ${due.status.toUpperCase()}`);
+        window.openDebtActionModal(due.debt.id, due.amount);
       });
 
       dayCell.appendChild(badge);

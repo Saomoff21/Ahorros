@@ -224,7 +224,7 @@ function appConfirm(message, options = {}) {
       if (isDone) return;
       isDone = true;
       modal.classList.add('hidden');
-      modal.style.display = 'none';
+      modal.style.display = '';
       btnOk.onclick = null;
       btnCancel.onclick = null;
       modal.onclick = null;
@@ -405,7 +405,10 @@ function formatCurrency(amount) {
 }
 
 function parseAmount(val) {
-  return parseFloat(String(val).replace(/\./g, '').replace(/,/g, '')) || 0;
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : Math.round(val);
+  const digits = String(val).replace(/\D/g, '');
+  return parseInt(digits, 10) || 0;
 }
 
 function getTodayStr() {

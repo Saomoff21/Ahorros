@@ -218,6 +218,7 @@ function appConfirm(message, options = {}) {
 
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
+    modal.style.zIndex = '200000';
 
     let isDone = false;
     const cleanup = () => {
@@ -243,19 +244,22 @@ function appConfirm(message, options = {}) {
       }
     };
 
-    btnOk.onclick = (e) => {
+    const handleOk = (e) => {
       e?.preventDefault?.();
       e?.stopPropagation?.();
       cleanup();
       resolve(true);
     };
 
-    btnCancel.onclick = (e) => {
+    const handleCancel = (e) => {
       e?.preventDefault?.();
       e?.stopPropagation?.();
       cleanup();
       resolve(false);
     };
+
+    btnOk.onclick = handleOk;
+    btnCancel.onclick = handleCancel;
 
     modal.onclick = (e) => {
       if (e.target === modal) {
@@ -319,6 +323,28 @@ let debts = JSON.parse(localStorage.getItem('finances_v10_debts')) || [];
 let savingsGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
 let recurringPayments = JSON.parse(localStorage.getItem('finances_v10_recurring')) || [];
 let shortcutEvents = [];
+
+// Normalización defensiva: asegurar IDs estables y campos requeridos para eliminar y abonar sin fallos
+transactions.forEach((t, i) => {
+  if (!t.id) t.id = t.firestoreId || t.localId || t.tempId || (`tx_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 6)}`);
+});
+debts.forEach((d, i) => {
+  if (!d.id) d.id = d.firestoreId || d.localId || d.tempId || (`debt_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 6)}`);
+  if (!d.type) d.type = 'debt_payable';
+  if (!d.frequency) d.frequency = 'mensual';
+  if (!d.paymentMethod) d.paymentMethod = 'BANCO';
+});
+savingsGoals.forEach((g, i) => {
+  if (!g.id) g.id = g.firestoreId || g.localId || g.tempId || (`goal_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 6)}`);
+});
+recurringPayments.forEach((r, i) => {
+  if (!r.id) r.id = r.firestoreId || r.localId || r.tempId || (`rec_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 6)}`);
+  if (!r.paymentMethod) r.paymentMethod = 'NEQUI';
+  if (!r.frequency) r.frequency = 'MENSUAL';
+});
+
+// Estado de filtro de deudas (Todas, Por Pagar, Por Cobrar)
+let activeDebtFilter = 'all';
 
 // Sets de IDs y Firmas eliminadas recientemente para evitar resurrección por snapshot en tiempo real
 const recentlyDeletedTxIds = new Set();
@@ -4267,16 +4293,30 @@ window.removeDebt = async function(idOrIndex) {
 };
 window.deleteDebt = window.removeDebt;
 
-function getNextDueDate(startDateStr, paymentsCount) {
+function getNextDueDate(startDateStr, paymentsCount, frequency = 'mensual') {
   if (!startDateStr) return '';
   const parts = startDateStr.split('-');
   if (parts.length !== 3) return startDateStr;
 
-  const year = parseInt(parts[0]);
-  const month = parseInt(parts[1]) - 1;
-  const day = parseInt(parts[2]);
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
 
-  const nextDate = new Date(Date.UTC(year, month + paymentsCount, day));
+  const freq = (frequency || 'mensual').toLowerCase();
+  let nextDate;
+  if (freq === 'semanal') {
+    nextDate = new Date(Date.UTC(year, month, day + (paymentsCount * 7)));
+  } else if (freq === 'quincenal') {
+    nextDate = new Date(Date.UTC(year, month, day + (paymentsCount * 15)));
+  } else if (freq === 'diario') {
+    nextDate = new Date(Date.UTC(year, month, day + paymentsCount));
+  } else if (freq === 'anual') {
+    nextDate = new Date(Date.UTC(year + paymentsCount, month, day));
+  } else {
+    // mensual o libre por defecto
+    nextDate = new Date(Date.UTC(year, month + paymentsCount, day));
+  }
+
   const resYear = nextDate.getUTCFullYear();
   const resMonth = String(nextDate.getUTCMonth() + 1).padStart(2, '0');
   const resDay = String(nextDate.getUTCDate()).padStart(2, '0');
@@ -4507,9 +4547,10 @@ function updateUI() {
         <td class="desktop-only">${mediumBadge}</td>
         <td class="desktop-only">${methodBadge}</td>
         <td class="desktop-only ${amountColor}" style="font-weight: 700;">${formatCurrency(t.amount)}</td>
+        <td class="col-act desktop-only"><button class="btn-delete" title="Eliminar" onclick="removeTransaction(${deleteIdentifier})">${deleteIconSvg}</button></td>
 
         <!-- Celda integrada para móvil en dashboard -->
-        <td class="mobile-only-cell" colspan="7">
+        <td class="mobile-only-cell" colspan="8">
           <div class="mobile-tx-card">
             <div class="mobile-tx-left">
               <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
@@ -4526,6 +4567,9 @@ function updateUI() {
               <span class="mobile-tx-amount ${amountColor}">
                 ${signPrefix}${formatCurrency(t.amount)}
               </span>
+              <button class="btn-delete mobile-delete-btn" title="Eliminar movimiento" aria-label="Eliminar transacción" onclick="removeTransaction(${deleteIdentifier})">
+                ${deleteIconSvg}
+              </button>
             </div>
           </div>
         </td>

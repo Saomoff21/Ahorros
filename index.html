@@ -1020,6 +1020,33 @@
                 </div>
               </div>
 
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="debt-frequency">Frecuencia de Pagos / Cobros</label>
+                  <select id="debt-frequency">
+                    <option value="mensual">🗓️ Mensual (Cada mes)</option>
+                    <option value="quincenal">🗓️ Quincenal (Cada 15 días)</option>
+                    <option value="semanal">🗓️ Semanal (Cada semana)</option>
+                    <option value="diario">🗓️ Diario (Cada día)</option>
+                    <option value="anual">🗓️ Anual (Cada año)</option>
+                    <option value="libre">🗓️ Libre / Sin fecha fija</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="debt-method">Método de Pago Habitual</label>
+                  <select id="debt-method">
+                    <option value="BANCO">🏦 Banco / PSE / Cuenta</option>
+                    <option value="EFECTIVO">💵 Efectivo (En mano)</option>
+                    <option value="NEQUI">🟣 Nequi</option>
+                    <option value="DAVIPLATA">🔴 Daviplata</option>
+                    <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+                    <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
+                    <option value="OTRO">⚙️ Otro Método</option>
+                  </select>
+                </div>
+              </div>
+
               <div class="form-group">
                 <label for="debt-start-date">Fecha Primer Cobro / Vencimiento</label>
                 <input type="date" id="debt-start-date" required>
@@ -1084,6 +1111,25 @@
           <h2>Obligaciones y Planes de Aceleración de Pago</h2>
           <span id="debts-count-badge" class="tag-badge">0 Activas</span>
         </div>
+
+        <!-- SELECTOR DE FILTRO: TODAS VS POR PAGAR (DEBO) VS POR COBRAR (ME DEBEN) -->
+        <div style="padding: 14px 20px 4px 20px;">
+          <div class="debts-filter-tabs" id="debts-filter-tabs" aria-label="Filtrar tipo de deuda">
+            <button type="button" class="debts-filter-btn active" data-filter="all" id="btn-debt-filter-all">
+              <span>📋 Todas las Obligaciones</span>
+              <span class="badge-count" id="count-debt-filter-all">0</span>
+            </button>
+            <button type="button" class="debts-filter-btn" data-filter="payable" id="btn-debt-filter-payable">
+              <span>🔻 Debo (Por Pagar)</span>
+              <span class="badge-count" id="count-debt-filter-payable">0</span>
+            </button>
+            <button type="button" class="debts-filter-btn" data-filter="receivable" id="btn-debt-filter-receivable">
+              <span>🟢 Me Deben (Por Cobrar)</span>
+              <span class="badge-count" id="count-debt-filter-receivable">0</span>
+            </button>
+          </div>
+        </div>
+
         <div class="table-wrapper">
           <table>
             <thead>
@@ -1369,6 +1415,61 @@
 
         <button type="submit" id="modal-debt-submit-btn" class="btn btn-purple" style="margin-top: 10px; width: 100%; font-size: 0.95rem; font-weight: 700; padding: 12px;">
           Confirmar Abono
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR PAGO / COBRO DE COMPROMISO FIJO CON MÉTODO FLEXIBLE -->
+  <div id="recurring-pay-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span id="modal-rec-icon" style="font-size: 1.5rem;">⚡</span>
+          <div>
+            <h2 id="modal-rec-title" style="font-size: 1.05rem; font-weight: 800;">Registrar Finanza Fija</h2>
+            <small id="modal-rec-subtitle" style="color: var(--text-muted); font-size: 0.72rem;">Compromiso este mes</small>
+          </div>
+        </div>
+        <button id="btn-close-rec-modal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="recurring-pay-form" class="app-form" style="padding: 0;">
+        <input type="hidden" id="modal-rec-id">
+
+        <div class="info-card-highlight" style="margin-bottom: 14px; background: rgba(120, 120, 128, 0.08); border-radius: 12px; padding: 12px; border: 0.5px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Monto a Registrar:</span>
+            <span id="modal-rec-amount-display" style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">$ 0</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="modal-rec-account" id="modal-rec-account-label">Cuenta o Método de Pago para este Mes</label>
+          <select id="modal-rec-account" required>
+            <option value="NEQUI">🟣 Nequi</option>
+            <option value="DAVIPLATA">🔴 Daviplata</option>
+            <option value="BANCO">🏦 Banco / PSE / Débito Automático</option>
+            <option value="EFECTIVO">💵 Efectivo (En mano)</option>
+            <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+            <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
+            <option value="OTRO">⚙️ Otro Método</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="modal-rec-date">Fecha de Transacción</label>
+            <input type="date" id="modal-rec-date" required>
+          </div>
+          <div class="form-group">
+            <label for="modal-rec-note">Nota Opcional</label>
+            <input type="text" id="modal-rec-note" placeholder="Ej: Factura, comprobante...">
+          </div>
+        </div>
+
+        <button type="submit" id="modal-rec-submit-btn" class="btn btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.95rem; font-weight: 700; padding: 12px;">
+          Confirmar y Registrar en Movimientos
         </button>
       </form>
     </div>

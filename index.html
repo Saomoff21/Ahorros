@@ -799,18 +799,73 @@
               <div class="form-group">
                 <label for="rec-frequency">Frecuencia</label>
                 <select id="rec-frequency">
-                  <option value="MENSUAL">Mensual</option>
-                  <option value="QUINCENAL">Quincenal</option>
-                  <option value="SEMANAL">Semanal</option>
-                  <option value="ANUAL">Anual</option>
+                  <option value="MENSUAL">🗓️ Mensual (1 vez al mes)</option>
+                  <option value="QUINCENAL">🗓️ Quincenal (2 veces al mes)</option>
+                  <option value="SEMANAL">🗓️ Semanal (Cada semana / 4 al mes)</option>
+                  <option value="ANUAL">🗓️ Anual (1 vez al año)</option>
                 </select>
               </div>
             </div>
 
+            <!-- SELECTORES DINÁMICOS SEGÚN LA FRECUENCIA -->
             <div class="form-row">
-              <div class="form-group">
-                <label for="rec-day">Día del Mes (Cobro / Pago)</label>
-                <input type="number" id="rec-day" min="1" max="31" value="5" required>
+              <!-- Para Mensual: Día del mes (1 a 31) -->
+              <div class="form-group" id="rec-day-group">
+                <label for="rec-day" id="rec-day-label">Día del Mes (Cobro / Pago)</label>
+                <input type="number" id="rec-day" min="1" max="31" value="5">
+                <small id="rec-day-hint" style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 3px;">Día en que se cobra o paga cada mes</small>
+              </div>
+
+              <!-- Para Quincenal: Días de quincena -->
+              <div class="form-group hidden" id="rec-quincena-group">
+                <label for="rec-quincena-type">Cortes de Pago Quincenal</label>
+                <select id="rec-quincena-type">
+                  <option value="15 y 30">🗓️ Días 15 y 30 de cada mes</option>
+                  <option value="1 y 16">🗓️ Días 1 y 16 de cada mes</option>
+                  <option value="10 y 25">🗓️ Días 10 y 25 de cada mes</option>
+                  <option value="5 y 20">🗓️ Días 5 y 20 de cada mes</option>
+                  <option value="Flexible">🗓️ Flexible (2 veces por mes)</option>
+                </select>
+                <small style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 3px;">Permite registrar 1ª y 2ª quincena por separado</small>
+              </div>
+
+              <!-- Para Semanal: Día de la semana -->
+              <div class="form-group hidden" id="rec-weekday-group">
+                <label for="rec-weekday">Día de Cobro / Pago Semanal</label>
+                <select id="rec-weekday">
+                  <option value="Viernes">🗓️ Todos los Viernes</option>
+                  <option value="Lunes">🗓️ Todos los Lunes</option>
+                  <option value="Sábado">🗓️ Todos los Sábados</option>
+                  <option value="Domingo">🗓️ Todos los Domingos</option>
+                  <option value="Miércoles">🗓️ Todos los Miércoles</option>
+                  <option value="Jueves">🗓️ Todos los Jueves</option>
+                  <option value="Martes">🗓️ Todos los Martes</option>
+                  <option value="Flexible">🗓️ Cualquier día (Flexible)</option>
+                </select>
+                <small style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 3px;">Permite registrar cada semana (4 a 5 veces al mes)</small>
+              </div>
+
+              <!-- Para Anual: Mes y Día del año -->
+              <div class="form-group hidden" id="rec-anual-group">
+                <label for="rec-anual-month">Mes de Pago Anual</label>
+                <div style="display: flex; gap: 6px;">
+                  <select id="rec-anual-month" style="flex: 2;">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12" selected>Diciembre</option>
+                  </select>
+                  <input type="number" id="rec-anual-day" min="1" max="31" value="15" placeholder="Día" style="flex: 1;" title="Día del mes">
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 3px;">Se cobra o paga 1 sola vez en el año</small>
               </div>
 
               <div class="form-group">
@@ -950,20 +1005,20 @@
     <section id="tab-debts" class="tab-content">
       <!-- RESUMEN DE SALDOS: LO QUE DEBO VS LO QUE ME DEBEN -->
       <div class="debts-kpi-bar">
-        <div class="kpi-card border-danger">
+        <div class="kpi-card border-danger" onclick="setDebtFilter('payable')" style="cursor: pointer;" title="Filtrar solo deudas por pagar">
           <span class="kpi-label">TOTAL QUE DEBO (POR PAGAR)</span>
           <div id="debts-total-payable" class="kpi-value text-danger">$ 0</div>
-          <small style="color: var(--text-muted); font-size: 0.7rem;">Obligaciones y préstamos pendientes</small>
+          <small style="color: var(--text-muted); font-size: 0.7rem;">Obligaciones y préstamos pendientes &bull; Clic para filtrar</small>
         </div>
-        <div class="kpi-card border-success">
+        <div class="kpi-card border-success" onclick="setDebtFilter('receivable')" style="cursor: pointer;" title="Filtrar solo cuentas por cobrar">
           <span class="kpi-label">TOTAL QUE ME DEBEN (POR COBRAR)</span>
           <div id="debts-total-receivable" class="kpi-value text-success">$ 0</div>
-          <small style="color: var(--text-muted); font-size: 0.7rem;">Dinero prestado a favor por cobrar</small>
+          <small style="color: var(--text-muted); font-size: 0.7rem;">Dinero prestado a favor por cobrar &bull; Clic para filtrar</small>
         </div>
-        <div class="kpi-card border-purple">
+        <div class="kpi-card border-purple" onclick="setDebtFilter('all')" style="cursor: pointer;" title="Ver todas las obligaciones">
           <span class="kpi-label">BALANCE NETO DE OBLIGACIONES</span>
           <div id="debts-net-balance" class="kpi-value text-purple">$ 0</div>
-          <small id="debts-net-subtitle" style="color: var(--text-muted); font-size: 0.7rem;">Saldo a favor o pasivo total</small>
+          <small id="debts-net-subtitle" style="color: var(--text-muted); font-size: 0.7rem;">Saldo a favor o pasivo total &bull; Clic para ver todas</small>
         </div>
       </div>
 
@@ -1115,15 +1170,15 @@
         <!-- SELECTOR DE FILTRO: TODAS VS POR PAGAR (DEBO) VS POR COBRAR (ME DEBEN) -->
         <div style="padding: 14px 20px 10px 20px;">
           <div class="debts-filter-tabs" id="debts-filter-tabs" aria-label="Filtrar tipo de deuda">
-            <button type="button" class="debts-filter-btn active" data-filter="all" id="btn-debt-filter-all">
+            <button type="button" class="debts-filter-btn active" data-filter="all" id="btn-debt-filter-all" onclick="setDebtFilter('all')">
               <span>📋 Todas las Obligaciones</span>
               <span class="badge-count" id="count-debt-filter-all">0</span>
             </button>
-            <button type="button" class="debts-filter-btn" data-filter="payable" id="btn-debt-filter-payable">
+            <button type="button" class="debts-filter-btn" data-filter="payable" id="btn-debt-filter-payable" onclick="setDebtFilter('payable')">
               <span>🔻 Debo (Por Pagar)</span>
               <span class="badge-count" id="count-debt-filter-payable">0</span>
             </button>
-            <button type="button" class="debts-filter-btn" data-filter="receivable" id="btn-debt-filter-receivable">
+            <button type="button" class="debts-filter-btn" data-filter="receivable" id="btn-debt-filter-receivable" onclick="setDebtFilter('receivable')">
               <span>🟢 Me Deben (Por Cobrar)</span>
               <span class="badge-count" id="count-debt-filter-receivable">0</span>
             </button>
@@ -1190,8 +1245,8 @@
           </div>
         </div>
 
-        <!-- Mantenemos debt-list oculto para compatibilidad defensiva -->
-        <table style="display: none;"><tbody id="debt-list"></tbody></table>
+        <!-- Contenedor oculto no tabular para compatibilidad de referencias -->
+        <div style="display: none !important;" class="hidden" aria-hidden="true"><div id="debt-list"></div></div>
       </div>
     </section>
 
@@ -1493,11 +1548,18 @@
 
       <form id="recurring-pay-form" class="app-form" style="padding: 0;">
         <input type="hidden" id="modal-rec-id">
+        <input type="hidden" id="modal-rec-period">
 
         <div class="info-card-highlight" style="margin-bottom: 14px; background: rgba(120, 120, 128, 0.08); border-radius: 12px; padding: 12px; border: 0.5px solid var(--border-color);">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Monto a Registrar:</span>
-            <span id="modal-rec-amount-display" style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">$ 0</span>
+            <div>
+              <span style="font-size: 0.76rem; color: var(--text-muted); display: block;">Período / Cuota:</span>
+              <span id="modal-rec-period-display" class="tag-badge text-primary" style="font-size: 0.8rem; font-weight: 700; margin-top: 2px;">Cuota Regular</span>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.76rem; color: var(--text-muted); display: block;">Monto a Registrar:</span>
+              <span id="modal-rec-amount-display" style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">$ 0</span>
+            </div>
           </div>
         </div>
 
@@ -1641,13 +1703,6 @@
             <input type="text" id="edit-rec-amount" class="currency-input" required>
           </div>
           <div class="form-group">
-            <label for="edit-rec-day">Día del Mes</label>
-            <input type="number" id="edit-rec-day" min="1" max="31" required>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
             <label for="edit-rec-frequency">Frecuencia</label>
             <select id="edit-rec-frequency">
               <option value="mensual">🗓️ Mensual (Cada mes)</option>
@@ -1655,6 +1710,60 @@
               <option value="semanal">🗓️ Semanal (Cada semana)</option>
               <option value="anual">🗓️ Anual (Cada año)</option>
             </select>
+          </div>
+        </div>
+
+        <!-- SELECTORES DINÁMICOS SEGÚN FRECUENCIA EN EDICIÓN -->
+        <div class="form-row">
+          <div class="form-group" id="edit-rec-day-group">
+            <label for="edit-rec-day">Día del Mes</label>
+            <input type="number" id="edit-rec-day" min="1" max="31" value="5">
+          </div>
+
+          <div class="form-group hidden" id="edit-rec-quincena-group">
+            <label for="edit-rec-quincena-type">Cortes de Pago Quincenal</label>
+            <select id="edit-rec-quincena-type">
+              <option value="15 y 30">🗓️ Días 15 y 30 de cada mes</option>
+              <option value="1 y 16">🗓️ Días 1 y 16 de cada mes</option>
+              <option value="10 y 25">🗓️ Días 10 y 25 de cada mes</option>
+              <option value="5 y 20">🗓️ Días 5 y 20 de cada mes</option>
+              <option value="Flexible">🗓️ Flexible (2 veces por mes)</option>
+            </select>
+          </div>
+
+          <div class="form-group hidden" id="edit-rec-weekday-group">
+            <label for="edit-rec-weekday">Día de la Semana</label>
+            <select id="edit-rec-weekday">
+              <option value="Viernes">🗓️ Todos los Viernes</option>
+              <option value="Lunes">🗓️ Todos los Lunes</option>
+              <option value="Sábado">🗓️ Todos los Sábados</option>
+              <option value="Domingo">🗓️ Todos los Domingos</option>
+              <option value="Miércoles">🗓️ Todos los Miércoles</option>
+              <option value="Jueves">🗓️ Todos los Jueves</option>
+              <option value="Martes">🗓️ Todos los Martes</option>
+              <option value="Flexible">🗓️ Cualquier día (Flexible)</option>
+            </select>
+          </div>
+
+          <div class="form-group hidden" id="edit-rec-anual-group">
+            <label for="edit-rec-anual-month">Mes y Día Anual</label>
+            <div style="display: flex; gap: 6px;">
+              <select id="edit-rec-anual-month" style="flex: 2;">
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+              <input type="number" id="edit-rec-anual-day" min="1" max="31" value="15" placeholder="Día" style="flex: 1;">
+            </div>
           </div>
 
           <div class="form-group">

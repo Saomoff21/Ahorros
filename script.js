@@ -740,7 +740,10 @@ function activateTab(tabId, isInitial = false) {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (tabId === 'tab-charts') renderCharts();
-      else if (tabId === 'tab-debts') renderCalendar();
+      else if (tabId === 'tab-debts') {
+        renderCalendar();
+        if (typeof window.setDebtFilter === 'function') window.setDebtFilter(activeDebtFilter);
+      }
       else if (tabId === 'tab-savings') renderSavingsGoals();
       else if (tabId === 'tab-recurring') renderRecurringPayments();
     });
@@ -1528,12 +1531,159 @@ if (debtActionForm) {
   });
 }
 
-// GESTIÓN DEL MODAL PARA REGISTRAR PAGO/COBRO DE FINANZAS FIJAS CON MÉTODO FLEXIBLE
+// HELPER: RESUMEN TEXTUAL DEL HORARIO DE FINANZA FIJA
+function getRecurringScheduleSummary(r) {
+  const freq = (r.frequency || 'mensual').toUpperCase();
+  if (freq === 'SEMANAL') {
+    return `🗓️ Semanal • Cada ${r.weekDay || 'Viernes'}`;
+  }
+  if (freq === 'QUINCENAL') {
+    return `🗓️ Quincenal • ${r.quincenaDays || 'Días 15 y 30'}`;
+  }
+  if (freq === 'ANUAL') {
+    const monthNamesArr = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const mName = r.dueMonth ? (monthNamesArr[r.dueMonth - 1] || 'Diciembre') : 'Diciembre';
+    return `🗓️ Anual • ${r.dueDay || 15} de ${mName}`;
+  }
+  return `🗓️ Mensual • Día ${r.dueDay || 5} de cada mes`;
+}
+
+// HELPER: ESTADO DE PAGO SEGÚN FRECUENCIA (SEMANAL, QUINCENAL, MENSUAL, ANUAL)
+function getRecurringPaymentStatus(r, allTransactions, currentYM) {
+  const freq = (r.frequency || 'mensual').toUpperCase();
+  const currentYear = currentYM.substring(0, 4);
+  const currentMonthNum = parseInt(currentYM.substring(5, 7), 10);
+  const monthNamesArr = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const curMonthName = monthNamesArr[currentMonthNum - 1] || currentYM;
+  const isIncome = r.type === 'income';
+
+  // Buscar transacciones activas de este compromiso en el ciclo correspondiente
+  const matchingTxs = (allTransactions || []).filter(t => {
+    if (freq === 'ANUAL') {
+      if (!t.date || !t.date.startsWith(currentYear)) return false;
+    } else {
+      if (!t.date || !t.date.startsWith(currentYM)) return false;
+    }
+    const matchId = t.recurringId && (
+      String(t.recurringId) === String(r.id) ||
+      String(t.recurringId) === String(r.firestoreId) ||
+      String(t.recurringId) === String(r.localId)
+    );
+    const expectedDesc = `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${r.name}`.toLowerCase();
+    const desc = (t.description || '').toLowerCase();
+    const matchDesc = desc === expectedDesc || (r.name && desc.includes(r.name.toLowerCase()) && (desc.includes('fijo') || desc.includes('quincena') || desc.includes('semana') || desc.includes('anual') || desc.includes('recurrente')));
+    return matchId || matchDesc;
+  });
+
+  const count = matchingTxs.length;
+
+  if (freq === 'SEMANAL') {
+    const isCompleted = count >= 4;
+    let badgeText = '';
+    let nextPeriodLabel = `Semana ${count + 1} de ${curMonthName}`;
+    let buttonLabel = isIncome ? `⚡ Cobrar Semana ${count + 1}` : `⚡ Pagar Semana ${count + 1}`;
+    if (count === 0) {
+      badgeText = `⏳ Pendiente (0 de 4 semanas en ${curMonthName})`;
+    } else if (count < 4) {
+      badgeText = `🟡 ${count} de 4 semanas en ${curMonthName}`;
+    } else {
+      badgeText = `✓ ${count} semanas pagadas en ${curMonthName}`;
+      nextPeriodLabel = `Semana Extra (${count + 1}) de ${curMonthName}`;
+      buttonLabel = isIncome ? `+ Cobrar Semana Extra (${count + 1})` : `+ Pagar Semana Extra (${count + 1})`;
+    }
+    return {
+      freq,
+      count,
+      targetCount: 4,
+      isCompleted,
+      badgeText,
+      badgeClass: isCompleted ? 'tag-badge text-success' : 'tag-badge text-warning',
+      nextPeriodLabel,
+      buttonLabel,
+      matchingTxs
+    };
+  }
+
+  if (freq === 'QUINCENAL') {
+    const isCompleted = count >= 2;
+    let badgeText = '';
+    let nextPeriodLabel = count === 0 ? `1ª Quincena de ${curMonthName}` : `2ª Quincena de ${curMonthName}`;
+    let buttonLabel = '';
+    if (count === 0) {
+      badgeText = `⏳ Pendiente (0 de 2 quincenas en ${curMonthName})`;
+      buttonLabel = isIncome ? '⚡ Cobrar 1ª Quincena' : '⚡ Pagar 1ª Quincena';
+    } else if (count === 1) {
+      badgeText = `🟡 1ª Quincena al día • Pendiente 2ª Quincena`;
+      buttonLabel = isIncome ? '⚡ Cobrar 2ª Quincena' : '⚡ Pagar 2ª Quincena';
+    } else {
+      badgeText = `✓ Ambas quincenas al día (2/2 en ${curMonthName})`;
+      nextPeriodLabel = `Quincena Extra (${count + 1}) de ${curMonthName}`;
+      buttonLabel = isIncome ? '+ Cobrar Quincena Extra' : '+ Pagar Quincena Extra';
+    }
+    return {
+      freq,
+      count,
+      targetCount: 2,
+      isCompleted,
+      badgeText,
+      badgeClass: isCompleted ? 'tag-badge text-success' : 'tag-badge text-warning',
+      nextPeriodLabel,
+      buttonLabel,
+      matchingTxs
+    };
+  }
+
+  if (freq === 'ANUAL') {
+    const isCompleted = count >= 1;
+    const badgeText = isCompleted
+      ? `✓ Al día en ${currentYear} (${formatDateDisplay(matchingTxs[0].date)})`
+      : `⏳ Pendiente en año ${currentYear}`;
+    const nextPeriodLabel = `Anualidad ${currentYear}`;
+    const buttonLabel = isCompleted
+      ? (isIncome ? '+ Cobro Anual Extra' : '+ Pago Anual Extra')
+      : (isIncome ? `⚡ Cobrar Anualidad (${currentYear})` : `⚡ Pagar Anualidad (${currentYear})`);
+    return {
+      freq,
+      count,
+      targetCount: 1,
+      isCompleted,
+      badgeText,
+      badgeClass: isCompleted ? 'tag-badge text-success' : 'tag-badge text-warning',
+      nextPeriodLabel,
+      buttonLabel,
+      matchingTxs
+    };
+  }
+
+  // MENSUAL
+  const isCompleted = count >= 1;
+  const badgeText = isCompleted
+    ? `✓ ${isIncome ? 'Cobrado este mes' : 'Pagado este mes'}`
+    : `⏳ Pendiente este mes (Día ${r.dueDay || 5})`;
+  const nextPeriodLabel = `Mes de ${curMonthName}`;
+  const buttonLabel = isCompleted
+    ? (isIncome ? '+ Cobro Extra en el Mes' : '+ Pago Extra en el Mes')
+    : (isIncome ? '⚡ Cobrar / Registrar Ingreso' : '⚡ Pagar / Registrar Gasto');
+
+  return {
+    freq,
+    count,
+    targetCount: 1,
+    isCompleted,
+    badgeText,
+    badgeClass: isCompleted ? 'tag-badge text-success' : 'tag-badge text-warning',
+    nextPeriodLabel,
+    buttonLabel,
+    matchingTxs
+  };
+}
+
+// GESTIÓN DEL MODAL PARA REGISTRAR PAGO/COBRO DE FINANZAS FIJAS CON MÉTODO Y PERIODO FLEXIBLES
 const recurringPayModal = document.getElementById('recurring-pay-modal');
 const btnCloseRecModal = document.getElementById('btn-close-rec-modal');
 const recurringPayForm = document.getElementById('recurring-pay-form');
 
-window.openRecurringPayModal = function(idOrIndex) {
+window.openRecurringPayModal = function(idOrIndex, explicitPeriod = null) {
   const strId = String(idOrIndex).trim();
   let targetR = recurringPayments.find(r => 
     r && (String(r.id) === strId || String(r.firestoreId) === strId || String(r.localId) === strId)
@@ -1543,13 +1693,22 @@ window.openRecurringPayModal = function(idOrIndex) {
   }
   if (!targetR) return;
 
+  const currentYM = getCurrentYearMonth();
+  const status = getRecurringPaymentStatus(targetR, transactions, currentYM);
+  const periodToUse = explicitPeriod || status.nextPeriodLabel || 'Cuota Regular';
+
   const isIncome = targetR.type === 'income';
   const idEl = document.getElementById('modal-rec-id');
   if (idEl) idEl.value = targetR.id || strId;
+  const periodEl = document.getElementById('modal-rec-period');
+  if (periodEl) periodEl.value = periodToUse;
+  const periodDisplay = document.getElementById('modal-rec-period-display');
+  if (periodDisplay) periodDisplay.textContent = periodToUse;
+
   const titleEl = document.getElementById('modal-rec-title');
   if (titleEl) titleEl.textContent = isIncome ? `Registrar Cobro: ${targetR.name}` : `Registrar Pago: ${targetR.name}`;
   const subEl = document.getElementById('modal-rec-subtitle');
-  if (subEl) subEl.textContent = `Compromiso ${(targetR.frequency || 'mensual').toLowerCase()} • Día ${targetR.dueDay} de cada mes`;
+  if (subEl) subEl.textContent = `${getRecurringScheduleSummary(targetR)} • ${status.badgeText}`;
   const iconEl = document.getElementById('modal-rec-icon');
   if (iconEl) iconEl.textContent = isIncome ? '🟢' : '🔴';
   const amtEl = document.getElementById('modal-rec-amount-display');
@@ -1574,7 +1733,7 @@ window.openRecurringPayModal = function(idOrIndex) {
 
   const submitBtn = document.getElementById('modal-rec-submit-btn');
   if (submitBtn) {
-    submitBtn.textContent = isIncome ? 'Confirmar Cobro / Ingreso' : 'Confirmar Pago / Gasto';
+    submitBtn.textContent = isIncome ? `Confirmar Cobro (${periodToUse})` : `Confirmar Pago (${periodToUse})`;
     submitBtn.className = isIncome ? 'btn btn-success' : 'btn btn-primary';
   }
 
@@ -1602,12 +1761,18 @@ if (recurringPayForm) {
     const chosenMethod = document.getElementById('modal-rec-account')?.value || targetR.paymentMethod || 'NEQUI';
     const chosenDate = document.getElementById('modal-rec-date')?.value || getTodayStr();
     const noteVal = document.getElementById('modal-rec-note')?.value?.trim() || '';
+    const periodVal = document.getElementById('modal-rec-period')?.value || '';
     const currentYM = chosenDate.substring(0, 7) || getCurrentYearMonth();
     const isIncome = targetR.type === 'income';
 
+    const descPrefix = isIncome ? 'INGRESO FIJO' : 'PAGO FIJO';
+    const descText = periodVal
+      ? `${descPrefix} (${periodVal}): ${targetR.name}${noteVal ? ` (${noteVal})` : ''}`
+      : `${descPrefix}: ${targetR.name}${noteVal ? ` (${noteVal})` : ''}`;
+
     await addTransactionLocallyOrCloud({
       type: isIncome ? 'income' : 'expense',
-      description: `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${targetR.name}${noteVal ? ` (${noteVal})` : ''}`,
+      description: descText,
       recurringId: targetR.id,
       recurringName: targetR.name,
       amount: targetR.amount,
@@ -1760,14 +1925,35 @@ window.openEditRecurringModal = function(idOrIndex) {
   if (!r && !isNaN(parseInt(idOrIndex, 10))) r = recurringPayments[parseInt(idOrIndex, 10)];
   if (!r) return;
 
+  const freq = (r.frequency || 'mensual').toLowerCase();
   document.getElementById('edit-rec-id').value = r.id || strId;
   document.getElementById('edit-rec-name').value = r.name || '';
   document.getElementById('edit-rec-amount').value = new Intl.NumberFormat('es-CO').format(r.amount || 0);
-  document.getElementById('edit-rec-day').value = r.dueDay || 1;
-  document.getElementById('edit-rec-frequency').value = (r.frequency || 'mensual').toLowerCase();
+  document.getElementById('edit-rec-frequency').value = freq;
   document.getElementById('edit-rec-method').value = r.paymentMethod || 'NEQUI';
   if (document.getElementById('edit-rec-category')) {
     document.getElementById('edit-rec-category').value = r.category || 'SERVICIOS';
+  }
+
+  // Pre-llenar campos específicos de frecuencia
+  if (document.getElementById('edit-rec-day')) {
+    document.getElementById('edit-rec-day').value = r.dueDay || 5;
+  }
+  if (document.getElementById('edit-rec-quincena-type')) {
+    document.getElementById('edit-rec-quincena-type').value = r.quincenaDays || '15 y 30';
+  }
+  if (document.getElementById('edit-rec-weekday')) {
+    document.getElementById('edit-rec-weekday').value = r.weekDay || 'Viernes';
+  }
+  if (document.getElementById('edit-rec-anual-month')) {
+    document.getElementById('edit-rec-anual-month').value = String(r.dueMonth || 12);
+  }
+  if (document.getElementById('edit-rec-anual-day')) {
+    document.getElementById('edit-rec-anual-day').value = r.dueDay || 15;
+  }
+
+  if (typeof updateRecurringScheduleUI === 'function') {
+    updateRecurringScheduleUI('edit');
   }
 
   if (recurringEditModal) recurringEditModal.classList.remove('hidden');
@@ -1789,10 +1975,32 @@ if (recurringEditForm) {
     const r = recurringPayments.find(item => item && (String(item.id) === String(id) || String(item.firestoreId) === String(id) || String(item.localId) === String(id)));
     if (!r) return;
 
+    const chosenFreq = (document.getElementById('edit-rec-frequency')?.value || 'mensual').toUpperCase();
+    let dueDay = 5;
+    let quincenaDays = null;
+    let weekDay = null;
+    let dueMonth = null;
+
+    if (chosenFreq === 'QUINCENAL') {
+      quincenaDays = document.getElementById('edit-rec-quincena-type')?.value || '15 y 30';
+      dueDay = 15;
+    } else if (chosenFreq === 'SEMANAL') {
+      weekDay = document.getElementById('edit-rec-weekday')?.value || 'Viernes';
+      dueDay = null;
+    } else if (chosenFreq === 'ANUAL') {
+      dueMonth = parseInt(document.getElementById('edit-rec-anual-month')?.value, 10) || 12;
+      dueDay = parseInt(document.getElementById('edit-rec-anual-day')?.value, 10) || 15;
+    } else {
+      dueDay = parseInt(document.getElementById('edit-rec-day')?.value, 10) || 5;
+    }
+
     r.name = document.getElementById('edit-rec-name').value.trim();
     r.amount = parseAmount(document.getElementById('edit-rec-amount').value) || r.amount;
-    r.dueDay = parseInt(document.getElementById('edit-rec-day').value, 10) || 1;
-    r.frequency = document.getElementById('edit-rec-frequency').value;
+    r.frequency = chosenFreq;
+    r.dueDay = dueDay;
+    r.quincenaDays = quincenaDays;
+    r.weekDay = weekDay;
+    r.dueMonth = dueMonth;
     r.paymentMethod = document.getElementById('edit-rec-method').value;
     if (document.getElementById('edit-rec-category')) {
       r.category = document.getElementById('edit-rec-category').value;
@@ -1807,8 +2015,11 @@ if (recurringEditForm) {
       await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), {
         name: r.name,
         amount: r.amount,
-        dueDay: r.dueDay,
         frequency: r.frequency,
+        dueDay: r.dueDay,
+        quincenaDays: r.quincenaDays || null,
+        weekDay: r.weekDay || null,
+        dueMonth: r.dueMonth || null,
         paymentMethod: r.paymentMethod,
         category: r.category
       }, { merge: true });
@@ -1843,14 +2054,28 @@ window.changeRecurringFrequency = async function(rId, newFreq) {
   const r = recurringPayments.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
   if (!r) return;
 
-  r.frequency = newFreq;
+  r.frequency = (newFreq || 'mensual').toUpperCase();
+  if (r.frequency === 'SEMANAL' && !r.weekDay) r.weekDay = 'Viernes';
+  if (r.frequency === 'QUINCENAL' && !r.quincenaDays) r.quincenaDays = '15 y 30';
+  if (r.frequency === 'ANUAL') {
+    if (!r.dueMonth) r.dueMonth = 12;
+    if (!r.dueDay) r.dueDay = 15;
+  }
+  if (r.frequency === 'MENSUAL' && !r.dueDay) r.dueDay = 5;
+
   localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
   renderRecurringPayments();
   showQuickToast(`🗓️ Frecuencia de "${r.name}" cambiada a ${newFreq}`);
 
   try {
     const docId = r.firestoreId || r.id;
-    await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), { frequency: newFreq }, { merge: true });
+    await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), {
+      frequency: r.frequency,
+      weekDay: r.weekDay || null,
+      quincenaDays: r.quincenaDays || null,
+      dueMonth: r.dueMonth || null,
+      dueDay: r.dueDay || null
+    }, { merge: true });
   } catch (err) {
     console.warn('Error guardando frecuencia en Firestore:', err);
   }
@@ -1860,24 +2085,45 @@ window.changeRecurringFrequency = async function(rId, newFreq) {
 activeDebtFilter = 'all'; // 'all' | 'payable' | 'receivable'
 
 window.setDebtFilter = function(filter) {
-  activeDebtFilter = filter;
+  activeDebtFilter = filter || 'all';
   document.querySelectorAll('.debts-filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filter);
+    btn.classList.toggle('active', btn.dataset.filter === activeDebtFilter);
   });
 
   const payableSec = document.getElementById('section-debts-payable');
   const receivableSec = document.getElementById('section-debts-receivable');
 
-  if (payableSec && receivableSec) {
-    if (filter === 'all') {
-      payableSec.style.display = 'block';
-      receivableSec.style.display = 'block';
-    } else if (filter === 'payable') {
-      payableSec.style.display = 'block';
-      receivableSec.style.display = 'none';
-    } else if (filter === 'receivable') {
-      payableSec.style.display = 'none';
-      receivableSec.style.display = 'block';
+  if (payableSec) {
+    if (activeDebtFilter === 'all' || activeDebtFilter === 'payable') {
+      payableSec.style.setProperty('display', 'block', 'important');
+      payableSec.classList.remove('hidden');
+    } else {
+      payableSec.style.setProperty('display', 'none', 'important');
+      payableSec.classList.add('hidden');
+    }
+  }
+
+  if (receivableSec) {
+    if (activeDebtFilter === 'all' || activeDebtFilter === 'receivable') {
+      receivableSec.style.setProperty('display', 'block', 'important');
+      receivableSec.classList.remove('hidden');
+    } else {
+      receivableSec.style.setProperty('display', 'none', 'important');
+      receivableSec.classList.add('hidden');
+    }
+  }
+
+  const debtsCountBadge = document.getElementById('debts-count-badge');
+  if (debtsCountBadge) {
+    const countAll = debts.length;
+    const countPayable = debts.filter(d => d && d.type !== 'debt_receivable').length;
+    const countReceivable = debts.filter(d => d && d.type === 'debt_receivable').length;
+    if (activeDebtFilter === 'payable') {
+      debtsCountBadge.textContent = `${countPayable} Por Pagar`;
+    } else if (activeDebtFilter === 'receivable') {
+      debtsCountBadge.textContent = `${countReceivable} Por Cobrar`;
+    } else {
+      debtsCountBadge.textContent = `${countAll} Activas (${countPayable} por pagar, ${countReceivable} por cobrar)`;
     }
   }
 };
@@ -2695,16 +2941,31 @@ const recurringFormTitle = document.getElementById('recurring-form-title');
 function setRecurringType(type) {
   if (!recTypeInput) return;
   recTypeInput.value = type;
-  if (type === 'income') {
+  const isIncome = type === 'income';
+  if (isIncome) {
     btnTypeIncome?.classList.add('active', 'income');
     btnTypeExpense?.classList.remove('active', 'expense');
     if (recNameLabel) recNameLabel.textContent = 'Nombre del Ingreso Fijo o Sueldo';
-    if (recNameInput) recNameInput.placeholder = 'Ej: Sueldo empresa, Honorarios fijos, Renta cobrada';
+    if (recNameInput) recNameInput.placeholder = 'Ej: Sueldo mensual/quincenal, Salario, Renta, Honorarios';
     if (btnSubmitRecurring) {
       btnSubmitRecurring.textContent = 'Guardar Ingreso Fijo';
       btnSubmitRecurring.className = 'btn btn-success';
     }
     if (recurringFormTitle) recurringFormTitle.textContent = 'Registrar Ingreso Fijo (Sueldo / Entrada)';
+
+    const dayLabel = document.getElementById('rec-day-label');
+    if (dayLabel) dayLabel.textContent = 'Día del Mes de Cobro';
+    const dayHint = document.getElementById('rec-day-hint');
+    if (dayHint) dayHint.textContent = 'Día en que se cobra cada mes';
+
+    const quincenaLabel = document.querySelector('label[for="rec-quincena-type"]');
+    if (quincenaLabel) quincenaLabel.textContent = 'Fechas de Cobro Quincenal';
+
+    const weekdayLabel = document.querySelector('label[for="rec-weekday"]');
+    if (weekdayLabel) weekdayLabel.textContent = 'Día de Cobro Semanal';
+
+    const anualLabel = document.querySelector('label[for="rec-anual-month"]');
+    if (anualLabel) anualLabel.textContent = 'Mes de Cobro Anual';
   } else {
     btnTypeExpense?.classList.add('active', 'expense');
     btnTypeIncome?.classList.remove('active', 'income');
@@ -2715,7 +2976,60 @@ function setRecurringType(type) {
       btnSubmitRecurring.className = 'btn btn-danger';
     }
     if (recurringFormTitle) recurringFormTitle.textContent = 'Registrar Gasto Fijo o Suscripción';
+
+    const dayLabel = document.getElementById('rec-day-label');
+    if (dayLabel) dayLabel.textContent = 'Día del Mes de Pago';
+    const dayHint = document.getElementById('rec-day-hint');
+    if (dayHint) dayHint.textContent = 'Día en que se paga cada mes';
+
+    const quincenaLabel = document.querySelector('label[for="rec-quincena-type"]');
+    if (quincenaLabel) quincenaLabel.textContent = 'Cortes de Pago Quincenal';
+
+    const weekdayLabel = document.querySelector('label[for="rec-weekday"]');
+    if (weekdayLabel) weekdayLabel.textContent = 'Día de Pago Semanal';
+
+    const anualLabel = document.querySelector('label[for="rec-anual-month"]');
+    if (anualLabel) anualLabel.textContent = 'Mes de Pago Anual';
   }
+}
+
+// CONTROL DINÁMICO DE SELECTORES SEGÚN FRECUENCIA (MENSUAL, QUINCENAL, SEMANAL, ANUAL)
+function updateRecurringScheduleUI(context = 'create') {
+  if (context === 'create') {
+    const freqEl = document.getElementById('rec-frequency');
+    const freq = (freqEl?.value || 'MENSUAL').toUpperCase();
+    const dayGroup = document.getElementById('rec-day-group');
+    const quincenaGroup = document.getElementById('rec-quincena-group');
+    const weekdayGroup = document.getElementById('rec-weekday-group');
+    const anualGroup = document.getElementById('rec-anual-group');
+
+    if (dayGroup) dayGroup.classList.toggle('hidden', freq !== 'MENSUAL');
+    if (quincenaGroup) quincenaGroup.classList.toggle('hidden', freq !== 'QUINCENAL');
+    if (weekdayGroup) weekdayGroup.classList.toggle('hidden', freq !== 'SEMANAL');
+    if (anualGroup) anualGroup.classList.toggle('hidden', freq !== 'ANUAL');
+  } else {
+    const freqEl = document.getElementById('edit-rec-frequency');
+    const freq = (freqEl?.value || 'mensual').toUpperCase();
+    const dayGroup = document.getElementById('edit-rec-day-group');
+    const quincenaGroup = document.getElementById('edit-rec-quincena-group');
+    const weekdayGroup = document.getElementById('edit-rec-weekday-group');
+    const anualGroup = document.getElementById('edit-rec-anual-group');
+
+    if (dayGroup) dayGroup.classList.toggle('hidden', freq !== 'MENSUAL');
+    if (quincenaGroup) quincenaGroup.classList.toggle('hidden', freq !== 'QUINCENAL');
+    if (weekdayGroup) weekdayGroup.classList.toggle('hidden', freq !== 'SEMANAL');
+    if (anualGroup) anualGroup.classList.toggle('hidden', freq !== 'ANUAL');
+  }
+}
+window.updateRecurringScheduleUI = updateRecurringScheduleUI;
+
+const recFrequencySelect = document.getElementById('rec-frequency');
+if (recFrequencySelect) {
+  recFrequencySelect.addEventListener('change', () => updateRecurringScheduleUI('create'));
+}
+const editRecFrequencySelect = document.getElementById('edit-rec-frequency');
+if (editRecFrequencySelect) {
+  editRecFrequencySelect.addEventListener('change', () => updateRecurringScheduleUI('edit'));
 }
 
 if (btnTypeExpense) btnTypeExpense.addEventListener('click', () => setRecurringType('expense'));
@@ -4071,12 +4385,30 @@ if (recurringForm) {
     const nameVal = document.getElementById('rec-name').value.trim();
     const typeVal = document.getElementById('rec-type').value;
     const amountVal = parseAmount(document.getElementById('rec-amount').value);
-    const freqVal = document.getElementById('rec-frequency').value;
-    const dayVal = parseInt(document.getElementById('rec-day').value) || 1;
+    const freqVal = (document.getElementById('rec-frequency')?.value || 'MENSUAL').toUpperCase();
     const catVal = document.getElementById('rec-category').value;
     const methodVal = document.getElementById('rec-method').value;
 
+    if (!nameVal) return alert('Ingresa un nombre para el registro fijo');
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido');
+
+    let dueDay = 5;
+    let quincenaDays = null;
+    let weekDay = null;
+    let dueMonth = null;
+
+    if (freqVal === 'QUINCENAL') {
+      quincenaDays = document.getElementById('rec-quincena-type')?.value || '15 y 30';
+      dueDay = 15;
+    } else if (freqVal === 'SEMANAL') {
+      weekDay = document.getElementById('rec-weekday')?.value || 'Viernes';
+      dueDay = null;
+    } else if (freqVal === 'ANUAL') {
+      dueMonth = parseInt(document.getElementById('rec-anual-month')?.value, 10) || 12;
+      dueDay = parseInt(document.getElementById('rec-anual-day')?.value, 10) || 15;
+    } else {
+      dueDay = parseInt(document.getElementById('rec-day')?.value, 10) || 5;
+    }
 
     const localId = 'rec_' + Date.now();
     const rData = {
@@ -4088,7 +4420,10 @@ if (recurringForm) {
       type: typeVal,
       amount: amountVal,
       frequency: freqVal,
-      dueDay: dayVal,
+      dueDay: dueDay,
+      quincenaDays: quincenaDays,
+      weekDay: weekDay,
+      dueMonth: dueMonth,
       category: catVal,
       paymentMethod: methodVal,
       lastPaidMonth: '',
@@ -4116,6 +4451,7 @@ if (recurringForm) {
 
     recurringForm.reset();
     setRecurringType('expense');
+    updateRecurringScheduleUI('create');
   });
 }
 
@@ -4383,9 +4719,19 @@ function renderRecurringPayments() {
   let totalFixedExpenses = 0;
   let totalFixedIncomes = 0;
 
+  function getMonthlyEquivalent(r) {
+    const freq = (r.frequency || 'mensual').toUpperCase();
+    const amt = r.amount || 0;
+    if (freq === 'SEMANAL') return amt * 4;
+    if (freq === 'QUINCENAL') return amt * 2;
+    if (freq === 'ANUAL') return amt / 12;
+    return amt;
+  }
+
   recurringPayments.forEach(r => {
-    if (r.type === 'income') totalFixedIncomes += (r.amount || 0);
-    else totalFixedExpenses += (r.amount || 0);
+    const monthlyAmt = getMonthlyEquivalent(r);
+    if (r.type === 'income') totalFixedIncomes += monthlyAmt;
+    else totalFixedExpenses += monthlyAmt;
   });
 
   const netFixedFlow = totalFixedIncomes - totalFixedExpenses;
@@ -4415,25 +4761,17 @@ function renderRecurringPayments() {
   recurringContainer.innerHTML = '';
   filteredItems.forEach((r) => {
     const isIncome = r.type === 'income';
-    // Determinar si fue saldado este mes verificando la presencia real de la transacción activa en el mes
-    const hasMatchingTxThisMonth = transactions.some(t => {
-      if (!t.date || !t.date.startsWith(currentYM)) return false;
-      if (t.recurringId && (String(t.recurringId) === String(r.id) || String(t.recurringId) === String(r.firestoreId))) return true;
-      const expectedDesc = `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${r.name}`.toLowerCase();
-      const desc = (t.description || '').toLowerCase();
-      return desc === expectedDesc || (r.name && desc.includes(r.name.toLowerCase()) && (desc.includes('fijo') || desc.includes('recurrente')));
-    });
-
-    // La transacción activa en el mes es la verdad absoluta. Si el usuario la eliminó en Ingresos y Gastos,
-    // el compromiso debe volver de inmediato a 'Pendiente este mes' y no quedarse marcado como pagado.
-    const isPaidThisMonth = hasMatchingTxThisMonth;
-    if (!hasMatchingTxThisMonth && r.lastPaidMonth === currentYM) {
-      r.lastPaidMonth = null;
-    }
+    const status = getRecurringPaymentStatus(r, transactions, currentYM);
     const rIdentifier = `'${r.id}'`;
 
+    if (status.isCompleted && r.lastPaidMonth !== currentYM) {
+      r.lastPaidMonth = currentYM;
+    } else if (!status.isCompleted && r.lastPaidMonth === currentYM) {
+      r.lastPaidMonth = null;
+    }
+
     const card = document.createElement('div');
-    card.className = `recurring-card ${isPaidThisMonth ? 'paid' : 'pending'}`;
+    card.className = `recurring-card ${status.isCompleted ? 'paid' : 'pending'}`;
     card.innerHTML = `
       <div class="recurring-top">
         <div>
@@ -4444,7 +4782,7 @@ function renderRecurringPayments() {
           </div>
           <div class="recurring-name">${r.name}</div>
           <div class="recurring-meta" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-            <span>Día ${r.dueDay}</span> &bull;
+            <span style="font-weight: 600; color: var(--text-main);">${getRecurringScheduleSummary(r)}</span> &bull;
             <span>${r.category}</span> &bull;
             <select class="tag-badge-select" onchange="changeRecurringMethod(${rIdentifier}, this.value)" title="Cambiar método de pago habitual">
               <option value="NEQUI" ${(r.paymentMethod||'NEQUI')==='NEQUI'?'selected':''}>🟣 Nequi</option>
@@ -4471,22 +4809,36 @@ function renderRecurringPayments() {
 
       <div class="recurring-amount ${isIncome ? 'text-success' : 'text-danger'}">
         ${formatCurrency(r.amount)} <small style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">/ ${(r.frequency || 'mensual').toLowerCase()}</small>
+        ${(r.frequency || 'mensual').toLowerCase() !== 'mensual' ? `
+          <small style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal; margin-left: 6px;">(~${formatCurrency(getMonthlyEquivalent(r))}/mes)</small>
+        ` : ''}
       </div>
+
+      ${status.matchingTxs && status.matchingTxs.length > 0 ? `
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: -4px; margin-bottom: 4px;">
+          ${status.matchingTxs.map((tx, idx) => `
+            <span class="tag-badge text-success" style="font-size: 0.68rem; padding: 2px 7px; background: rgba(52, 199, 89, 0.12); border: 0.5px solid rgba(52, 199, 89, 0.25);" title="${tx.date}: ${tx.description}">
+              ✓ ${status.freq === 'SEMANAL' ? `Sem. ${idx + 1}` : status.freq === 'QUINCENAL' ? `Quinc. ${idx + 1}` : status.freq === 'ANUAL' ? 'Anual' : 'Pagado'} (${formatDateDisplay(tx.date)} &bull; ${formatCurrency(tx.amount)})
+            </span>
+          `).join('')}
+        </div>
+      ` : ''}
 
       <div class="recurring-footer">
         <div>
-          ${isPaidThisMonth
-            ? `<span class="tag-badge text-success">✓ ${isIncome ? 'Cobrado este mes' : 'Pagado este mes'}</span>`
-            : `<span class="tag-badge text-warning">⏳ ${isIncome ? 'Pendiente por cobrar' : 'Pendiente este mes'}</span>`
-          }
+          <span class="${status.badgeClass}">${status.badgeText}</span>
         </div>
-        ${!isPaidThisMonth ? `
-          <button class="btn-quick-pay" style="${isIncome ? 'background: var(--success-color);' : ''}" onclick="openRecurringPayModal(${rIdentifier})">
-            ${isIncome ? '⚡ Cobrar / Registrar Ingreso' : '⚡ Pagar / Registrar Gasto'}
-          </button>
-        ` : `
-          <small style="color: var(--text-muted); font-size: 0.7rem;">Registrado en movimientos</small>
-        `}
+        <div>
+          ${!status.isCompleted ? `
+            <button class="btn-quick-pay" style="${isIncome ? 'background: var(--success-color);' : ''}" onclick="openRecurringPayModal(${rIdentifier})">
+              ${status.buttonLabel}
+            </button>
+          ` : `
+            <button class="btn-quick-pay" style="background: rgba(120, 120, 128, 0.2); color: var(--text-main); border: 1px solid var(--border-color); font-size: 0.75rem; padding: 5px 10px;" onclick="openRecurringPayModal(${rIdentifier})">
+              ${status.buttonLabel || (isIncome ? '+ Cobro Extra' : '+ Pago Extra')}
+            </button>
+          `}
+        </div>
       </div>
     `;
     recurringContainer.appendChild(card);
@@ -4738,11 +5090,11 @@ function renderAccelerationSuggestions(pending) {
 
 // ACTUALIZACION GENERAL DE LA INTERFAZ
 function updateUI() {
-  if (!incomeList || !expenseList || !debtList) return;
+  if (!incomeList || !expenseList) return;
 
   incomeList.innerHTML = '';
   expenseList.innerHTML = '';
-  debtList.innerHTML = '';
+  if (debtList) debtList.innerHTML = '';
   dashboardSummaryList.innerHTML = '';
   alertsContainer.innerHTML = '';
 
@@ -5214,7 +5566,6 @@ function updateUI() {
     } else {
       if (debtPayableList) debtPayableList.appendChild(row);
     }
-    if (debtList) debtList.appendChild(row.cloneNode(true));
   });
 
   // Estados vacíos elegantes si no hay registros
@@ -5684,5 +6035,6 @@ function renderCalendar() {
 }
 
 // INICIALIZACION
+updateRecurringScheduleUI('create');
 updateUI();
 syncClientTotalsToServer();

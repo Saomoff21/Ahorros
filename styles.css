@@ -1317,6 +1317,11 @@ body {
   font-weight: 700;
 }
 
+#section-debts-payable.hidden,
+#section-debts-receivable.hidden {
+  display: none !important;
+}
+
 /* SELECTOR EMBEBIDO ESTILO BADGE PARA FRECUENCIA Y METODOS DE PAGO EN TABLAS Y CARDS */
 .tag-badge-select {
   appearance: none;

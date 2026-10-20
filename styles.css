@@ -1471,6 +1471,55 @@ tbody tr:hover {
   color: var(--primary-color);
 }
 
+.btn-edit {
+  background: transparent;
+  color: var(--text-muted);
+  border: 0.5px solid var(--border-color);
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-edit:hover,
+.btn-edit:active {
+  background: rgba(10, 132, 255, 0.14);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-edit-text {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--text-main);
+  border: 0.5px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-edit-text:hover {
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
 .tag-badge {
   display: inline-block;
   font-size: 0.68rem;
@@ -1782,7 +1831,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 99999;
   padding: 16px;
   opacity: 1;
   transition: opacity 0.15s ease;
@@ -2052,7 +2101,8 @@ tbody tr:hover {
   transition: all 0.15s;
 }
 
-.amount-chip:hover {
+.amount-chip:hover,
+.amount-chip.active {
   background: var(--primary-color);
   color: #fff;
   border-color: var(--primary-color);

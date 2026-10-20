@@ -1108,12 +1108,12 @@
       <!-- TABLA DETALLADA DE DEUDAS Y PLANES -->
       <div class="panel-card border-purple">
         <div class="panel-header">
-          <h2>Obligaciones y Planes de Aceleración de Pago</h2>
+          <h2>Control y Detalle de Obligaciones Financieras</h2>
           <span id="debts-count-badge" class="tag-badge">0 Activas</span>
         </div>
 
         <!-- SELECTOR DE FILTRO: TODAS VS POR PAGAR (DEBO) VS POR COBRAR (ME DEBEN) -->
-        <div style="padding: 14px 20px 4px 20px;">
+        <div style="padding: 14px 20px 10px 20px;">
           <div class="debts-filter-tabs" id="debts-filter-tabs" aria-label="Filtrar tipo de deuda">
             <button type="button" class="debts-filter-btn active" data-filter="all" id="btn-debt-filter-all">
               <span>📋 Todas las Obligaciones</span>
@@ -1130,20 +1130,68 @@
           </div>
         </div>
 
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Obligación / Fechas</th>
-                <th>Progreso / Cuotas / Plan de Aceleración</th>
-                <th>Saldo Pendiente</th>
-                <th>Registrar Abono</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="debt-list"></tbody>
-          </table>
+        <!-- SECCIÓN 1: DEUDAS POR PAGAR (DEBO) -->
+        <div id="section-debts-payable" style="padding: 0 16px 20px 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 10px 16px; background: rgba(255, 69, 58, 0.08); border: 0.5px solid rgba(255, 69, 58, 0.25); border-radius: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.15rem;">🔻</span>
+              <div>
+                <strong style="color: var(--danger-color); font-size: 0.95rem;">Obligaciones Por Pagar (Lo que debo)</strong>
+                <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">Préstamos, tarjetas y compras a cuotas que debes cancelar</small>
+              </div>
+            </div>
+            <span id="debts-payable-count-badge" class="tag-badge text-danger" style="background: rgba(255, 69, 58, 0.16); font-weight: 700;">0 Por Pagar</span>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Acreedor / Fechas</th>
+                  <th>Frecuencia & Método</th>
+                  <th>Progreso / Cuotas / Aceleración</th>
+                  <th>Saldo Pendiente</th>
+                  <th>Registrar Abono</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="debt-payable-list"></tbody>
+            </table>
+          </div>
         </div>
+
+        <!-- SECCIÓN 2: CUENTAS POR COBRAR (ME DEBEN) -->
+        <div id="section-debts-receivable" style="padding: 0 16px 16px 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 10px 16px; background: rgba(48, 209, 88, 0.08); border: 0.5px solid rgba(48, 209, 88, 0.25); border-radius: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.15rem;">🟢</span>
+              <div>
+                <strong style="color: var(--success-color); font-size: 0.95rem;">Cuentas Por Cobrar (Dinero que me deben a favor)</strong>
+                <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">Dinero que prestaste a familiares, clientes o amigos por recaudar</small>
+              </div>
+            </div>
+            <span id="debts-receivable-count-badge" class="tag-badge text-success" style="background: rgba(48, 209, 88, 0.16); font-weight: 700;">0 Por Cobrar</span>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Deudor / Fechas</th>
+                  <th>Frecuencia & Método</th>
+                  <th>Progreso / Recaudos</th>
+                  <th>Saldo por Cobrar</th>
+                  <th>Registrar Cobro</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="debt-receivable-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mantenemos debt-list oculto para compatibilidad defensiva -->
+        <table style="display: none;"><tbody id="debt-list"></tbody></table>
       </div>
     </section>
 
@@ -1392,12 +1440,21 @@
 
         <div class="form-group">
           <label for="modal-debt-account" id="modal-debt-account-label">Cuenta de Pago (¿De dónde sale el dinero?)</label>
+          <div class="amount-chips-row" style="margin-bottom: 8px;">
+            <button type="button" class="amount-chip debt-acc-chip" data-acc="NEQUI">🟣 Nequi</button>
+            <button type="button" class="amount-chip debt-acc-chip" data-acc="DAVIPLATA">🔴 Daviplata</button>
+            <button type="button" class="amount-chip debt-acc-chip" data-acc="EFECTIVO">💵 Efectivo</button>
+            <button type="button" class="amount-chip debt-acc-chip" data-acc="BANCO">🏦 Banco</button>
+            <button type="button" class="amount-chip debt-acc-chip" data-acc="TARJETA_DEBITO">💳 Débito</button>
+            <button type="button" class="amount-chip debt-acc-chip" data-acc="TARJETA_CREDITO">💳 Crédito</button>
+          </div>
           <select id="modal-debt-account" required>
             <option value="BANCO">🏦 Banco / PSE / Cuenta</option>
             <option value="EFECTIVO">💵 Efectivo (Físico en mano)</option>
             <option value="NEQUI">🟣 Nequi</option>
             <option value="DAVIPLATA">🔴 Daviplata</option>
             <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+            <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
             <option value="OTRO">⚙️ Otro Método</option>
           </select>
         </div>
@@ -1431,7 +1488,7 @@
             <small id="modal-rec-subtitle" style="color: var(--text-muted); font-size: 0.72rem;">Compromiso este mes</small>
           </div>
         </div>
-        <button id="btn-close-rec-modal" class="modal-close-btn">&times;</button>
+        <button id="btn-close-rec-modal" class="modal-close-btn" type="button">&times;</button>
       </div>
 
       <form id="recurring-pay-form" class="app-form" style="padding: 0;">
@@ -1446,6 +1503,14 @@
 
         <div class="form-group">
           <label for="modal-rec-account" id="modal-rec-account-label">Cuenta o Método de Pago para este Mes</label>
+          <div class="amount-chips-row" style="margin-bottom: 8px;">
+            <button type="button" class="amount-chip rec-acc-chip" data-acc="NEQUI">🟣 Nequi</button>
+            <button type="button" class="amount-chip rec-acc-chip" data-acc="DAVIPLATA">🔴 Daviplata</button>
+            <button type="button" class="amount-chip rec-acc-chip" data-acc="EFECTIVO">💵 Efectivo</button>
+            <button type="button" class="amount-chip rec-acc-chip" data-acc="BANCO">🏦 Banco</button>
+            <button type="button" class="amount-chip rec-acc-chip" data-acc="TARJETA_DEBITO">💳 Débito</button>
+            <button type="button" class="amount-chip rec-acc-chip" data-acc="TARJETA_CREDITO">💳 Crédito</button>
+          </div>
           <select id="modal-rec-account" required>
             <option value="NEQUI">🟣 Nequi</option>
             <option value="DAVIPLATA">🔴 Daviplata</option>
@@ -1455,6 +1520,7 @@
             <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
             <option value="OTRO">⚙️ Otro Método</option>
           </select>
+          <small style="color: var(--text-muted); font-size: 0.7rem;">Puedes cambiar libremente con qué cuenta pagaste o cobraste este mes.</small>
         </div>
 
         <div class="form-row">
@@ -1470,6 +1536,158 @@
 
         <button type="submit" id="modal-rec-submit-btn" class="btn btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.95rem; font-weight: 700; padding: 12px;">
           Confirmar y Registrar en Movimientos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR OBLIGACIÓN / DEUDA (CAMBIAR FRECUENCIA, MÉTODO, CUOTAS SIN ELIMINAR) -->
+  <div id="debt-edit-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">✏️</span>
+          <div>
+            <h2 id="modal-debt-edit-title" style="font-size: 1.05rem; font-weight: 800;">Editar Obligación</h2>
+            <small style="color: var(--text-muted); font-size: 0.72rem;">Modifica frecuencia, método de pago habitual o cuotas sin perder abonos</small>
+          </div>
+        </div>
+        <button id="btn-close-debt-edit-modal" class="modal-close-btn" type="button">&times;</button>
+      </div>
+
+      <form id="debt-edit-form" class="app-form" style="padding: 0;">
+        <input type="hidden" id="edit-debt-id">
+
+        <div class="form-group">
+          <label for="edit-debt-name" id="edit-debt-name-label">Nombre de la Obligación</label>
+          <input type="text" id="edit-debt-name" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-debt-frequency">Frecuencia de Pagos / Cobros</label>
+            <select id="edit-debt-frequency">
+              <option value="mensual">🗓️ Mensual (Cada mes)</option>
+              <option value="quincenal">🗓️ Quincenal (Cada 15 días)</option>
+              <option value="semanal">🗓️ Semanal (Cada semana)</option>
+              <option value="diario">🗓️ Diario (Cada día)</option>
+              <option value="anual">🗓️ Anual (Cada año)</option>
+              <option value="libre">🗓️ Libre / Sin fecha fija</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-debt-method">Método de Pago Habitual</label>
+            <select id="edit-debt-method">
+              <option value="NEQUI">🟣 Nequi</option>
+              <option value="DAVIPLATA">🔴 Daviplata</option>
+              <option value="BANCO">🏦 Banco / PSE / Cuenta</option>
+              <option value="EFECTIVO">💵 Efectivo (En mano)</option>
+              <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+              <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
+              <option value="OTRO">⚙️ Otro Método</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-debt-installments">Número de Cuotas</label>
+            <input type="number" id="edit-debt-installments" min="1" max="120" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-debt-interest">% Interés</label>
+            <input type="number" id="edit-debt-interest" min="0" max="100" step="0.1" value="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-debt-start-date">Fecha Primer Cobro / Vencimiento</label>
+          <input type="date" id="edit-debt-start-date" required>
+        </div>
+
+        <button type="submit" class="btn btn-purple" style="margin-top: 10px; width: 100%; font-size: 0.95rem; font-weight: 700; padding: 12px;">
+          Guardar Cambios de la Obligación
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR FINANZA FIJA (CAMBIAR MÉTODO, FRECUENCIA O MONTO SIN ELIMINAR) -->
+  <div id="recurring-edit-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">✏️</span>
+          <div>
+            <h2 id="modal-rec-edit-title" style="font-size: 1.05rem; font-weight: 800;">Editar Finanza Fija</h2>
+            <small style="color: var(--text-muted); font-size: 0.72rem;">Modifica monto, frecuencia o método habitual sin tener que borrar el registro</small>
+          </div>
+        </div>
+        <button id="btn-close-rec-edit-modal" class="modal-close-btn" type="button">&times;</button>
+      </div>
+
+      <form id="recurring-edit-form" class="app-form" style="padding: 0;">
+        <input type="hidden" id="edit-rec-id">
+
+        <div class="form-group">
+          <label for="edit-rec-name">Nombre / Concepto</label>
+          <input type="text" id="edit-rec-name" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-rec-amount">Monto ($ COP)</label>
+            <input type="text" id="edit-rec-amount" class="currency-input" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-rec-day">Día del Mes</label>
+            <input type="number" id="edit-rec-day" min="1" max="31" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-rec-frequency">Frecuencia</label>
+            <select id="edit-rec-frequency">
+              <option value="mensual">🗓️ Mensual (Cada mes)</option>
+              <option value="quincenal">🗓️ Quincenal (Cada 15 días)</option>
+              <option value="semanal">🗓️ Semanal (Cada semana)</option>
+              <option value="anual">🗓️ Anual (Cada año)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-rec-method">Método de Pago Habitual</label>
+            <select id="edit-rec-method">
+              <option value="NEQUI">🟣 Nequi</option>
+              <option value="DAVIPLATA">🔴 Daviplata</option>
+              <option value="BANCO">🏦 Banco / PSE / Débito Automático</option>
+              <option value="EFECTIVO">💵 Efectivo (En mano)</option>
+              <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+              <option value="TARJETA_CREDITO">💳 Tarjeta de Crédito</option>
+              <option value="OTRO">⚙️ Otro Método</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-rec-category">Categoría</label>
+          <select id="edit-rec-category">
+            <option value="SERVICIOS">Servicios Públicos (Agua, Luz, Gas, Internet)</option>
+            <option value="VIVIENDA">Vivienda (Arriendo, Administración)</option>
+            <option value="SUSCRIPCIONES">Suscripciones (Netflix, Spotify, etc.)</option>
+            <option value="EDUCACION">Educación / Cursos</option>
+            <option value="SEGUROS">Seguros / Salud</option>
+            <option value="TRANSPORTE">Transporte / Movilidad</option>
+            <option value="SALARIO">Salario / Nómina (Ingreso Fijo)</option>
+            <option value="HONORARIOS">Honorarios / Rentas</option>
+            <option value="OTROS">Otros Gastos Fijos</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.95rem; font-weight: 700; padding: 12px;">
+          Guardar Cambios
         </button>
       </form>
     </div>

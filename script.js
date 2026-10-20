@@ -1369,6 +1369,20 @@ window.openDebtActionModal = function(idOrIndex, defaultAmount = null) {
     }
   }
 
+  // Pre-seleccionar cuenta/método habitual o por defecto
+  const preferredAccount = targetDebt.method || targetDebt.paymentMethod || (isReceivable ? 'NEQUI' : 'BANCO');
+  if (modalDebtAccount) {
+    modalDebtAccount.value = preferredAccount;
+  }
+  document.querySelectorAll('.debt-acc-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.acc === preferredAccount);
+    btn.onclick = () => {
+      document.querySelectorAll('.debt-acc-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (modalDebtAccount) modalDebtAccount.value = btn.dataset.acc;
+    };
+  });
+
   // Prellenar monto si se pasó un monto explícito o cuota sugerida
   let initialAmount = pending > 0 ? Math.min(pending, suggestedQuota) : 0;
   if (defaultAmount !== null && defaultAmount !== undefined) {
@@ -1513,6 +1527,391 @@ if (debtActionForm) {
     syncClientTotalsToServer();
   });
 }
+
+// GESTIÓN DEL MODAL PARA REGISTRAR PAGO/COBRO DE FINANZAS FIJAS CON MÉTODO FLEXIBLE
+const recurringPayModal = document.getElementById('recurring-pay-modal');
+const btnCloseRecModal = document.getElementById('btn-close-rec-modal');
+const recurringPayForm = document.getElementById('recurring-pay-form');
+
+window.openRecurringPayModal = function(idOrIndex) {
+  const strId = String(idOrIndex).trim();
+  let targetR = recurringPayments.find(r => 
+    r && (String(r.id) === strId || String(r.firestoreId) === strId || String(r.localId) === strId)
+  );
+  if (!targetR && !isNaN(parseInt(idOrIndex, 10))) {
+    targetR = recurringPayments[parseInt(idOrIndex, 10)];
+  }
+  if (!targetR) return;
+
+  const isIncome = targetR.type === 'income';
+  const idEl = document.getElementById('modal-rec-id');
+  if (idEl) idEl.value = targetR.id || strId;
+  const titleEl = document.getElementById('modal-rec-title');
+  if (titleEl) titleEl.textContent = isIncome ? `Registrar Cobro: ${targetR.name}` : `Registrar Pago: ${targetR.name}`;
+  const subEl = document.getElementById('modal-rec-subtitle');
+  if (subEl) subEl.textContent = `Compromiso ${(targetR.frequency || 'mensual').toLowerCase()} • Día ${targetR.dueDay} de cada mes`;
+  const iconEl = document.getElementById('modal-rec-icon');
+  if (iconEl) iconEl.textContent = isIncome ? '🟢' : '🔴';
+  const amtEl = document.getElementById('modal-rec-amount-display');
+  if (amtEl) amtEl.textContent = formatCurrency(targetR.amount || 0);
+  const dateEl = document.getElementById('modal-rec-date');
+  if (dateEl) dateEl.value = getTodayStr();
+  const noteEl = document.getElementById('modal-rec-note');
+  if (noteEl) noteEl.value = '';
+
+  const defaultMethod = targetR.paymentMethod || (isIncome ? 'BANCO' : 'NEQUI');
+  const accSelect = document.getElementById('modal-rec-account');
+  if (accSelect) accSelect.value = defaultMethod;
+
+  document.querySelectorAll('.rec-acc-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.acc === defaultMethod);
+    btn.onclick = () => {
+      document.querySelectorAll('.rec-acc-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (accSelect) accSelect.value = btn.dataset.acc;
+    };
+  });
+
+  const submitBtn = document.getElementById('modal-rec-submit-btn');
+  if (submitBtn) {
+    submitBtn.textContent = isIncome ? 'Confirmar Cobro / Ingreso' : 'Confirmar Pago / Gasto';
+    submitBtn.className = isIncome ? 'btn btn-success' : 'btn btn-primary';
+  }
+
+  if (recurringPayModal) recurringPayModal.classList.remove('hidden');
+};
+
+if (btnCloseRecModal && recurringPayModal) {
+  btnCloseRecModal.addEventListener('click', () => {
+    recurringPayModal.classList.add('hidden');
+  });
+  recurringPayModal.addEventListener('click', (e) => {
+    if (e.target === recurringPayModal) recurringPayModal.classList.add('hidden');
+  });
+}
+
+if (recurringPayForm) {
+  recurringPayForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('modal-rec-id')?.value;
+    const targetR = recurringPayments.find(r => 
+      r && (String(r.id) === String(id) || String(r.firestoreId) === String(id) || String(r.localId) === String(id))
+    );
+    if (!targetR) return;
+
+    const chosenMethod = document.getElementById('modal-rec-account')?.value || targetR.paymentMethod || 'NEQUI';
+    const chosenDate = document.getElementById('modal-rec-date')?.value || getTodayStr();
+    const noteVal = document.getElementById('modal-rec-note')?.value?.trim() || '';
+    const currentYM = chosenDate.substring(0, 7) || getCurrentYearMonth();
+    const isIncome = targetR.type === 'income';
+
+    await addTransactionLocallyOrCloud({
+      type: isIncome ? 'income' : 'expense',
+      description: `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${targetR.name}${noteVal ? ` (${noteVal})` : ''}`,
+      recurringId: targetR.id,
+      recurringName: targetR.name,
+      amount: targetR.amount,
+      category: targetR.category,
+      paymentMethod: chosenMethod,
+      date: chosenDate
+    });
+
+    targetR.lastPaidMonth = currentYM;
+    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+    renderRecurringPayments();
+
+    try {
+      const rRef = doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.firestoreId || targetR.id);
+      await setDoc(rRef, {
+        vaultId: activeVaultId,
+        ...targetR,
+        lastPaidMonth: currentYM
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Error actualizando compromiso fijo en Firestore:', err);
+    }
+
+    if (recurringPayModal) recurringPayModal.classList.add('hidden');
+    recurringPayForm.reset();
+    showQuickToast(`⚡ ${isIncome ? 'Cobro' : 'Pago'} de "${targetR.name}" registrado con ${chosenMethod}`);
+  });
+}
+
+// MODAL Y GESTIÓN PARA EDITAR DEUDA / OBLIGACIÓN SIN ELIMINAR
+const debtEditModal = document.getElementById('debt-edit-modal');
+const btnCloseDebtEditModal = document.getElementById('btn-close-debt-edit-modal');
+const debtEditForm = document.getElementById('debt-edit-form');
+
+window.openEditDebtModal = function(idOrIndex) {
+  const strId = String(idOrIndex).trim();
+  let d = debts.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
+  if (!d && !isNaN(parseInt(idOrIndex, 10))) d = debts[parseInt(idOrIndex, 10)];
+  if (!d) return;
+
+  const isReceivable = d.type === 'debt_receivable';
+  document.getElementById('edit-debt-id').value = d.id || strId;
+  document.getElementById('edit-debt-name').value = d.name || '';
+  const labelEl = document.getElementById('edit-debt-name-label');
+  if (labelEl) labelEl.textContent = isReceivable ? 'Nombre del Deudor / Concepto' : 'Nombre de la Obligación / Acreedor';
+  const titleEl = document.getElementById('modal-debt-edit-title');
+  if (titleEl) titleEl.textContent = isReceivable ? 'Editar Cuenta Por Cobrar' : 'Editar Deuda Por Pagar';
+  document.getElementById('edit-debt-frequency').value = (d.frequency || 'mensual').toLowerCase();
+  document.getElementById('edit-debt-method').value = d.method || d.paymentMethod || 'BANCO';
+  document.getElementById('edit-debt-installments').value = d.installments || 1;
+  document.getElementById('edit-debt-interest').value = d.interest || 0;
+  document.getElementById('edit-debt-start-date').value = d.startDate || getTodayStr();
+
+  if (debtEditModal) debtEditModal.classList.remove('hidden');
+};
+
+if (btnCloseDebtEditModal && debtEditModal) {
+  btnCloseDebtEditModal.addEventListener('click', () => {
+    debtEditModal.classList.add('hidden');
+  });
+  debtEditModal.addEventListener('click', (e) => {
+    if (e.target === debtEditModal) debtEditModal.classList.add('hidden');
+  });
+}
+
+if (debtEditForm) {
+  debtEditForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-debt-id').value;
+    const d = debts.find(item => item && (String(item.id) === String(id) || String(item.firestoreId) === String(id) || String(item.localId) === String(id)));
+    if (!d) return;
+
+    d.name = document.getElementById('edit-debt-name').value.trim();
+    d.frequency = document.getElementById('edit-debt-frequency').value;
+    d.method = document.getElementById('edit-debt-method').value;
+    d.paymentMethod = d.method;
+    d.installments = parseInt(document.getElementById('edit-debt-installments').value, 10) || 1;
+    d.interest = parseFloat(document.getElementById('edit-debt-interest').value) || 0;
+    d.startDate = document.getElementById('edit-debt-start-date').value || getTodayStr();
+
+    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+    updateUI();
+    showQuickToast(`✅ Obligación "${d.name}" actualizada con éxito`);
+
+    try {
+      const docId = d.firestoreId || d.id;
+      await setDoc(doc(db, 'vaults', activeVaultId, 'debts', docId), {
+        name: d.name,
+        frequency: d.frequency,
+        method: d.method,
+        paymentMethod: d.method,
+        installments: d.installments,
+        interest: d.interest,
+        startDate: d.startDate
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Error sincronizando edición de deuda en Firestore:', err);
+    }
+
+    if (debtEditModal) debtEditModal.classList.add('hidden');
+  });
+}
+
+// CAMBIO RÁPIDO INLINE DE FRECUENCIA Y MÉTODO DE DEUDA
+window.changeDebtFrequency = async function(debtId, newFreq) {
+  const strId = String(debtId).trim();
+  const d = debts.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
+  if (!d) return;
+
+  d.frequency = newFreq;
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+  updateUI();
+  showQuickToast(`🗓️ Frecuencia cambiada a "${newFreq}" para ${d.name}`);
+
+  try {
+    const docId = d.firestoreId || d.id;
+    await setDoc(doc(db, 'vaults', activeVaultId, 'debts', docId), { frequency: newFreq }, { merge: true });
+  } catch (err) {
+    console.warn('Error guardando frecuencia en Firestore:', err);
+  }
+};
+
+window.changeDebtMethod = async function(debtId, newMethod) {
+  const strId = String(debtId).trim();
+  const d = debts.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
+  if (!d) return;
+
+  d.method = newMethod;
+  d.paymentMethod = newMethod;
+  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+  updateUI();
+  showQuickToast(`💳 Método habitual cambiado a "${newMethod}" para ${d.name}`);
+
+  try {
+    const docId = d.firestoreId || d.id;
+    await setDoc(doc(db, 'vaults', activeVaultId, 'debts', docId), { method: newMethod, paymentMethod: newMethod }, { merge: true });
+  } catch (err) {
+    console.warn('Error guardando método en Firestore:', err);
+  }
+};
+
+// MODAL Y GESTIÓN PARA EDITAR FINANZA FIJA SIN ELIMINAR
+const recurringEditModal = document.getElementById('recurring-edit-modal');
+const btnCloseRecEditModal = document.getElementById('btn-close-rec-edit-modal');
+const recurringEditForm = document.getElementById('recurring-edit-form');
+
+window.openEditRecurringModal = function(idOrIndex) {
+  const strId = String(idOrIndex).trim();
+  let r = recurringPayments.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
+  if (!r && !isNaN(parseInt(idOrIndex, 10))) r = recurringPayments[parseInt(idOrIndex, 10)];
+  if (!r) return;
+
+  document.getElementById('edit-rec-id').value = r.id || strId;
+  document.getElementById('edit-rec-name').value = r.name || '';
+  document.getElementById('edit-rec-amount').value = new Intl.NumberFormat('es-CO').format(r.amount || 0);
+  document.getElementById('edit-rec-day').value = r.dueDay || 1;
+  document.getElementById('edit-rec-frequency').value = (r.frequency || 'mensual').toLowerCase();
+  document.getElementById('edit-rec-method').value = r.paymentMethod || 'NEQUI';
+  if (document.getElementById('edit-rec-category')) {
+    document.getElementById('edit-rec-category').value = r.category || 'SERVICIOS';
+  }
+
+  if (recurringEditModal) recurringEditModal.classList.remove('hidden');
+};
+
+if (btnCloseRecEditModal && recurringEditModal) {
+  btnCloseRecEditModal.addEventListener('click', () => {
+    recurringEditModal.classList.add('hidden');
+  });
+  recurringEditModal.addEventListener('click', (e) => {
+    if (e.target === recurringEditModal) recurringEditModal.classList.add('hidden');
+  });
+}
+
+if (recurringEditForm) {
+  recurringEditForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-rec-id').value;
+    const r = recurringPayments.find(item => item && (String(item.id) === String(id) || String(item.firestoreId) === String(id) || String(item.localId) === String(id)));
+    if (!r) return;
+
+    r.name = document.getElementById('edit-rec-name').value.trim();
+    r.amount = parseAmount(document.getElementById('edit-rec-amount').value) || r.amount;
+    r.dueDay = parseInt(document.getElementById('edit-rec-day').value, 10) || 1;
+    r.frequency = document.getElementById('edit-rec-frequency').value;
+    r.paymentMethod = document.getElementById('edit-rec-method').value;
+    if (document.getElementById('edit-rec-category')) {
+      r.category = document.getElementById('edit-rec-category').value;
+    }
+
+    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+    renderRecurringPayments();
+    showQuickToast(`✅ Finanza fija "${r.name}" actualizada con éxito`);
+
+    try {
+      const docId = r.firestoreId || r.id;
+      await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), {
+        name: r.name,
+        amount: r.amount,
+        dueDay: r.dueDay,
+        frequency: r.frequency,
+        paymentMethod: r.paymentMethod,
+        category: r.category
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Error sincronizando edición de pago fijo en Firestore:', err);
+    }
+
+    if (recurringEditModal) recurringEditModal.classList.add('hidden');
+  });
+}
+
+window.changeRecurringMethod = async function(rId, newMethod) {
+  const strId = String(rId).trim();
+  const r = recurringPayments.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
+  if (!r) return;
+
+  r.paymentMethod = newMethod;
+  localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+  renderRecurringPayments();
+  showQuickToast(`💳 Método habitual de "${r.name}" cambiado a ${newMethod}`);
+
+  try {
+    const docId = r.firestoreId || r.id;
+    await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), { paymentMethod: newMethod }, { merge: true });
+  } catch (err) {
+    console.warn('Error guardando método en Firestore:', err);
+  }
+};
+
+window.changeRecurringFrequency = async function(rId, newFreq) {
+  const strId = String(rId).trim();
+  const r = recurringPayments.find(item => item && (String(item.id) === strId || String(item.firestoreId) === strId || String(item.localId) === strId));
+  if (!r) return;
+
+  r.frequency = newFreq;
+  localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+  renderRecurringPayments();
+  showQuickToast(`🗓️ Frecuencia de "${r.name}" cambiada a ${newFreq}`);
+
+  try {
+    const docId = r.firestoreId || r.id;
+    await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), { frequency: newFreq }, { merge: true });
+  } catch (err) {
+    console.warn('Error guardando frecuencia en Firestore:', err);
+  }
+};
+
+// PESTAÑAS SEGMENTADAS PARA FILTRAR OBLIGACIONES
+activeDebtFilter = 'all'; // 'all' | 'payable' | 'receivable'
+
+window.setDebtFilter = function(filter) {
+  activeDebtFilter = filter;
+  document.querySelectorAll('.debts-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+
+  const payableSec = document.getElementById('section-debts-payable');
+  const receivableSec = document.getElementById('section-debts-receivable');
+
+  if (payableSec && receivableSec) {
+    if (filter === 'all') {
+      payableSec.style.display = 'block';
+      receivableSec.style.display = 'block';
+    } else if (filter === 'payable') {
+      payableSec.style.display = 'block';
+      receivableSec.style.display = 'none';
+    } else if (filter === 'receivable') {
+      payableSec.style.display = 'none';
+      receivableSec.style.display = 'block';
+    }
+  }
+};
+
+const debtsFilterTabs = document.getElementById('debts-filter-tabs');
+if (debtsFilterTabs) {
+  debtsFilterTabs.querySelectorAll('.debts-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.setDebtFilter(btn.dataset.filter);
+    });
+  });
+}
+
+// Atajos de clic en las tarjetas KPI de Deudas
+setTimeout(() => {
+  const kpiPayable = document.getElementById('debts-total-payable')?.closest('.kpi-card');
+  if (kpiPayable) {
+    kpiPayable.style.cursor = 'pointer';
+    kpiPayable.title = 'Filtrar solo deudas por pagar';
+    kpiPayable.addEventListener('click', () => window.setDebtFilter('payable'));
+  }
+  const kpiReceivable = document.getElementById('debts-total-receivable')?.closest('.kpi-card');
+  if (kpiReceivable) {
+    kpiReceivable.style.cursor = 'pointer';
+    kpiReceivable.title = 'Filtrar solo cuentas por cobrar';
+    kpiReceivable.addEventListener('click', () => window.setDebtFilter('receivable'));
+  }
+  const kpiNet = document.getElementById('debts-net-balance')?.closest('.kpi-card');
+  if (kpiNet) {
+    kpiNet.style.cursor = 'pointer';
+    kpiNet.title = 'Ver todas las obligaciones';
+    kpiNet.addEventListener('click', () => window.setDebtFilter('all'));
+  }
+}, 500);
 
 
 
@@ -3551,6 +3950,8 @@ debtForm.addEventListener('submit', async (e) => {
   const totalVal = parseAmount(document.getElementById('debt-total').value);
   const interestVal = parseFloat(document.getElementById('debt-interest').value) || 0;
   const installmentsVal = parseInt(document.getElementById('debt-installments').value) || 1;
+  const frequencyVal = document.getElementById('debt-frequency')?.value || 'mensual';
+  const methodVal = document.getElementById('debt-method')?.value || 'BANCO';
   const startDateVal = document.getElementById('debt-start-date').value || getTodayStr();
 
   if (!totalVal) return alert('Por favor ingresa un monto válido.');
@@ -3567,6 +3968,9 @@ debtForm.addEventListener('submit', async (e) => {
     paid: 0,
     interest: interestVal,
     installments: installmentsVal,
+    frequency: frequencyVal,
+    method: methodVal,
+    paymentMethod: methodVal,
     startDate: startDateVal,
     history: JSON.stringify([]),
     createdAt: new Date().toISOString()
@@ -4039,13 +4443,30 @@ function renderRecurringPayments() {
             </span>
           </div>
           <div class="recurring-name">${r.name}</div>
-          <div class="recurring-meta">
-            <span>Día ${r.dueDay} de cada mes</span> &bull;
+          <div class="recurring-meta" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+            <span>Día ${r.dueDay}</span> &bull;
             <span>${r.category}</span> &bull;
-            <span>${r.paymentMethod || 'NEQUI'}</span>
+            <select class="tag-badge-select" onchange="changeRecurringMethod(${rIdentifier}, this.value)" title="Cambiar método de pago habitual">
+              <option value="NEQUI" ${(r.paymentMethod||'NEQUI')==='NEQUI'?'selected':''}>🟣 Nequi</option>
+              <option value="DAVIPLATA" ${(r.paymentMethod||'')==='DAVIPLATA'?'selected':''}>🔴 Daviplata</option>
+              <option value="BANCO" ${(r.paymentMethod||'')==='BANCO'?'selected':''}>🏦 Banco</option>
+              <option value="EFECTIVO" ${(r.paymentMethod||'')==='EFECTIVO'?'selected':''}>💵 Efectivo</option>
+              <option value="TARJETA_DEBITO" ${(r.paymentMethod||'')==='TARJETA_DEBITO'?'selected':''}>💳 Débito</option>
+              <option value="TARJETA_CREDITO" ${(r.paymentMethod||'')==='TARJETA_CREDITO'?'selected':''}>💳 Crédito</option>
+              <option value="OTRO" ${(r.paymentMethod||'')==='OTRO'?'selected':''}>⚙️ Otro</option>
+            </select> &bull;
+            <select class="tag-badge-select" onchange="changeRecurringFrequency(${rIdentifier}, this.value)" title="Cambiar frecuencia">
+              <option value="mensual" ${(r.frequency||'mensual').toLowerCase()==='mensual'?'selected':''}>🗓️ Mensual</option>
+              <option value="quincenal" ${(r.frequency||'').toLowerCase()==='quincenal'?'selected':''}>🗓️ Quincenal</option>
+              <option value="semanal" ${(r.frequency||'').toLowerCase()==='semanal'?'selected':''}>🗓️ Semanal</option>
+              <option value="anual" ${(r.frequency||'').toLowerCase()==='anual'?'selected':''}>🗓️ Anual</option>
+            </select>
           </div>
         </div>
-        <button class="btn-delete" onclick="deleteRecurringPayment(${rIdentifier})" title="Eliminar">&times;</button>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn-edit" onclick="openEditRecurringModal(${rIdentifier})" title="Editar finanza fija" aria-label="Editar">&#9998;</button>
+          <button class="btn-delete" onclick="deleteRecurringPayment(${rIdentifier})" title="Eliminar" aria-label="Eliminar">&times;</button>
+        </div>
       </div>
 
       <div class="recurring-amount ${isIncome ? 'text-success' : 'text-danger'}">
@@ -4060,7 +4481,7 @@ function renderRecurringPayments() {
           }
         </div>
         ${!isPaidThisMonth ? `
-          <button class="btn-quick-pay" style="${isIncome ? 'background: var(--success-color);' : ''}" onclick="quickPayRecurring(${rIdentifier})">
+          <button class="btn-quick-pay" style="${isIncome ? 'background: var(--success-color);' : ''}" onclick="openRecurringPayModal(${rIdentifier})">
             ${isIncome ? '⚡ Cobrar / Registrar Ingreso' : '⚡ Pagar / Registrar Gasto'}
           </button>
         ` : `
@@ -4076,46 +4497,8 @@ function renderRecurringPayments() {
   }
 }
 
-window.quickPayRecurring = async function(idOrIndex) {
-  const strId = String(idOrIndex);
-  let targetR = recurringPayments.find(r => String(r.id) === strId || String(r.firestoreId) === strId);
-  if (!targetR && !isNaN(parseInt(idOrIndex, 10))) {
-    targetR = recurringPayments[parseInt(idOrIndex, 10)];
-  }
-  if (!targetR) return;
-
-  const currentYM = getCurrentYearMonth();
-  const isIncome = targetR.type === 'income';
-
-  // Registrar en movimientos con identificadores enlazados para sincronización bidireccional
-  await addTransactionLocallyOrCloud({
-    type: isIncome ? 'income' : 'expense',
-    description: `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${targetR.name}`,
-    recurringId: targetR.id,
-    recurringName: targetR.name,
-    amount: targetR.amount,
-    category: targetR.category,
-    paymentMethod: targetR.paymentMethod || 'NEQUI',
-    date: getTodayStr()
-  });
-
-  // Marcar como pagado / cobrado este mes de forma permanente
-  targetR.lastPaidMonth = currentYM;
-  localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-  renderRecurringPayments();
-
-  try {
-    const rRef = doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.id);
-    await setDoc(rRef, {
-      vaultId: activeVaultId,
-      ...targetR,
-      lastPaidMonth: currentYM
-    }, { merge: true });
-  } catch (e) {
-    console.warn('Error actualizando compromiso recurrente en Firestore:', e);
-  }
-
-  showQuickToast(`⚡ ${isIncome ? 'Ingreso de' : 'Pago de'} "${targetR.name}" registrado`);
+window.quickPayRecurring = function(idOrIndex) {
+  window.openRecurringPayModal(idOrIndex);
 };
 
 window.deleteRecurringPayment = async function(idOrIndex) {
@@ -4628,9 +5011,20 @@ function updateUI() {
   if (movementsMonthSelect && movementsMonthSelect.value !== activeMonth) movementsMonthSelect.value = activeMonth;
   if (movementsYearSelect && movementsYearSelect.value !== activeYear) movementsYearSelect.value = activeYear;
 
-  // RENDER DEUDAS (DEBO vs ME DEBEN)
+  // RENDER DEUDAS SEPARADAS (DEBO vs ME DEBEN)
   let totalPayablePendingSum = 0;
   let totalReceivablePendingSum = 0;
+  let countPayable = 0;
+  let countReceivable = 0;
+
+  const debtPayableList = document.getElementById('debt-payable-list');
+  const debtReceivableList = document.getElementById('debt-receivable-list');
+  if (debtPayableList) debtPayableList.innerHTML = '';
+  if (debtReceivableList) debtReceivableList.innerHTML = '';
+  if (debtList) debtList.innerHTML = '';
+
+  const editIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
+  const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
 
   debts.forEach((d, idx) => {
     const isReceivable = d.type === 'debt_receivable';
@@ -4638,11 +5032,15 @@ function updateUI() {
     const totalWithInterest = d.total + (d.total * (interestRate / 100));
     const paid = d.paid || 0;
     const pending = Math.max(0, totalWithInterest - paid);
+    const debtFrequency = (d.frequency || 'mensual').toLowerCase();
+    const debtMethod = d.method || d.paymentMethod || 'BANCO';
 
     if (isReceivable) {
       totalReceivablePendingSum += pending;
+      countReceivable++;
     } else {
       totalPayablePendingSum += pending;
+      countPayable++;
     }
 
     const progressPercent = Math.min(100, Math.round((paid / totalWithInterest) * 100));
@@ -4655,7 +5053,7 @@ function updateUI() {
     const historyCount = historyArr.length;
     const totalInstallments = d.installments || 1;
     const currentQuotaNumber = Math.min(historyCount + 1, totalInstallments);
-    const nextDueDateStr = getNextDueDate(d.startDate, historyCount);
+    const nextDueDateStr = getNextDueDate(d.startDate, historyCount, d.frequency);
 
     let dueDateStatus = '';
     if (pending > 0) {
@@ -4683,15 +5081,14 @@ function updateUI() {
     const accelerationHtml = renderAccelerationSuggestions(pending);
     const interestBadge = interestRate > 0 ? `<span class="tag-badge text-warning">+${interestRate}% INT.</span>` : '';
     const typeBadge = isReceivable
-      ? `<span class="tag-badge text-success" style="background: rgba(48, 209, 88, 0.12); border: 0.5px solid rgba(48, 209, 88, 0.3);">🟢 POR COBRAR (A FAVOR)</span>`
-      : `<span class="tag-badge text-purple" style="background: rgba(175, 82, 222, 0.12); border: 0.5px solid rgba(175, 82, 222, 0.3);">🔻 DEBO (POR PAGAR)</span>`;
+      ? `<span class="tag-badge text-success" style="background: rgba(48, 209, 88, 0.12); border: 0.5px solid rgba(48, 209, 88, 0.3);">🟢 POR COBRAR</span>`
+      : `<span class="tag-badge text-danger" style="background: rgba(255, 69, 58, 0.12); border: 0.5px solid rgba(255, 69, 58, 0.3);">🔻 POR PAGAR</span>`;
 
     if (!d.id) d.id = 'debt_' + Math.random().toString(36).substr(2, 9);
     const debtIdentifier = `'${d.id}'`;
 
     const row = document.createElement('tr');
     row.className = 'history-row debt-row';
-    const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
 
     row.innerHTML = `
       <td class="desktop-only">
@@ -4703,24 +5100,50 @@ function updateUI() {
         <div style="margin-top: 4px;">${dueDateStatus}</div>
       </td>
       <td class="desktop-only">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <select class="tag-badge-select" onchange="changeDebtFrequency(${debtIdentifier}, this.value)" title="Cambiar frecuencia a placer">
+            <option value="mensual" ${debtFrequency === 'mensual' ? 'selected' : ''}>🗓️ Mensual</option>
+            <option value="quincenal" ${debtFrequency === 'quincenal' ? 'selected' : ''}>🗓️ Quincenal</option>
+            <option value="semanal" ${debtFrequency === 'semanal' ? 'selected' : ''}>🗓️ Semanal</option>
+            <option value="diario" ${debtFrequency === 'diario' ? 'selected' : ''}>🗓️ Diario</option>
+            <option value="anual" ${debtFrequency === 'anual' ? 'selected' : ''}>🗓️ Anual</option>
+            <option value="libre" ${debtFrequency === 'libre' ? 'selected' : ''}>🗓️ Libre</option>
+          </select>
+          <select class="tag-badge-select" onchange="changeDebtMethod(${debtIdentifier}, this.value)" title="Cambiar método de pago habitual">
+            <option value="NEQUI" ${debtMethod === 'NEQUI' ? 'selected' : ''}>🟣 Nequi</option>
+            <option value="DAVIPLATA" ${debtMethod === 'DAVIPLATA' ? 'selected' : ''}>🔴 Daviplata</option>
+            <option value="BANCO" ${debtMethod === 'BANCO' ? 'selected' : ''}>🏦 Banco</option>
+            <option value="EFECTIVO" ${debtMethod === 'EFECTIVO' ? 'selected' : ''}>💵 Efectivo</option>
+            <option value="TARJETA_DEBITO" ${debtMethod === 'TARJETA_DEBITO' ? 'selected' : ''}>💳 Débito</option>
+            <option value="TARJETA_CREDITO" ${debtMethod === 'TARJETA_CREDITO' ? 'selected' : ''}>💳 Crédito</option>
+            <option value="OTRO" ${debtMethod === 'OTRO' ? 'selected' : ''}>⚙️ Otro</option>
+          </select>
+        </div>
+      </td>
+      <td class="desktop-only">
         <small style="color: var(--text-muted);">${formatCurrency(paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
-        <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%; background: ${isReceivable ? 'var(--success-color)' : 'var(--primary-color)'};"></div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%; background: ${isReceivable ? 'var(--success-color)' : 'var(--danger-color)'};"></div></div>
         ${accelerationHtml}
         ${historyHtml}
       </td>
-      <td class="desktop-only ${isReceivable ? 'text-success' : 'text-purple'}" style="font-weight: 700;">${formatCurrency(pending)}</td>
+      <td class="desktop-only ${isReceivable ? 'text-success' : 'text-danger'}" style="font-weight: 700;">${formatCurrency(pending)}</td>
       <td class="desktop-only">
         ${pending > 0 ? `
           <div style="display: flex; gap: 4px; align-items: center;">
-            <input type="text" class="currency-input" id="pay-input-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 110px; padding: 4px 6px; font-size: 0.8rem;" title="Monto libre a abonar">
+            <input type="text" class="currency-input" id="pay-input-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 105px; padding: 4px 6px; font-size: 0.8rem;" title="Monto libre">
             <button class="${isReceivable ? 'btn btn-success' : 'btn-pay'}" style="${isReceivable ? 'padding: 4px 10px; font-size: 0.78rem; border-radius: 8px;' : ''}" onclick="payDebt(${debtIdentifier})">${isReceivable ? 'COBRAR' : 'ABONAR'}</button>
           </div>
         ` : `<span class="text-success" style="font-weight: 700;">${isReceivable ? 'RECAUDADA' : 'LIQUIDADA'}</span>`}
       </td>
-      <td class="desktop-only"><button class="btn-delete" title="Eliminar registro" onclick="removeDebt(${debtIdentifier})">${deleteIconSvg}</button></td>
+      <td class="desktop-only" style="text-align: right;">
+        <div style="display: inline-flex; gap: 6px; align-items: center;">
+          <button class="btn-edit" title="Editar obligación" aria-label="Editar" onclick="openEditDebtModal(${debtIdentifier})">${editIconSvg}</button>
+          <button class="btn-delete" title="Eliminar obligación" aria-label="Eliminar" onclick="removeDebt(${debtIdentifier})">${deleteIconSvg}</button>
+        </div>
+      </td>
 
-      <!-- Celda adaptativa para móvil (iOS Card Row: 100% visible, sin cortes, botón eliminar táctil) -->
-      <td class="mobile-only-cell" colspan="5">
+      <!-- Celda adaptativa para móvil (iOS Card Row: 100% visible, sin cortes) -->
+      <td class="mobile-only-cell" colspan="6">
         <div class="mobile-tx-card mobile-debt-card">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%;">
             <div style="flex: 1; min-width: 0;">
@@ -4731,25 +5154,52 @@ function updateUI() {
               </div>
               <div style="margin-top: 3px;">${dueDateStatus}</div>
             </div>
-            <button class="btn-delete mobile-delete-btn" title="Eliminar registro" aria-label="Eliminar registro" onclick="removeDebt(${debtIdentifier})">
-              ${deleteIconSvg}
-            </button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button class="btn-edit mobile-edit-btn" title="Editar obligación" aria-label="Editar" onclick="openEditDebtModal(${debtIdentifier})">
+                ${editIconSvg}
+              </button>
+              <button class="btn-delete mobile-delete-btn" title="Eliminar registro" aria-label="Eliminar registro" onclick="removeDebt(${debtIdentifier})">
+                ${deleteIconSvg}
+              </button>
+            </div>
           </div>
+
+          <!-- Selectores móviles de frecuencia y método -->
+          <div style="display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+            <select class="tag-badge-select" onchange="changeDebtFrequency(${debtIdentifier}, this.value)" title="Frecuencia">
+              <option value="mensual" ${debtFrequency === 'mensual' ? 'selected' : ''}>🗓️ Mensual</option>
+              <option value="quincenal" ${debtFrequency === 'quincenal' ? 'selected' : ''}>🗓️ Quincenal</option>
+              <option value="semanal" ${debtFrequency === 'semanal' ? 'selected' : ''}>🗓️ Semanal</option>
+              <option value="diario" ${debtFrequency === 'diario' ? 'selected' : ''}>🗓️ Diario</option>
+              <option value="anual" ${debtFrequency === 'anual' ? 'selected' : ''}>🗓️ Anual</option>
+              <option value="libre" ${debtFrequency === 'libre' ? 'selected' : ''}>🗓️ Libre</option>
+            </select>
+            <select class="tag-badge-select" onchange="changeDebtMethod(${debtIdentifier}, this.value)" title="Método">
+              <option value="NEQUI" ${debtMethod === 'NEQUI' ? 'selected' : ''}>🟣 Nequi</option>
+              <option value="DAVIPLATA" ${debtMethod === 'DAVIPLATA' ? 'selected' : ''}>🔴 Daviplata</option>
+              <option value="BANCO" ${debtMethod === 'BANCO' ? 'selected' : ''}>🏦 Banco</option>
+              <option value="EFECTIVO" ${debtMethod === 'EFECTIVO' ? 'selected' : ''}>💵 Efectivo</option>
+              <option value="TARJETA_DEBITO" ${debtMethod === 'TARJETA_DEBITO' ? 'selected' : ''}>💳 Débito</option>
+              <option value="TARJETA_CREDITO" ${debtMethod === 'TARJETA_CREDITO' ? 'selected' : ''}>💳 Crédito</option>
+              <option value="OTRO" ${debtMethod === 'OTRO' ? 'selected' : ''}>⚙️ Otro</option>
+            </select>
+          </div>
+
           <div style="margin: 8px 0; width: 100%;">
             <small style="color: var(--text-muted);">${formatCurrency(paid)} DE ${formatCurrency(totalWithInterest)} (${progressPercent}%)</small>
-            <div class="progress-bar" style="margin-top: 4px;"><div class="progress-fill" style="width: ${progressPercent}%; background: ${isReceivable ? 'var(--success-color)' : 'var(--primary-color)'};"></div></div>
+            <div class="progress-bar" style="margin-top: 4px;"><div class="progress-fill" style="width: ${progressPercent}%; background: ${isReceivable ? 'var(--success-color)' : 'var(--danger-color)'};"></div></div>
             ${accelerationHtml}
             ${historyHtml}
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px; width: 100%;">
             <div>
               <small style="color: var(--text-muted); font-size: 0.7rem;">${isReceivable ? 'POR COBRAR:' : 'POR PAGAR:'}</small>
-              <div class="${isReceivable ? 'text-success' : 'text-purple'}" style="font-weight: 700; font-size: 0.95rem;">${formatCurrency(pending)}</div>
+              <div class="${isReceivable ? 'text-success' : 'text-danger'}" style="font-weight: 700; font-size: 0.95rem;">${formatCurrency(pending)}</div>
             </div>
             <div>
               ${pending > 0 ? `
                 <div style="display: flex; gap: 6px; align-items: center;">
-                  <input type="text" class="currency-input" id="pay-input-mob-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 105px; padding: 6px 8px; font-size: 0.8rem; border-radius: 8px;" title="Monto libre a abonar">
+                  <input type="text" class="currency-input" id="pay-input-mob-${d.id}" value="${new Intl.NumberFormat('es-CO').format(Math.min(pending, suggestedQuotaAmount))}" style="width: 105px; padding: 6px 8px; font-size: 0.8rem; border-radius: 8px;" title="Monto libre">
                   <button class="${isReceivable ? 'btn btn-success' : 'btn-pay'}" style="${isReceivable ? 'padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;' : ''}" onclick="payDebt(${debtIdentifier})">${isReceivable ? 'COBRAR' : 'ABONAR'}</button>
                 </div>
               ` : `<span class="text-success" style="font-weight: 700;">${isReceivable ? 'RECAUDADA' : 'LIQUIDADA'}</span>`}
@@ -4758,11 +5208,25 @@ function updateUI() {
         </div>
       </td>
     `;
-    debtList.appendChild(row);
+
+    if (isReceivable) {
+      if (debtReceivableList) debtReceivableList.appendChild(row);
+    } else {
+      if (debtPayableList) debtPayableList.appendChild(row);
+    }
+    if (debtList) debtList.appendChild(row.cloneNode(true));
   });
 
+  // Estados vacíos elegantes si no hay registros
+  if (countPayable === 0 && debtPayableList) {
+    debtPayableList.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 24px 16px; color: var(--text-muted); font-size: 0.84rem;">🎉 No tienes obligaciones por pagar registradas. ¡Excelente salud financiera!</td></tr>`;
+  }
+  if (countReceivable === 0 && debtReceivableList) {
+    debtReceivableList.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 24px 16px; color: var(--text-muted); font-size: 0.84rem;">No tienes cuentas por cobrar pendientes en este momento.</td></tr>`;
+  }
+
   // Habilitar máscara de moneda en inputs dinámicos de abono
-  debtList.querySelectorAll('.currency-input').forEach(input => {
+  document.querySelectorAll('#debt-payable-list .currency-input, #debt-receivable-list .currency-input, #debt-list .currency-input').forEach(input => {
     input.addEventListener('input', (e) => {
       let value = e.target.value.replace(/\D/g, '');
       if (value) {
@@ -4794,9 +5258,26 @@ function updateUI() {
       : 'Pasivo neto (Debes más de lo que te deben)';
   }
 
-  const countPayable = debts.filter(d => d.type !== 'debt_receivable').length;
-  const countReceivable = debts.filter(d => d.type === 'debt_receivable').length;
   debtsCountBadge.textContent = `${debts.length} ACTIVAS (${countPayable} por pagar, ${countReceivable} por cobrar)`;
+
+  const debtsPayableCountBadge = document.getElementById('debts-payable-count-badge');
+  if (debtsPayableCountBadge) debtsPayableCountBadge.textContent = `${countPayable} Por Pagar (${formatCurrency(totalPayablePendingSum)})`;
+
+  const debtsReceivableCountBadge = document.getElementById('debts-receivable-count-badge');
+  if (debtsReceivableCountBadge) debtsReceivableCountBadge.textContent = `${countReceivable} Por Cobrar (${formatCurrency(totalReceivablePendingSum)})`;
+
+  const countDebtFilterAll = document.getElementById('count-debt-filter-all');
+  if (countDebtFilterAll) countDebtFilterAll.textContent = debts.length;
+
+  const countDebtFilterPayable = document.getElementById('count-debt-filter-payable');
+  if (countDebtFilterPayable) countDebtFilterPayable.textContent = countPayable;
+
+  const countDebtFilterReceivable = document.getElementById('count-debt-filter-receivable');
+  if (countDebtFilterReceivable) countDebtFilterReceivable.textContent = countReceivable;
+
+  if (typeof window.setDebtFilter === 'function') {
+    window.setDebtFilter(activeDebtFilter);
+  }
 
   renderCharts();
   renderCalendar();
@@ -5147,7 +5628,7 @@ function renderCalendar() {
     } catch (e) { historyArr = []; }
 
     for (let q = 0; q < totalQuotas; q++) {
-      const dueDate = getNextDueDate(d.startDate, q);
+      const dueDate = getNextDueDate(d.startDate, q, d.frequency);
       const isPaid = q < historyArr.length;
 
       let status = 'future';

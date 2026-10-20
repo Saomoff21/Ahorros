@@ -25,11 +25,11 @@
     },
     "AHO-SC-7F9ZTA": {
       "apiKey": "AHO-SC-7F9ZTA",
-      "balance": 0,
+      "balance": -673334,
       "totalIncome": 0,
-      "totalExpense": 0,
+      "totalExpense": 673334,
       "pendingDebts": 0,
-      "lastUpdated": "2026-10-20T13:41:08.425Z"
+      "lastUpdated": "2026-10-13T13:42:33.963Z"
     },
     "AHO-SC-TEST": {
       "apiKey": "AHO-SC-TEST",

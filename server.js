@@ -360,7 +360,7 @@ app.all('/api/shortcut/transaction', (req, res) => {
   const existingDup = data.transactions.find(t => {
     if (t.apiKey !== apiKey && t.vaultId !== newTx.vaultId) return false;
     if (t.type !== cleanType || Math.abs((t.amount || 0) - numericAmount) > 0.01) return false;
-    if (String(t.description || '').trim() !== cleanDescription) return false;
+    if (String(t.description || '').trim().toLowerCase() !== cleanDescription.toLowerCase()) return false;
     if (t.date && cleanDate && t.date !== cleanDate) return false;
     const diffMs = Math.abs(now.getTime() - new Date(t.createdAt || 0).getTime());
     return diffMs < 60000;

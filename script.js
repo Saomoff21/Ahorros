@@ -99,14 +99,40 @@ function generateVaultCode() {
 function sortTransactionsByDate(list) {
   if (!Array.isArray(list)) return [];
   const seenIds = new Set();
+  const seenSignatures = new Map();
   const unique = [];
+
   for (const item of list) {
     if (!item) continue;
-    const uid = String(item.id || item.firestoreId || item.localId || '');
+    const uid = String(item.id || item.firestoreId || item.localId || item.tempId || '');
     if (uid && seenIds.has(uid)) continue;
+
+    // Firma para detectar registros idénticos ingresados en ráfaga (<45 segundos)
+    const cleanType = String(item.type || '').trim().toLowerCase();
+    const cleanAmt = Math.round((parseFloat(item.amount) || 0) * 100);
+    const cleanDate = String(item.date || '').trim();
+    const cleanDesc = String(item.description || '').trim().toLowerCase();
+    const sig = `${cleanType}_${cleanAmt}_${cleanDate}_${cleanDesc}`;
+    const itemTime = new Date(item.createdAt || 0).getTime();
+
+    if (sig && cleanAmt > 0) {
+      if (seenSignatures.has(sig)) {
+        const prevTime = seenSignatures.get(sig);
+        // Si no tienen createdAt o la diferencia es menor a 45 segundos, es un duplicado inequívoco
+        if (!itemTime || !prevTime || Math.abs(itemTime - prevTime) < 45000) {
+          continue;
+        }
+      }
+      seenSignatures.set(sig, itemTime || Date.now());
+    }
+
     if (uid) seenIds.add(uid);
+    if (item.firestoreId) seenIds.add(String(item.firestoreId));
+    if (item.localId) seenIds.add(String(item.localId));
+    if (item.tempId) seenIds.add(String(item.tempId));
     unique.push(item);
   }
+
   return unique.sort((a, b) => {
     // 1. Prioridad: Fecha del movimiento (YYYY-MM-DD)
     const da = a.date || '';
@@ -121,6 +147,130 @@ function sortTransactionsByDate(list) {
     const cb = b.createdAt || '';
     return cb.localeCompare(ca);
   });
+}
+
+// DEDUPLICACIÓN DE DEUDAS Y OBLIGACIONES (DEBO vs ME DEBEN)
+function deduplicateDebts(list) {
+  if (!Array.isArray(list)) return [];
+  const seenIds = new Set();
+  const seenSignatures = new Map();
+  const result = [];
+
+  for (const d of list) {
+    if (!d) continue;
+    const uid = String(d.id || d.firestoreId || d.localId || d.tempId || '');
+    if (uid && seenIds.has(uid)) continue;
+
+    const cleanType = String(d.type || 'debt_payable').trim().toLowerCase();
+    const cleanName = String(d.name || '').trim().toLowerCase();
+    const cleanTotal = Math.round((parseFloat(d.total) || 0) * 100);
+    const sig = `${cleanType}_${cleanName}_${cleanTotal}`;
+
+    if (sig && cleanName && cleanTotal > 0) {
+      if (seenSignatures.has(sig)) {
+        // Ya existe una deuda idéntica registrada: conservar la que tenga más abonos o id de firestore
+        const existing = seenSignatures.get(sig);
+        if ((d.paid || 0) > (existing.paid || 0)) {
+          existing.paid = d.paid;
+          existing.history = d.history || existing.history;
+        }
+        if (d.firestoreId && !existing.firestoreId) {
+          existing.firestoreId = d.firestoreId;
+          existing.id = d.firestoreId;
+        }
+        continue;
+      }
+      seenSignatures.set(sig, d);
+    }
+
+    if (uid) seenIds.add(uid);
+    if (d.firestoreId) seenIds.add(String(d.firestoreId));
+    if (d.localId) seenIds.add(String(d.localId));
+    if (d.tempId) seenIds.add(String(d.tempId));
+    result.push(d);
+  }
+  return result;
+}
+
+// DEDUPLICACIÓN DE METAS DE AHORRO
+function deduplicateGoals(list) {
+  if (!Array.isArray(list)) return [];
+  const seenIds = new Set();
+  const seenSignatures = new Map();
+  const result = [];
+
+  for (const g of list) {
+    if (!g) continue;
+    const uid = String(g.id || g.firestoreId || g.localId || g.tempId || '');
+    if (uid && seenIds.has(uid)) continue;
+
+    const cleanName = String(g.name || '').trim().toLowerCase();
+    const cleanTarget = Math.round((parseFloat(g.targetAmount) || 0) * 100);
+    const sig = `${cleanName}_${cleanTarget}`;
+
+    if (sig && cleanName && cleanTarget > 0) {
+      if (seenSignatures.has(sig)) {
+        const existing = seenSignatures.get(sig);
+        if ((g.currentAmount || 0) > (existing.currentAmount || 0)) {
+          existing.currentAmount = g.currentAmount;
+        }
+        if (g.firestoreId && !existing.firestoreId) {
+          existing.firestoreId = g.firestoreId;
+          existing.id = g.firestoreId;
+        }
+        continue;
+      }
+      seenSignatures.set(sig, g);
+    }
+
+    if (uid) seenIds.add(uid);
+    if (g.firestoreId) seenIds.add(String(g.firestoreId));
+    if (g.localId) seenIds.add(String(g.localId));
+    if (g.tempId) seenIds.add(String(g.tempId));
+    result.push(g);
+  }
+  return result;
+}
+
+// DEDUPLICACIÓN DE FINANZAS FIJAS / RECURRENTES
+function deduplicateRecurring(list) {
+  if (!Array.isArray(list)) return [];
+  const seenIds = new Set();
+  const seenSignatures = new Map();
+  const result = [];
+
+  for (const r of list) {
+    if (!r) continue;
+    const uid = String(r.id || r.firestoreId || r.localId || r.tempId || '');
+    if (uid && seenIds.has(uid)) continue;
+
+    const cleanType = String(r.type || 'expense').trim().toLowerCase();
+    const cleanName = String(r.name || '').trim().toLowerCase();
+    const cleanAmt = Math.round((parseFloat(r.amount) || 0) * 100);
+    const sig = `${cleanType}_${cleanName}_${cleanAmt}`;
+
+    if (sig && cleanName && cleanAmt > 0) {
+      if (seenSignatures.has(sig)) {
+        const existing = seenSignatures.get(sig);
+        if (r.lastPaidMonth && !existing.lastPaidMonth) {
+          existing.lastPaidMonth = r.lastPaidMonth;
+        }
+        if (r.firestoreId && !existing.firestoreId) {
+          existing.firestoreId = r.firestoreId;
+          existing.id = r.firestoreId;
+        }
+        continue;
+      }
+      seenSignatures.set(sig, r);
+    }
+
+    if (uid) seenIds.add(uid);
+    if (r.firestoreId) seenIds.add(String(r.firestoreId));
+    if (r.localId) seenIds.add(String(r.localId));
+    if (r.tempId) seenIds.add(String(r.tempId));
+    result.push(r);
+  }
+  return result;
 }
 
 // SESIÓN DE USUARIO AUTENTICADO & PROTECCIÓN DE ACCESO
@@ -319,9 +469,9 @@ function getVaultApiKey(vaultId) {
 
 let userApiKey = getVaultApiKey(activeVaultId);
 let transactions = sortTransactionsByDate(JSON.parse(localStorage.getItem('finances_v10_trans')) || []);
-let debts = JSON.parse(localStorage.getItem('finances_v10_debts')) || [];
-let savingsGoals = JSON.parse(localStorage.getItem('finances_v10_goals')) || [];
-let recurringPayments = JSON.parse(localStorage.getItem('finances_v10_recurring')) || [];
+let debts = deduplicateDebts(JSON.parse(localStorage.getItem('finances_v10_debts')) || []);
+let savingsGoals = deduplicateGoals(JSON.parse(localStorage.getItem('finances_v10_goals')) || []);
+let recurringPayments = deduplicateRecurring(JSON.parse(localStorage.getItem('finances_v10_recurring')) || []);
 let shortcutEvents = [];
 
 // Normalización defensiva: asegurar IDs estables y campos requeridos para eliminar y abonar sin fallos
@@ -1453,6 +1603,7 @@ if (btnCloseDebtModal && debtActionModal) {
 if (debtActionForm) {
   debtActionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (debtActionForm.dataset.submitting === 'true') return;
     if (!activeModalDebt) return;
 
     const payAmount = parseAmount(modalDebtAmountInput.value);
@@ -1476,72 +1627,80 @@ if (debtActionForm) {
       if (!confirmed) return;
     }
 
-    const finalAbono = Math.min(payAmount, pending);
-    const newPaid = currentPaid + finalAbono;
-    const paymentAccountVal = modalDebtAccount?.value || 'BANCO';
-    const paymentDateVal = modalDebtDate?.value || getTodayStr();
-    const noteVal = modalDebtNote?.value?.trim() || '';
-
-    let historyArr = [];
-    try {
-      historyArr = typeof activeModalDebt.history === 'string' ? JSON.parse(activeModalDebt.history) : (activeModalDebt.history || []);
-    } catch (err) { historyArr = []; }
-
-    historyArr.push({
-      date: paymentDateVal,
-      amount: finalAbono,
-      account: paymentAccountVal,
-      note: noteVal
-    });
-
-    activeModalDebt.paid = newPaid;
-    activeModalDebt.history = JSON.stringify(historyArr);
-
-    localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-    updateUI();
-
-    const isReceivable = activeModalDebt.type === 'debt_receivable';
-
-    if (isReceivable) {
-      // Dinero que me debían: el abono entra a mi cuenta como un INGRESO
-      await addTransactionLocallyOrCloud({
-        type: 'income',
-        date: paymentDateVal,
-        description: `ABONO RECIBIDO DE: ${activeModalDebt.name}${noteVal ? ` (${noteVal})` : ''}`,
-        amount: finalAbono,
-        category: 'REEMBOLSOS',
-        paymentMethod: paymentAccountVal
-      });
-      showQuickToast(`✅ Cobro de ${formatCurrency(finalAbono)} recibido de "${activeModalDebt.name}" registrado como Ingreso`);
-    } else {
-      // Deuda que debo: el abono sale de mi cuenta como un GASTO
-      await addTransactionLocallyOrCloud({
-        type: 'expense',
-        date: paymentDateVal,
-        description: `ABONO A ${activeModalDebt.name}${noteVal ? ` (${noteVal})` : ''}`,
-        amount: finalAbono,
-        category: 'PAGO DE DEUDAS',
-        paymentMethod: paymentAccountVal
-      });
-      showQuickToast(`✅ Abono de ${formatCurrency(finalAbono)} a "${activeModalDebt.name}" registrado como Gasto`);
-    }
+    debtActionForm.dataset.submitting = 'true';
+    if (modalDebtSubmitBtn) modalDebtSubmitBtn.disabled = true;
 
     try {
-      const dRef = doc(db, 'vaults', activeVaultId, 'debts', activeModalDebt.id);
-      await setDoc(dRef, {
-        vaultId: activeVaultId,
-        ...activeModalDebt,
-        paid: newPaid,
-        history: JSON.stringify(historyArr)
-      }, { merge: true });
-    } catch (err) {
-      console.warn('Error actualizando deuda en Firestore:', err);
-    }
+      const finalAbono = Math.min(payAmount, pending);
+      const newPaid = currentPaid + finalAbono;
+      const paymentAccountVal = modalDebtAccount?.value || 'BANCO';
+      const paymentDateVal = modalDebtDate?.value || getTodayStr();
+      const noteVal = modalDebtNote?.value?.trim() || '';
 
-    debtActionModal.classList.add('hidden');
-    debtActionForm.reset();
-    activeModalDebt = null;
-    syncClientTotalsToServer();
+      let historyArr = [];
+      try {
+        historyArr = typeof activeModalDebt.history === 'string' ? JSON.parse(activeModalDebt.history) : (activeModalDebt.history || []);
+      } catch (err) { historyArr = []; }
+
+      historyArr.push({
+        date: paymentDateVal,
+        amount: finalAbono,
+        account: paymentAccountVal,
+        note: noteVal
+      });
+
+      activeModalDebt.paid = newPaid;
+      activeModalDebt.history = JSON.stringify(historyArr);
+
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
+
+      const isReceivable = activeModalDebt.type === 'debt_receivable';
+
+      if (isReceivable) {
+        // Dinero que me debían: el abono entra a mi cuenta como un INGRESO
+        await addTransactionLocallyOrCloud({
+          type: 'income',
+          date: paymentDateVal,
+          description: `ABONO RECIBIDO DE: ${activeModalDebt.name}${noteVal ? ` (${noteVal})` : ''}`,
+          amount: finalAbono,
+          category: 'REEMBOLSOS',
+          paymentMethod: paymentAccountVal
+        });
+        showQuickToast(`✅ Cobro de ${formatCurrency(finalAbono)} recibido de "${activeModalDebt.name}" registrado como Ingreso`);
+      } else {
+        // Deuda que debo: el abono sale de mi cuenta como un GASTO
+        await addTransactionLocallyOrCloud({
+          type: 'expense',
+          date: paymentDateVal,
+          description: `ABONO A ${activeModalDebt.name}${noteVal ? ` (${noteVal})` : ''}`,
+          amount: finalAbono,
+          category: 'PAGO DE DEUDAS',
+          paymentMethod: paymentAccountVal
+        });
+        showQuickToast(`✅ Abono de ${formatCurrency(finalAbono)} a "${activeModalDebt.name}" registrado como Gasto`);
+      }
+
+      try {
+        const dRef = doc(db, 'vaults', activeVaultId, 'debts', activeModalDebt.id);
+        await setDoc(dRef, {
+          vaultId: activeVaultId,
+          ...activeModalDebt,
+          paid: newPaid,
+          history: JSON.stringify(historyArr)
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Error actualizando deuda en Firestore:', err);
+      }
+
+      debtActionModal.classList.add('hidden');
+      debtActionForm.reset();
+      activeModalDebt = null;
+      syncClientTotalsToServer();
+    } finally {
+      debtActionForm.dataset.submitting = 'false';
+      if (modalDebtSubmitBtn) modalDebtSubmitBtn.disabled = false;
+    }
   });
 }
 
@@ -1610,47 +1769,58 @@ if (btnCloseRecModal && recurringPayModal) {
 if (recurringPayForm) {
   recurringPayForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (recurringPayForm.dataset.submitting === 'true') return;
+
     const id = document.getElementById('modal-rec-id')?.value;
     const targetR = recurringPayments.find(r => 
       r && (String(r.id) === String(id) || String(r.firestoreId) === String(id) || String(r.localId) === String(id))
     );
     if (!targetR) return;
 
-    const chosenMethod = document.getElementById('modal-rec-account')?.value || targetR.paymentMethod || 'NEQUI';
-    const chosenDate = document.getElementById('modal-rec-date')?.value || getTodayStr();
-    const noteVal = document.getElementById('modal-rec-note')?.value?.trim() || '';
-    const currentYM = chosenDate.substring(0, 7) || getCurrentYearMonth();
-    const isIncome = targetR.type === 'income';
-
-    await addTransactionLocallyOrCloud({
-      type: isIncome ? 'income' : 'expense',
-      description: `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${targetR.name}${noteVal ? ` (${noteVal})` : ''}`,
-      recurringId: targetR.id,
-      recurringName: targetR.name,
-      amount: targetR.amount,
-      category: targetR.category,
-      paymentMethod: chosenMethod,
-      date: chosenDate
-    });
-
-    targetR.lastPaidMonth = currentYM;
-    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-    renderRecurringPayments();
+    recurringPayForm.dataset.submitting = 'true';
+    const submitBtn = recurringPayForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const rRef = doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.firestoreId || targetR.id);
-      await setDoc(rRef, {
-        vaultId: activeVaultId,
-        ...targetR,
-        lastPaidMonth: currentYM
-      }, { merge: true });
-    } catch (err) {
-      console.warn('Error actualizando compromiso fijo en Firestore:', err);
-    }
+      const chosenMethod = document.getElementById('modal-rec-account')?.value || targetR.paymentMethod || 'NEQUI';
+      const chosenDate = document.getElementById('modal-rec-date')?.value || getTodayStr();
+      const noteVal = document.getElementById('modal-rec-note')?.value?.trim() || '';
+      const currentYM = chosenDate.substring(0, 7) || getCurrentYearMonth();
+      const isIncome = targetR.type === 'income';
 
-    if (recurringPayModal) recurringPayModal.classList.add('hidden');
-    recurringPayForm.reset();
-    showQuickToast(`⚡ ${isIncome ? 'Cobro' : 'Pago'} de "${targetR.name}" registrado con ${chosenMethod}`);
+      await addTransactionLocallyOrCloud({
+        type: isIncome ? 'income' : 'expense',
+        description: `${isIncome ? 'INGRESO FIJO' : 'PAGO FIJO'}: ${targetR.name}${noteVal ? ` (${noteVal})` : ''}`,
+        recurringId: targetR.id,
+        recurringName: targetR.name,
+        amount: targetR.amount,
+        category: targetR.category,
+        paymentMethod: chosenMethod,
+        date: chosenDate
+      });
+
+      targetR.lastPaidMonth = currentYM;
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
+
+      try {
+        const rRef = doc(db, 'vaults', activeVaultId, 'recurringPayments', targetR.firestoreId || targetR.id);
+        await setDoc(rRef, {
+          vaultId: activeVaultId,
+          ...targetR,
+          lastPaidMonth: currentYM
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Error actualizando compromiso fijo en Firestore:', err);
+      }
+
+      if (recurringPayModal) recurringPayModal.classList.add('hidden');
+      recurringPayForm.reset();
+      showQuickToast(`⚡ ${isIncome ? 'Cobro' : 'Pago'} de "${targetR.name}" registrado con ${chosenMethod}`);
+    } finally {
+      recurringPayForm.dataset.submitting = 'false';
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 
@@ -2945,10 +3115,10 @@ async function loadVaultFromCloud(vaultId) {
       const cloudDebts = [];
       debtsSnap.forEach(d => {
         if (!recentlyDeletedDebtIds.has(d.id)) {
-          cloudDebts.push({ ...d.data(), id: d.id, firestoreId: d.id });
+          cloudDebts.push({ ...d.data(), id: d.id, firestoreId: d.id, localId: d.data().localId || d.id });
         }
       });
-      debts = cloudDebts;
+      debts = deduplicateDebts(cloudDebts);
       localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
       updateUI();
     }
@@ -2959,10 +3129,10 @@ async function loadVaultFromCloud(vaultId) {
       const cloudGoals = [];
       gSnap.forEach(d => {
         if (!recentlyDeletedGoalIds.has(d.id)) {
-          cloudGoals.push({ ...d.data(), id: d.id, firestoreId: d.id });
+          cloudGoals.push({ ...d.data(), id: d.id, firestoreId: d.id, localId: d.data().localId || d.id });
         }
       });
-      savingsGoals = cloudGoals;
+      savingsGoals = deduplicateGoals(cloudGoals);
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
       renderSavingsGoals();
     }
@@ -2973,10 +3143,10 @@ async function loadVaultFromCloud(vaultId) {
       const cloudRec = [];
       rSnap.forEach(d => {
         if (!recentlyDeletedRecurringIds.has(d.id)) {
-          cloudRec.push({ ...d.data(), id: d.id, firestoreId: d.id });
+          cloudRec.push({ ...d.data(), id: d.id, firestoreId: d.id, localId: d.data().localId || d.id });
         }
       });
-      recurringPayments = cloudRec;
+      recurringPayments = deduplicateRecurring(cloudRec);
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
       renderRecurringPayments();
     }
@@ -3239,7 +3409,7 @@ function setupVaultCloudListeners(vaultId) {
 
   const debtsColl = collection(db, 'vaults', vaultId, 'debts');
   unsubscribeDebts = onSnapshot(debtsColl, (snapshot) => {
-    const cloudDebts = [];
+    const rawCloudDebts = [];
     snapshot.forEach(docSnap => {
       const dData = docSnap.data();
       const docId = String(docSnap.id);
@@ -3257,16 +3427,22 @@ function setupVaultCloudListeners(vaultId) {
           (dSig && recentlyDeletedDebtIds.has(dSig))) {
         return;
       }
-      cloudDebts.push({ ...dData, id: docSnap.id, firestoreId: docSnap.id, localId: dData.localId || dData.id });
+      rawCloudDebts.push({ ...dData, id: docSnap.id, firestoreId: docSnap.id, localId: dData.localId || dData.id });
     });
+    const cloudDebts = deduplicateDebts(rawCloudDebts);
     const localPending = debts.filter(d => 
       typeof d.id === 'string' && d.id.startsWith('debt_') &&
       !recentlyDeletedDebtIds.has(String(d.id)) &&
       !recentlyDeletedDebtIds.has(String(d.localId)) &&
       !recentlyDeletedDebtIds.has(String(d.firestoreId)) &&
-      !cloudDebts.some(c => (c.name === d.name && c.total === d.total) || (c.localId && c.localId === d.id))
+      !cloudDebts.some(c => 
+        (c.id && c.id === d.id) ||
+        (c.firestoreId && c.firestoreId === d.id) ||
+        (c.localId && (c.localId === d.id || c.localId === d.localId)) ||
+        ((c.name || '').trim().toLowerCase() === (d.name || '').trim().toLowerCase() && Math.abs((c.total || 0) - (d.total || 0)) < 0.01 && c.type === d.type)
+      )
     );
-    debts = [...cloudDebts, ...localPending];
+    debts = deduplicateDebts([...cloudDebts, ...localPending]);
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
     updateUI();
   }, (error) => {
@@ -3278,7 +3454,7 @@ function setupVaultCloudListeners(vaultId) {
 
   const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
   unsubscribeGoals = onSnapshot(gColl, (snapshot) => {
-    const cloudGoals = [];
+    const rawCloudGoals = [];
     snapshot.forEach(docSnap => {
       const gData = docSnap.data();
       const docId = String(docSnap.id);
@@ -3296,16 +3472,22 @@ function setupVaultCloudListeners(vaultId) {
           (gSig && recentlyDeletedGoalIds.has(gSig))) {
         return;
       }
-      cloudGoals.push({ ...gData, id: docSnap.id, firestoreId: docSnap.id, localId: gData.localId || gData.id });
+      rawCloudGoals.push({ ...gData, id: docSnap.id, firestoreId: docSnap.id, localId: gData.localId || gData.id });
     });
+    const cloudGoals = deduplicateGoals(rawCloudGoals);
     const localPending = savingsGoals.filter(g => 
       typeof g.id === 'string' && g.id.startsWith('goal_') &&
       !recentlyDeletedGoalIds.has(String(g.id)) &&
       !recentlyDeletedGoalIds.has(String(g.localId)) &&
       !recentlyDeletedGoalIds.has(String(g.firestoreId)) &&
-      !cloudGoals.some(c => (c.name === g.name && c.targetAmount === g.targetAmount) || (c.localId && c.localId === g.id))
+      !cloudGoals.some(c => 
+        (c.id && c.id === g.id) ||
+        (c.firestoreId && c.firestoreId === g.id) ||
+        (c.localId && (c.localId === g.id || c.localId === g.localId)) ||
+        ((c.name || '').trim().toLowerCase() === (g.name || '').trim().toLowerCase() && Math.abs((c.targetAmount || 0) - (g.targetAmount || 0)) < 0.01)
+      )
     );
-    savingsGoals = [...cloudGoals, ...localPending];
+    savingsGoals = deduplicateGoals([...cloudGoals, ...localPending]);
     localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
     renderSavingsGoals();
   }, (error) => {
@@ -3317,7 +3499,7 @@ function setupVaultCloudListeners(vaultId) {
 
   const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
   unsubscribeRecurring = onSnapshot(rColl, (snapshot) => {
-    const cloudR = [];
+    const rawCloudR = [];
     snapshot.forEach(docSnap => {
       const rData = docSnap.data();
       const docId = String(docSnap.id);
@@ -3335,16 +3517,22 @@ function setupVaultCloudListeners(vaultId) {
           (rSig && recentlyDeletedRecurringIds.has(rSig))) {
         return;
       }
-      cloudR.push({ ...rData, id: docSnap.id, firestoreId: docSnap.id, localId: rData.localId || rData.id });
+      rawCloudR.push({ ...rData, id: docSnap.id, firestoreId: docSnap.id, localId: rData.localId || rData.id });
     });
+    const cloudR = deduplicateRecurring(rawCloudR);
     const localPending = recurringPayments.filter(r => 
       typeof r.id === 'string' && r.id.startsWith('rec_') &&
       !recentlyDeletedRecurringIds.has(String(r.id)) &&
       !recentlyDeletedRecurringIds.has(String(r.localId)) &&
       !recentlyDeletedRecurringIds.has(String(r.firestoreId)) &&
-      !cloudR.some(c => (c.name === r.name && c.amount === r.amount) || (c.localId && c.localId === r.id))
+      !cloudR.some(c => 
+        (c.id && c.id === r.id) ||
+        (c.firestoreId && c.firestoreId === r.id) ||
+        (c.localId && (c.localId === r.id || c.localId === r.localId)) ||
+        ((c.name || '').trim().toLowerCase() === (r.name || '').trim().toLowerCase() && Math.abs((c.amount || 0) - (r.amount || 0)) < 0.01 && c.type === r.type)
+      )
     );
-    recurringPayments = [...cloudR, ...localPending];
+    recurringPayments = deduplicateRecurring([...cloudR, ...localPending]);
     localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
     renderRecurringPayments();
   }, (error) => {
@@ -3776,6 +3964,8 @@ window.deleteTransaction = window.removeTransaction;
 // FORMULARIO DE INGRESO
 incomeForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (incomeForm.dataset.submitting === 'true') return;
+
   const dateVal = document.getElementById('income-date').value || getTodayStr();
   const descVal = document.getElementById('income-description').value.trim();
   const amountVal = parseAmount(document.getElementById('income-amount').value);
@@ -3788,23 +3978,34 @@ incomeForm.addEventListener('submit', async (e) => {
 
   if (!amountVal) return alert('Por favor ingresa un monto válido.');
 
-  await addTransactionLocallyOrCloud({
-    type: 'income',
-    date: dateVal,
-    description: descVal,
-    amount: amountVal,
-    category: catVal,
-    paymentMethod: paymentMethodVal
-  });
+  incomeForm.dataset.submitting = 'true';
+  const submitBtn = incomeForm.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
 
-  incomeForm.reset();
-  document.getElementById('income-date').value = todayStr;
-  document.getElementById('income-other-group').classList.add('hidden');
+  try {
+    await addTransactionLocallyOrCloud({
+      type: 'income',
+      date: dateVal,
+      description: descVal,
+      amount: amountVal,
+      category: catVal,
+      paymentMethod: paymentMethodVal
+    });
+
+    incomeForm.reset();
+    document.getElementById('income-date').value = todayStr;
+    document.getElementById('income-other-group').classList.add('hidden');
+  } finally {
+    incomeForm.dataset.submitting = 'false';
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
 // FORMULARIO DE GASTO
 expenseForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (expenseForm.dataset.submitting === 'true') return;
+
   const dateVal = document.getElementById('expense-date').value || getTodayStr();
   let descVal = document.getElementById('expense-description').value.trim();
   const amountVal = parseAmount(document.getElementById('expense-amount').value);
@@ -3825,19 +4026,28 @@ expenseForm.addEventListener('submit', async (e) => {
     }
   }
 
-  await addTransactionLocallyOrCloud({
-    type: 'expense',
-    date: dateVal,
-    description: descVal,
-    amount: amountVal,
-    category: catVal,
-    paymentMethod: paymentMethodVal
-  });
+  expenseForm.dataset.submitting = 'true';
+  const submitBtn = expenseForm.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
 
-  expenseForm.reset();
-  document.getElementById('expense-date').value = todayStr;
-  document.getElementById('expense-other-group').classList.add('hidden');
-  updateMediumNotice(expensePaymentMethodEl, expenseMediumNotice, true);
+  try {
+    await addTransactionLocallyOrCloud({
+      type: 'expense',
+      date: dateVal,
+      description: descVal,
+      amount: amountVal,
+      category: catVal,
+      paymentMethod: paymentMethodVal
+    });
+
+    expenseForm.reset();
+    document.getElementById('expense-date').value = todayStr;
+    document.getElementById('expense-other-group').classList.add('hidden');
+    updateMediumNotice(expensePaymentMethodEl, expenseMediumNotice, true);
+  } finally {
+    expenseForm.dataset.submitting = 'false';
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
 // MODAL TRANSFERENCIA / RETIRO A EFECTIVO FÍSICO
@@ -3857,6 +4067,8 @@ if (btnCloseTransferModal && transferModal) {
 if (transferForm) {
   transferForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (transferForm.dataset.submitting === 'true') return;
+
     const from = transferFrom.value;
     const to = transferTo.value;
     const amountVal = parseAmount(transferAmount.value);
@@ -3866,30 +4078,39 @@ if (transferForm) {
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido a mover');
     if (from === to) return alert('La cuenta de origen y de destino no pueden ser la misma');
 
-    // 1. Salida de la cuenta de origen
-    await addTransactionLocallyOrCloud({
-      type: 'expense',
-      date: dateVal,
-      description: `SALIDA A ${to}: ${conceptVal}`,
-      amount: amountVal,
-      category: 'TRANSFERENCIA INTERNA',
-      paymentMethod: from
-    });
+    transferForm.dataset.submitting = 'true';
+    const submitBtn = transferForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-    // 2. Entrada a la cuenta de destino
-    await addTransactionLocallyOrCloud({
-      type: 'income',
-      date: dateVal,
-      description: `ENTRADA DESDE ${from}: ${conceptVal}`,
-      amount: amountVal,
-      category: 'TRANSFERENCIA INTERNA',
-      paymentMethod: to
-    });
+    try {
+      // 1. Salida de la cuenta de origen
+      await addTransactionLocallyOrCloud({
+        type: 'expense',
+        date: dateVal,
+        description: `SALIDA A ${to}: ${conceptVal}`,
+        amount: amountVal,
+        category: 'TRANSFERENCIA INTERNA',
+        paymentMethod: from
+      });
 
-    transferForm.reset();
-    if (transferDate) transferDate.value = getTodayStr();
-    transferModal.classList.add('hidden');
-    alert(`¡Se movieron ${formatCurrency(amountVal)} de ${from} hacia ${to} exitosamente!`);
+      // 2. Entrada a la cuenta de destino
+      await addTransactionLocallyOrCloud({
+        type: 'income',
+        date: dateVal,
+        description: `ENTRADA DESDE ${from}: ${conceptVal}`,
+        amount: amountVal,
+        category: 'TRANSFERENCIA INTERNA',
+        paymentMethod: to
+      });
+
+      transferForm.reset();
+      if (transferDate) transferDate.value = getTodayStr();
+      transferModal.classList.add('hidden');
+      alert(`¡Se movieron ${formatCurrency(amountVal)} de ${from} hacia ${to} exitosamente!`);
+    } finally {
+      transferForm.dataset.submitting = 'false';
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 
@@ -3926,42 +4147,54 @@ if (btnClosePayCardModal && payCardModal) {
 if (payCardForm) {
   payCardForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (payCardForm.dataset.submitting === 'true') return;
+
     const amountVal = parseAmount(payCardAmount.value);
     const sourceAcc = payCardSource.value;
     const dateVal = payCardDate.value || getTodayStr();
 
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido a pagar');
 
-    // 1. Salida de la cuenta que paga (Banco, Nequi, etc.)
-    await addTransactionLocallyOrCloud({
-      type: 'expense',
-      date: dateVal,
-      description: `PAGO DE TARJETA DE CRÉDITO (Desde ${sourceAcc})`,
-      amount: amountVal,
-      category: 'PAGO DE DEUDAS',
-      paymentMethod: sourceAcc
-    });
+    payCardForm.dataset.submitting = 'true';
+    const submitBtn = payCardForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-    // 2. Abono que liquida el saldo de la tarjeta de crédito
-    await addTransactionLocallyOrCloud({
-      type: 'income',
-      date: dateVal,
-      description: `ABONO / LIQUIDACIÓN TARJETA DE CRÉDITO`,
-      amount: amountVal,
-      category: 'PAGO DE DEUDAS',
-      paymentMethod: 'TARJETA_CREDITO'
-    });
+    try {
+      // 1. Salida de la cuenta que paga (Banco, Nequi, etc.)
+      await addTransactionLocallyOrCloud({
+        type: 'expense',
+        date: dateVal,
+        description: `PAGO DE TARJETA DE CRÉDITO (Desde ${sourceAcc})`,
+        amount: amountVal,
+        category: 'PAGO DE DEUDAS',
+        paymentMethod: sourceAcc
+      });
 
-    payCardForm.reset();
-    payCardModal.classList.add('hidden');
-    alert(`¡Pago de ${formatCurrency(amountVal)} a tu Tarjeta de Crédito registrado con éxito!`);
+      // 2. Abono que liquida el saldo de la tarjeta de crédito
+      await addTransactionLocallyOrCloud({
+        type: 'income',
+        date: dateVal,
+        description: `ABONO / LIQUIDACIÓN TARJETA DE CRÉDITO`,
+        amount: amountVal,
+        category: 'PAGO DE DEUDAS',
+        paymentMethod: 'TARJETA_CREDITO'
+      });
+
+      payCardForm.reset();
+      payCardModal.classList.add('hidden');
+      alert(`¡Pago de ${formatCurrency(amountVal)} a tu Tarjeta de Crédito registrado con éxito!`);
+    } finally {
+      payCardForm.dataset.submitting = 'false';
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 
-// FORMULARIO DE CREAR DEUDA
 // FORMULARIO DE CREAR DEUDA / OBLIGACIÓN (DEBO vs ME DEBEN)
 debtForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (debtForm.dataset.submitting === 'true') return;
+
   const typeVal = document.getElementById('debt-type')?.value || 'debt_payable';
   const nameVal = document.getElementById('debt-name').value.trim();
   const totalVal = parseAmount(document.getElementById('debt-total').value);
@@ -3973,59 +4206,81 @@ debtForm.addEventListener('submit', async (e) => {
 
   if (!totalVal) return alert('Por favor ingresa un monto válido.');
 
-  const localId = 'debt_' + Date.now();
-  const debtData = {
-    id: localId,
-    localId: localId,
-    tempId: localId,
-    firestoreId: localId,
-    type: typeVal, // 'debt_payable' | 'debt_receivable'
-    name: nameVal,
-    total: totalVal,
-    paid: 0,
-    interest: interestVal,
-    installments: installmentsVal,
-    frequency: frequencyVal,
-    method: methodVal,
-    paymentMethod: methodVal,
-    startDate: startDateVal,
-    history: JSON.stringify([]),
-    createdAt: new Date().toISOString()
-  };
+  // Prevenir duplicación inmediata por doble toque o ráfaga (<15s)
+  const isDuplicate = debts.some(d => 
+    d.type === typeVal &&
+    (d.name || '').trim().toLowerCase() === nameVal.toLowerCase() &&
+    Math.abs((d.total || 0) - totalVal) < 0.01 &&
+    Math.abs(new Date(d.createdAt || 0).getTime() - Date.now()) < 15000
+  );
+  if (isDuplicate) return;
 
-  debts.push(debtData);
-  localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
-  updateUI();
-
-  const successMsg = typeVal === 'debt_receivable'
-    ? `✅ Dinero por cobrar "${debtData.name}" registrado correctamente`
-    : `✅ Deuda por pagar "${debtData.name}" registrada correctamente`;
-  showQuickToast(successMsg);
+  debtForm.dataset.submitting = 'true';
+  const submitBtn = debtForm.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
 
   try {
-    const debtsColl = collection(db, 'vaults', activeVaultId, 'debts');
-    const docRef = await addDoc(debtsColl, {
-      vaultId: activeVaultId,
-      ...debtData
-    });
-    debtData.firestoreId = docRef.id;
-    debtData.id = docRef.id;
+    const localId = 'debt_' + Date.now();
+    const debtData = {
+      id: localId,
+      localId: localId,
+      tempId: localId,
+      firestoreId: localId,
+      type: typeVal, // 'debt_payable' | 'debt_receivable'
+      name: nameVal,
+      total: totalVal,
+      paid: 0,
+      interest: interestVal,
+      installments: installmentsVal,
+      frequency: frequencyVal,
+      method: methodVal,
+      paymentMethod: methodVal,
+      startDate: startDateVal,
+      history: JSON.stringify([]),
+      createdAt: new Date().toISOString()
+    };
+
+    debts.push(debtData);
+    debts = deduplicateDebts(debts);
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
     updateUI();
-  } catch (e) {
-    console.warn('Deuda guardada localmente (pendiente de sync a la nube):', e);
-  }
 
-  debtForm.reset();
-  setDebtType('debt_payable');
-  document.getElementById('debt-start-date').value = todayStr;
-  syncClientTotalsToServer();
+    const successMsg = typeVal === 'debt_receivable'
+      ? `✅ Dinero por cobrar "${debtData.name}" registrado correctamente`
+      : `✅ Deuda por pagar "${debtData.name}" registrada correctamente`;
+    showQuickToast(successMsg);
+
+    try {
+      const debtsColl = collection(db, 'vaults', activeVaultId, 'debts');
+      const docRef = await addDoc(debtsColl, {
+        vaultId: activeVaultId,
+        ...debtData
+      });
+      debtData.firestoreId = docRef.id;
+      debtData.id = docRef.id;
+      debts = deduplicateDebts(debts);
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
+    } catch (e) {
+      console.warn('Deuda guardada localmente (pendiente de sync a la nube):', e);
+    }
+
+    debtForm.reset();
+    setDebtType('debt_payable');
+    document.getElementById('debt-start-date').value = todayStr;
+    syncClientTotalsToServer();
+  } finally {
+    debtForm.dataset.submitting = 'false';
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
 // FORMULARIO DE CREAR META DE AHORRO
 if (goalForm) {
   goalForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (goalForm.dataset.submitting === 'true') return;
+
     const nameVal = document.getElementById('goal-name').value.trim();
     const targetVal = parseAmount(document.getElementById('goal-target').value);
     const initialVal = parseAmount(document.getElementById('goal-initial').value) || 0;
@@ -4035,48 +4290,67 @@ if (goalForm) {
 
     if (!targetVal || targetVal <= 0) return alert('Ingresa un monto objetivo válido');
 
-    const localId = 'goal_' + Date.now();
-    const goalData = {
-      id: localId,
-      localId: localId,
-      tempId: localId,
-      firestoreId: localId,
-      name: nameVal,
-      targetAmount: targetVal,
-      currentAmount: initialVal,
-      targetDate: dateVal,
-      icon: iconVal,
-      createdAt: new Date().toISOString()
-    };
+    // Prevenir duplicación inmediata por doble toque (<15s)
+    const isDuplicate = savingsGoals.some(g => 
+      (g.name || '').trim().toLowerCase() === nameVal.toLowerCase() &&
+      Math.abs((g.targetAmount || 0) - targetVal) < 0.01 &&
+      Math.abs(new Date(g.createdAt || 0).getTime() - Date.now()) < 15000
+    );
+    if (isDuplicate) return;
 
-    savingsGoals.push(goalData);
-    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-    renderSavingsGoals();
-    showQuickToast(`🎯 Meta "${goalData.name}" creada exitosamente`);
+    goalForm.dataset.submitting = 'true';
+    const submitBtn = goalForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const gColl = collection(db, 'vaults', activeVaultId, 'savingsGoals');
-      const docRef = await addDoc(gColl, {
-        vaultId: activeVaultId,
-        ...goalData
-      });
-      goalData.firestoreId = docRef.id;
-      goalData.id = docRef.id;
+      const localId = 'goal_' + Date.now();
+      const goalData = {
+        id: localId,
+        localId: localId,
+        tempId: localId,
+        firestoreId: localId,
+        name: nameVal,
+        targetAmount: targetVal,
+        currentAmount: initialVal,
+        targetDate: dateVal,
+        icon: iconVal,
+        createdAt: new Date().toISOString()
+      };
+
+      savingsGoals.push(goalData);
+      savingsGoals = deduplicateGoals(savingsGoals);
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
       renderSavingsGoals();
-    } catch (e) {
-      console.warn('Meta guardada localmente (pendiente de sync a la nube):', e);
-    }
+      showQuickToast(`🎯 Meta "${goalData.name}" creada exitosamente`);
 
-    goalForm.reset();
-    document.getElementById('goal-initial').value = '0';
-    if (goalIconPreview) goalIconPreview.textContent = '🎯';
-    if (goalIconInput) goalIconInput.value = '🎯';
-    if (goalCustomEmojiInput) goalCustomEmojiInput.value = '';
-    if (goalEmojiPicker) {
-      goalEmojiPicker.querySelectorAll('.goal-emoji-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.emoji === '🎯');
-      });
+      try {
+        const gColl = collection(db, 'vaults', activeVaultId, 'savingsGoals');
+        const docRef = await addDoc(gColl, {
+          vaultId: activeVaultId,
+          ...goalData
+        });
+        goalData.firestoreId = docRef.id;
+        goalData.id = docRef.id;
+        savingsGoals = deduplicateGoals(savingsGoals);
+        localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+        renderSavingsGoals();
+      } catch (e) {
+        console.warn('Meta guardada localmente (pendiente de sync a la nube):', e);
+      }
+
+      goalForm.reset();
+      document.getElementById('goal-initial').value = '0';
+      if (goalIconPreview) goalIconPreview.textContent = '🎯';
+      if (goalIconInput) goalIconInput.value = '🎯';
+      if (goalCustomEmojiInput) goalCustomEmojiInput.value = '';
+      if (goalEmojiPicker) {
+        goalEmojiPicker.querySelectorAll('.goal-emoji-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.emoji === '🎯');
+        });
+      }
+    } finally {
+      goalForm.dataset.submitting = 'false';
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }
@@ -4085,6 +4359,8 @@ if (goalForm) {
 if (recurringForm) {
   recurringForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (recurringForm.dataset.submitting === 'true') return;
+
     const nameVal = document.getElementById('rec-name').value.trim();
     const typeVal = document.getElementById('rec-type').value;
     const amountVal = parseAmount(document.getElementById('rec-amount').value);
@@ -4095,44 +4371,64 @@ if (recurringForm) {
 
     if (!amountVal || amountVal <= 0) return alert('Ingresa un monto válido');
 
-    const localId = 'rec_' + Date.now();
-    const rData = {
-      id: localId,
-      localId: localId,
-      tempId: localId,
-      firestoreId: localId,
-      name: nameVal,
-      type: typeVal,
-      amount: amountVal,
-      frequency: freqVal,
-      dueDay: dayVal,
-      category: catVal,
-      paymentMethod: methodVal,
-      lastPaidMonth: '',
-      createdAt: new Date().toISOString()
-    };
+    // Prevenir duplicación inmediata por doble toque (<15s)
+    const isDuplicate = recurringPayments.some(r => 
+      r.type === typeVal &&
+      (r.name || '').trim().toLowerCase() === nameVal.toLowerCase() &&
+      Math.abs((r.amount || 0) - amountVal) < 0.01 &&
+      Math.abs(new Date(r.createdAt || 0).getTime() - Date.now()) < 15000
+    );
+    if (isDuplicate) return;
 
-    recurringPayments.push(rData);
-    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-    renderRecurringPayments();
-    showQuickToast(`✅ Registro fijo "${rData.name}" guardado`);
+    recurringForm.dataset.submitting = 'true';
+    const submitBtn = recurringForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const rColl = collection(db, 'vaults', activeVaultId, 'recurringPayments');
-      const docRef = await addDoc(rColl, {
-        vaultId: activeVaultId,
-        ...rData
-      });
-      rData.firestoreId = docRef.id;
-      rData.id = docRef.id;
+      const localId = 'rec_' + Date.now();
+      const rData = {
+        id: localId,
+        localId: localId,
+        tempId: localId,
+        firestoreId: localId,
+        name: nameVal,
+        type: typeVal,
+        amount: amountVal,
+        frequency: freqVal,
+        dueDay: dayVal,
+        category: catVal,
+        paymentMethod: methodVal,
+        lastPaidMonth: '',
+        createdAt: new Date().toISOString()
+      };
+
+      recurringPayments.push(rData);
+      recurringPayments = deduplicateRecurring(recurringPayments);
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
       renderRecurringPayments();
-    } catch (e) {
-      console.warn('Registro fijo guardado localmente (pendiente de sync):', e);
-    }
+      showQuickToast(`✅ Registro fijo "${rData.name}" guardado`);
 
-    recurringForm.reset();
-    setRecurringType('expense');
+      try {
+        const rColl = collection(db, 'vaults', activeVaultId, 'recurringPayments');
+        const docRef = await addDoc(rColl, {
+          vaultId: activeVaultId,
+          ...rData
+        });
+        rData.firestoreId = docRef.id;
+        rData.id = docRef.id;
+        recurringPayments = deduplicateRecurring(recurringPayments);
+        localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+        renderRecurringPayments();
+      } catch (e) {
+        console.warn('Registro fijo guardado localmente (pendiente de sync):', e);
+      }
+
+      recurringForm.reset();
+      setRecurringType('expense');
+    } finally {
+      recurringForm.dataset.submitting = 'false';
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 
@@ -4257,6 +4553,8 @@ if (btnCloseGoalModal) {
 if (goalActionForm) {
   goalActionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (goalActionForm.dataset.submitting === 'true') return;
+
     const gId = modalGoalId.value;
     const action = modalGoalAction.value;
     const amountVal = parseAmount(modalGoalAmount.value);
@@ -4270,28 +4568,37 @@ if (goalActionForm) {
       return alert(`No puedes retirar más de lo que tienes ahorrado ($ ${formatCurrency(targetGoal.currentAmount)})`);
     }
 
-    const newAmount = action === 'deposit'
-      ? targetGoal.currentAmount + amountVal
-      : targetGoal.currentAmount - amountVal;
-
-    // Actualización inmediata del ahorro en meta (sin contaminar ingresos/gastos corrientes)
-    targetGoal.currentAmount = newAmount;
-    localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
-    renderSavingsGoals();
-    updateUI();
-    showQuickToast(`🎯 ${action === 'deposit' ? 'Abono a' : 'Retiro de'} "${targetGoal.name}": ${formatCurrency(amountVal)}`);
+    goalActionForm.dataset.submitting = 'true';
+    if (modalGoalSubmitBtn) modalGoalSubmitBtn.disabled = true;
 
     try {
-      await setDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetGoal.id), {
-        vaultId: activeVaultId,
-        ...targetGoal,
-        currentAmount: newAmount
-      }, { merge: true });
-    } catch (err) {
-      console.warn('Error actualizando meta en Firestore:', err);
-    }
+      const newAmount = action === 'deposit'
+        ? targetGoal.currentAmount + amountVal
+        : targetGoal.currentAmount - amountVal;
 
-    goalActionModal.classList.add('hidden');
+      // Actualización inmediata del ahorro en meta (sin contaminar ingresos/gastos corrientes)
+      targetGoal.currentAmount = newAmount;
+      savingsGoals = deduplicateGoals(savingsGoals);
+      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
+      updateUI();
+      showQuickToast(`🎯 ${action === 'deposit' ? 'Abono a' : 'Retiro de'} "${targetGoal.name}": ${formatCurrency(amountVal)}`);
+
+      try {
+        await setDoc(doc(db, 'vaults', activeVaultId, 'savingsGoals', targetGoal.id), {
+          vaultId: activeVaultId,
+          ...targetGoal,
+          currentAmount: newAmount
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Error actualizando meta en Firestore:', err);
+      }
+
+      goalActionModal.classList.add('hidden');
+    } finally {
+      goalActionForm.dataset.submitting = 'false';
+      if (modalGoalSubmitBtn) modalGoalSubmitBtn.disabled = false;
+    }
   });
 }
 
@@ -5231,7 +5538,6 @@ function updateUI() {
     } else {
       if (debtPayableList) debtPayableList.appendChild(row);
     }
-    if (debtList) debtList.appendChild(row.cloneNode(true));
   });
 
   // Estados vacíos elegantes si no hay registros

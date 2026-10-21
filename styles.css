@@ -2837,11 +2837,17 @@ body[data-device="mobile"] thead {
   display: none !important;
 }
 
-body[data-device="mobile"] table {
+body[data-device="mobile"] table:not(.hidden):not([hidden]) {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
   table-layout: fixed !important;
+}
+
+body[data-device="mobile"] table.hidden,
+body[data-device="mobile"] table[hidden],
+body[data-device="mobile"] #debt-list {
+  display: none !important;
 }
 
 body[data-device="mobile"] .table-wrapper {
@@ -3186,13 +3192,17 @@ body[data-device="desktop"] .goals-layout-grid {
     display: block !important;
   }
 
-  table {
+  table:not(.hidden):not([hidden]) {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
     border-collapse: collapse !important;
     display: table !important;
     table-layout: fixed !important;
+  }
+
+  table.hidden, table[hidden], #debt-list {
+    display: none !important;
   }
 
   thead {

@@ -1190,8 +1190,8 @@
           </div>
         </div>
 
-        <!-- Mantenemos debt-list oculto para compatibilidad defensiva -->
-        <table style="display: none;"><tbody id="debt-list"></tbody></table>
+        <!-- Contenedor invisible para compatibilidad defensiva de script.js sin renderizar elementos de tabla -->
+        <div id="debt-list" class="hidden" style="display: none !important;" hidden aria-hidden="true"></div>
       </div>
     </section>
 

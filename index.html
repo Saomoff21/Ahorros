@@ -808,9 +808,68 @@
             </div>
 
             <div class="form-row">
-              <div class="form-group">
-                <label for="rec-day">Día del Mes (Cobro / Pago)</label>
-                <input type="number" id="rec-day" min="1" max="31" value="5" required>
+              <div class="form-group" id="rec-schedule-group">
+                <!-- Para Mensual -->
+                <div id="rec-field-mensual">
+                  <label for="rec-day">Día del Mes (Cobro / Pago)</label>
+                  <input type="number" id="rec-day" min="1" max="31" value="5" placeholder="Día (1 - 31)">
+                  <small style="color: var(--text-muted); font-size: 0.7rem;">Día fijo en que se genera cada mes</small>
+                </div>
+
+                <!-- Para Quincenal -->
+                <div id="rec-field-quincenal" class="hidden">
+                  <label for="rec-quincena-scheme">Días de Quincena (Cobro / Pago)</label>
+                  <select id="rec-quincena-scheme">
+                    <option value="15,30">Días 15 y 30 (Fin de Mes - Estándar)</option>
+                    <option value="1,16">Días 1 y 16 de cada mes</option>
+                    <option value="10,25">Días 10 y 25 de cada mes</option>
+                    <option value="5,20">Días 5 y 20 de cada mes</option>
+                    <option value="custom">Otro (Personalizado...)</option>
+                  </select>
+                  <div id="rec-quincena-custom-row" class="hidden" style="display: flex; gap: 8px; margin-top: 6px;">
+                    <input type="number" id="rec-quincena-day1" min="1" max="31" value="15" placeholder="1ª (ej: 15)">
+                    <input type="number" id="rec-quincena-day2" min="1" max="31" value="30" placeholder="2ª (ej: 30)">
+                  </div>
+                  <small style="color: var(--text-muted); font-size: 0.7rem;">Se cobra o paga dos veces al mes</small>
+                </div>
+
+                <!-- Para Semanal -->
+                <div id="rec-field-semanal" class="hidden">
+                  <label for="rec-weekday">Día de la Semana (Cobro / Pago)</label>
+                  <select id="rec-weekday">
+                    <option value="1">Cada Lunes</option>
+                    <option value="2">Cada Martes</option>
+                    <option value="3">Cada Miércoles</option>
+                    <option value="4">Cada Jueves</option>
+                    <option value="5" selected>Cada Viernes</option>
+                    <option value="6">Cada Sábado</option>
+                    <option value="0">Cada Domingo</option>
+                  </select>
+                  <small style="color: var(--text-muted); font-size: 0.7rem;">Se repite cada semana en este día</small>
+                </div>
+
+                <!-- Para Anual -->
+                <div id="rec-field-anual" class="hidden">
+                  <label>Fecha Anual (Mes y Día)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <select id="rec-annual-month" style="flex: 1.5;">
+                      <option value="1">Enero</option>
+                      <option value="2">Febrero</option>
+                      <option value="3">Marzo</option>
+                      <option value="4">Abril</option>
+                      <option value="5">Mayo</option>
+                      <option value="6">Junio</option>
+                      <option value="7">Julio</option>
+                      <option value="8">Agosto</option>
+                      <option value="9">Septiembre</option>
+                      <option value="10">Octubre</option>
+                      <option value="11">Noviembre</option>
+                      <option value="12" selected>Diciembre</option>
+                    </select>
+                    <input type="number" id="rec-annual-day" min="1" max="31" value="15" placeholder="Día" style="flex: 1;">
+                  </div>
+                  <small style="color: var(--text-muted); font-size: 0.7rem;">Se cobra o paga una vez al año</small>
+                </div>
               </div>
 
               <div class="form-group">
@@ -1501,6 +1560,13 @@
           </div>
         </div>
 
+        <!-- Selector Dinámico de Periodo (Quincena 1/2, Semana 1/2/3/4/5, Anual, etc.) -->
+        <div id="modal-rec-period-group" class="form-group" style="margin-bottom: 14px;">
+          <label id="modal-rec-period-label" for="modal-rec-period-select">Periodo o Cuota a Registrar</label>
+          <select id="modal-rec-period-select"></select>
+          <small id="modal-rec-period-helper" style="color: var(--text-muted); font-size: 0.72rem; margin-top: 4px; display: block;"></small>
+        </div>
+
         <div class="form-group">
           <label for="modal-rec-account" id="modal-rec-account-label">Cuenta o Método de Pago para este Mes</label>
           <div class="amount-chips-row" style="margin-bottom: 8px;">
@@ -1641,13 +1707,6 @@
             <input type="text" id="edit-rec-amount" class="currency-input" required>
           </div>
           <div class="form-group">
-            <label for="edit-rec-day">Día del Mes</label>
-            <input type="number" id="edit-rec-day" min="1" max="31" required>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
             <label for="edit-rec-frequency">Frecuencia</label>
             <select id="edit-rec-frequency">
               <option value="mensual">🗓️ Mensual (Cada mes)</option>
@@ -1655,6 +1714,72 @@
               <option value="semanal">🗓️ Semanal (Cada semana)</option>
               <option value="anual">🗓️ Anual (Cada año)</option>
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" id="edit-rec-schedule-group">
+            <!-- Para Mensual -->
+            <div id="edit-rec-field-mensual">
+              <label for="edit-rec-day">Día del Mes (Cobro / Pago)</label>
+              <input type="number" id="edit-rec-day" min="1" max="31" value="5" placeholder="Día (1 - 31)">
+              <small style="color: var(--text-muted); font-size: 0.7rem;">Día fijo en que se genera cada mes</small>
+            </div>
+
+            <!-- Para Quincenal -->
+            <div id="edit-rec-field-quincenal" class="hidden">
+              <label for="edit-rec-quincena-scheme">Días de Quincena (Cobro / Pago)</label>
+              <select id="edit-rec-quincena-scheme">
+                <option value="15,30">Días 15 y 30 (Fin de Mes - Estándar)</option>
+                <option value="1,16">Días 1 y 16 de cada mes</option>
+                <option value="10,25">Días 10 y 25 de cada mes</option>
+                <option value="5,20">Días 5 y 20 de cada mes</option>
+                <option value="custom">Otro (Personalizado...)</option>
+              </select>
+              <div id="edit-rec-quincena-custom-row" class="hidden" style="display: flex; gap: 8px; margin-top: 6px;">
+                <input type="number" id="edit-rec-quincena-day1" min="1" max="31" value="15" placeholder="1ª (ej: 15)">
+                <input type="number" id="edit-rec-quincena-day2" min="1" max="31" value="30" placeholder="2ª (ej: 30)">
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">Se cobra o paga dos veces al mes</small>
+            </div>
+
+            <!-- Para Semanal -->
+            <div id="edit-rec-field-semanal" class="hidden">
+              <label for="edit-rec-weekday">Día de la Semana (Cobro / Pago)</label>
+              <select id="edit-rec-weekday">
+                <option value="1">Cada Lunes</option>
+                <option value="2">Cada Martes</option>
+                <option value="3">Cada Miércoles</option>
+                <option value="4">Cada Jueves</option>
+                <option value="5" selected>Cada Viernes</option>
+                <option value="6">Cada Sábado</option>
+                <option value="0">Cada Domingo</option>
+              </select>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">Se repite cada semana en este día</small>
+            </div>
+
+            <!-- Para Anual -->
+            <div id="edit-rec-field-anual" class="hidden">
+              <label>Fecha Anual (Mes y Día)</label>
+              <div style="display: flex; gap: 8px;">
+                <select id="edit-rec-annual-month" style="flex: 1.5;">
+                  <option value="1">Enero</option>
+                  <option value="2">Febrero</option>
+                  <option value="3">Marzo</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Mayo</option>
+                  <option value="6">Junio</option>
+                  <option value="7">Julio</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12" selected>Diciembre</option>
+                </select>
+                <input type="number" id="edit-rec-annual-day" min="1" max="31" value="15" placeholder="Día" style="flex: 1;">
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">Se cobra o paga una vez al año</small>
+            </div>
           </div>
 
           <div class="form-group">

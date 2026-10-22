@@ -2238,63 +2238,74 @@ if (btnCloseRecEditModal && recurringEditModal) {
 if (recurringEditForm) {
   recurringEditForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (recurringEditForm.dataset.submitting === 'true') return;
+
     const id = document.getElementById('edit-rec-id').value;
     const r = recurringPayments.find(item => item && (String(item.id) === String(id) || String(item.firestoreId) === String(id) || String(item.localId) === String(id)));
     if (!r) return;
 
-    const freqVal = document.getElementById('edit-rec-frequency').value;
-    r.name = document.getElementById('edit-rec-name').value.trim();
-    r.amount = parseAmount(document.getElementById('edit-rec-amount').value) || r.amount;
-    r.frequency = freqVal;
-    r.paymentMethod = document.getElementById('edit-rec-method').value;
-    if (document.getElementById('edit-rec-category')) {
-      r.category = document.getElementById('edit-rec-category').value;
-    }
-
-    if (freqVal === 'semanal') {
-      r.dueWeekday = parseInt(document.getElementById('edit-rec-weekday')?.value, 10) || 5;
-      r.dueDay = r.dueWeekday + 1; // 1-7, cumple validación numérica de 1-31
-    } else if (freqVal === 'quincenal') {
-      const qScheme = document.getElementById('edit-rec-quincena-scheme')?.value || '15,30';
-      if (qScheme === 'custom') {
-        const d1 = parseInt(document.getElementById('edit-rec-quincena-day1')?.value, 10) || 15;
-        const d2 = parseInt(document.getElementById('edit-rec-quincena-day2')?.value, 10) || 30;
-        r.dueQuincenaDays = `${d1},${d2}`;
-        r.dueDay = d1;
-      } else {
-        r.dueQuincenaDays = qScheme;
-        r.dueDay = parseInt(qScheme.split(',')[0], 10) || 15;
-      }
-    } else if (freqVal === 'anual') {
-      r.dueMonth = parseInt(document.getElementById('edit-rec-annual-month')?.value, 10) || 12;
-      r.dueDay = parseInt(document.getElementById('edit-rec-annual-day')?.value, 10) || 15;
-    } else {
-      // mensual
-      r.dueDay = parseInt(document.getElementById('edit-rec-day')?.value, 10) || 5;
-    }
-
-    localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
-    renderRecurringPayments();
-    showQuickToast(`✅ Finanza fija "${r.name}" actualizada con éxito`);
+    recurringEditForm.dataset.submitting = 'true';
+    const submitBtn = recurringEditForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const docId = r.firestoreId || r.id;
-      await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), {
-        name: r.name,
-        amount: r.amount,
-        dueDay: r.dueDay,
-        dueWeekday: r.dueWeekday !== undefined ? r.dueWeekday : null,
-        dueQuincenaDays: r.dueQuincenaDays || null,
-        dueMonth: r.dueMonth || null,
-        frequency: r.frequency,
-        paymentMethod: r.paymentMethod,
-        category: r.category
-      }, { merge: true });
-    } catch (err) {
-      console.warn('Error sincronizando edición de pago fijo en Firestore:', err);
-    }
+      const freqVal = document.getElementById('edit-rec-frequency').value;
+      r.name = document.getElementById('edit-rec-name').value.trim();
+      r.amount = parseAmount(document.getElementById('edit-rec-amount').value) || r.amount;
+      r.frequency = freqVal;
+      r.paymentMethod = document.getElementById('edit-rec-method').value;
+      if (document.getElementById('edit-rec-category')) {
+        r.category = document.getElementById('edit-rec-category').value;
+      }
 
-    if (recurringEditModal) recurringEditModal.classList.add('hidden');
+      if (freqVal === 'semanal') {
+        r.dueWeekday = parseInt(document.getElementById('edit-rec-weekday')?.value, 10) || 5;
+        r.dueDay = r.dueWeekday + 1; // 1-7, cumple validación numérica de 1-31
+      } else if (freqVal === 'quincenal') {
+        const qScheme = document.getElementById('edit-rec-quincena-scheme')?.value || '15,30';
+        if (qScheme === 'custom') {
+          const d1 = parseInt(document.getElementById('edit-rec-quincena-day1')?.value, 10) || 15;
+          const d2 = parseInt(document.getElementById('edit-rec-quincena-day2')?.value, 10) || 30;
+          r.dueQuincenaDays = `${d1},${d2}`;
+          r.dueDay = d1;
+        } else {
+          r.dueQuincenaDays = qScheme;
+          r.dueDay = parseInt(qScheme.split(',')[0], 10) || 15;
+        }
+      } else if (freqVal === 'anual') {
+        r.dueMonth = parseInt(document.getElementById('edit-rec-annual-month')?.value, 10) || 12;
+        r.dueDay = parseInt(document.getElementById('edit-rec-annual-day')?.value, 10) || 15;
+      } else {
+        // mensual
+        r.dueDay = parseInt(document.getElementById('edit-rec-day')?.value, 10) || 5;
+      }
+
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
+      showQuickToast(`✅ Finanza fija "${r.name}" actualizada con éxito`);
+
+      try {
+        const docId = r.firestoreId || r.id;
+        await setDoc(doc(db, 'vaults', activeVaultId, 'recurringPayments', docId), {
+          name: r.name,
+          amount: r.amount,
+          dueDay: r.dueDay,
+          dueWeekday: r.dueWeekday !== undefined ? r.dueWeekday : null,
+          dueQuincenaDays: r.dueQuincenaDays || null,
+          dueMonth: r.dueMonth || null,
+          frequency: r.frequency,
+          paymentMethod: r.paymentMethod,
+          category: r.category
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Error sincronizando edición de pago fijo en Firestore:', err);
+      }
+
+      if (recurringEditModal) recurringEditModal.classList.add('hidden');
+    } finally {
+      recurringEditForm.dataset.submitting = 'false';
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 

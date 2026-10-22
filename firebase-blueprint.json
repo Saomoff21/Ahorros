@@ -75,9 +75,13 @@
         "type": { "type": "string", "enum": ["income", "expense"], "description": "Income or expense type" },
         "category": { "type": "string", "maxLength": 100, "description": "Category classification" },
         "paymentMethod": { "type": "string", "maxLength": 50, "description": "Default payment method" },
-        "frequency": { "type": "string", "enum": ["MENSUAL", "QUINCENAL", "SEMANAL", "ANUAL"], "description": "Recurrence frequency" },
+        "frequency": { "type": "string", "enum": ["MENSUAL", "QUINCENAL", "SEMANAL", "ANUAL", "mensual", "quincenal", "semanal", "anual"], "description": "Recurrence frequency" },
         "dueDay": { "type": "number", "description": "Day of the month for payment (1-31)" },
+        "dueWeekday": { "type": "number", "description": "Day of the week for weekly recurrence (0-6)" },
+        "dueQuincenaDays": { "type": "string", "description": "Days for bi-weekly recurrence" },
+        "dueMonth": { "type": "number", "description": "Month of the year for annual recurrence (1-12)" },
         "lastPaidMonth": { "type": "string", "description": "Last paid month tracker YYYY-MM" },
+        "paidPeriods": { "type": "array", "items": { "type": "string" }, "description": "List of paid period identifiers" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Record creation ISO timestamp" }
       },
       "required": ["userId", "name", "amount", "type", "frequency", "dueDay"]

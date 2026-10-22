@@ -62,7 +62,7 @@ service cloud.firestore {
         && data.name is string && data.name.size() <= 150
         && data.amount is number && data.amount > 0
         && data.type in ['income', 'expense']
-        && data.frequency in ['MENSUAL', 'QUINCENAL', 'SEMANAL', 'ANUAL']
+        && data.frequency in ['MENSUAL', 'QUINCENAL', 'SEMANAL', 'ANUAL', 'mensual', 'quincenal', 'semanal', 'anual']
         && data.dueDay is number && data.dueDay >= 1 && data.dueDay <= 31;
     }
 

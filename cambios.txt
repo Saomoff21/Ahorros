@@ -3,3 +3,15 @@ sin importar cuando se agrego se almacene por orden de fecha,
 además de que tanto en ingresos como en gastos se puedan ver por meses y que cada mes sea por separado y cargue el historial del mes 
 buscado y no queden todos juntos asi mismo luego se pueda cargar por años.
 
+Mejoras de visualización y filtrado en Dashboard y Movimientos (Implementado):
+1. Dashboard:
+   - Filtros dedicados por Cuenta / Método de pago con selector rápido e interacción directa al pulsar las tarjetas de cuenta.
+   - Vistas avanzadas con control segmentado:
+     * Todos (Consolidado): flujo cronológico unificado de ingresos y gastos.
+     * Solo Ingresos: tabla cronológica filtrada exclusivamente a ingresos con subtotales y badges independientes.
+     * Solo Gastos: tabla cronológica filtrada exclusivamente a gastos con subtotales y badges independientes.
+     * Comparativa Paralela (Lado a Lado): dos columnas simultáneas para contrastar Ingresos vs Gastos en tiempo real con sus respectivos conteos y montos.
+2. Movimientos / Historiales:
+   - Filtros 100% desvinculados e independientes: el filtro de cuenta seleccionado en Ingresos no afecta ni altera el filtro de método en Gastos, permitiendo cualquier combinación simultánea (ej. ver Ingresos en Nequi y Gastos en Efectivo).
+   - Indicadores y badges en las cabeceras de cada tabla con el conteo de movimientos y total acumulado según el método seleccionado.
+

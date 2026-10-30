@@ -552,6 +552,10 @@ let activeYear = String(initDateObj.getFullYear());
 let activeMonth = String(initDateObj.getMonth() + 1).padStart(2, '0');
 let activeMedium = 'ALL'; // 'ALL', 'FISICO', 'DIGITAL'
 let activeMethod = 'ALL'; // 'ALL', 'EFECTIVO', 'NEQUI', 'DAVIPLATA', 'BANCO', 'TARJETA_DEBITO', 'TARJETA_CREDITO', 'OTRO'
+let dashboardViewMode = 'consolidated'; // 'consolidated', 'incomes-only', 'expenses-only', 'comparative'
+let dashboardFilterMethod = 'ALL';
+let incomeFilterMethod = 'ALL';
+let expenseFilterMethod = 'ALL';
 let activeRecurringFilter = 'ALL'; // 'ALL', 'income', 'expense'
 let calendarCurrentDate = new Date();
 
@@ -666,6 +670,19 @@ const alertsContainer = document.getElementById('alerts-container');
 const dashboardSummaryList = document.getElementById('dashboard-summary-list');
 const summaryCountBadge = document.getElementById('summary-count-badge');
 
+const dashboardSummaryView = document.getElementById('dashboard-summary-view');
+const dashboardComparativeView = document.getElementById('dashboard-comparative-view');
+const dashboardTableTitle = document.getElementById('dashboard-table-title');
+const dashboardPeriodSubtotal = document.getElementById('dashboard-period-subtotal');
+const dashboardFilterMethodEl = document.getElementById('dashboard-filter-method');
+const dashboardActiveFilterIndicator = document.getElementById('dashboard-active-filter-indicator');
+const dashboardCompIncomeList = document.getElementById('dashboard-comp-income-list');
+const dashboardCompExpenseList = document.getElementById('dashboard-comp-expense-list');
+const dashboardCompIncomeCount = document.getElementById('dashboard-comp-income-count');
+const dashboardCompIncomeTotal = document.getElementById('dashboard-comp-income-total');
+const dashboardCompExpenseCount = document.getElementById('dashboard-comp-expense-count');
+const dashboardCompExpenseTotal = document.getElementById('dashboard-comp-expense-total');
+
 const incomeForm = document.getElementById('income-form');
 const expenseForm = document.getElementById('expense-form');
 const debtForm = document.getElementById('debt-form');
@@ -685,6 +702,10 @@ const debtList = document.getElementById('debt-list');
 const incomePeriodTotal = document.getElementById('income-period-total');
 const expensePeriodTotal = document.getElementById('expense-period-total');
 const debtsCountBadge = document.getElementById('debts-count-badge');
+const incomeFilterMethodEl = document.getElementById('income-filter-method');
+const expenseFilterMethodEl = document.getElementById('expense-filter-method');
+const incomeCountTag = document.getElementById('income-count-tag');
+const expenseCountTag = document.getElementById('expense-count-tag');
 
 const goalsContainer = document.getElementById('goals-container');
 const goalsSummaryBadge = document.getElementById('goals-summary-badge');
@@ -3933,18 +3954,68 @@ if (globalFilterMedium) {
 if (globalFilterMethod) {
   globalFilterMethod.addEventListener('change', () => {
     activeMethod = globalFilterMethod.value;
+    dashboardFilterMethod = activeMethod;
+    if (dashboardFilterMethodEl) dashboardFilterMethodEl.value = activeMethod;
     syncAccountCardsActiveState();
     updateActivePeriodLabel();
     updateUI();
   });
 }
 
+// FILTRO ESPECÍFICO DE CUENTAS DEL DASHBOARD
+if (dashboardFilterMethodEl) {
+  dashboardFilterMethodEl.addEventListener('change', () => {
+    dashboardFilterMethod = dashboardFilterMethodEl.value;
+    activeMethod = dashboardFilterMethod;
+    if (globalFilterMethod) globalFilterMethod.value = dashboardFilterMethod;
+    syncAccountCardsActiveState();
+    updateActivePeriodLabel();
+    updateUI();
+  });
+}
+
+// FILTROS 100% INDEPENDIENTES Y DESVINCULADOS EN MOVIMIENTOS
+if (incomeFilterMethodEl) {
+  incomeFilterMethodEl.addEventListener('change', () => {
+    incomeFilterMethod = incomeFilterMethodEl.value;
+    updateUI();
+  });
+}
+
+if (expenseFilterMethodEl) {
+  expenseFilterMethodEl.addEventListener('change', () => {
+    expenseFilterMethod = expenseFilterMethodEl.value;
+    updateUI();
+  });
+}
+
+// SELECTOR DE MODO DE VISUALIZACIÓN EN DASHBOARD (CONSOLIDADO, SOLO INGRESOS, SOLO GASTOS, COMPARATIVA)
+document.querySelectorAll('#dashboard-view-mode-selector .view-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    if (!mode) return;
+    dashboardViewMode = mode;
+    document.querySelectorAll('#dashboard-view-mode-selector .view-mode-btn').forEach(b => {
+      const isActive = b.dataset.mode === mode;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    updateUI();
+  });
+});
+
 if (btnClearMethodFilter) {
   btnClearMethodFilter.addEventListener('click', () => {
     activeMethod = 'ALL';
     activeMedium = 'ALL';
+    dashboardFilterMethod = 'ALL';
+    incomeFilterMethod = 'ALL';
+    expenseFilterMethod = 'ALL';
     if (globalFilterMethod) globalFilterMethod.value = 'ALL';
     if (globalFilterMedium) globalFilterMedium.value = 'ALL';
+    if (dashboardFilterMethodEl) dashboardFilterMethodEl.value = 'ALL';
+    if (incomeFilterMethodEl) incomeFilterMethodEl.value = 'ALL';
+    if (expenseFilterMethodEl) expenseFilterMethodEl.value = 'ALL';
     syncAccountCardsActiveState();
     updateActivePeriodLabel();
     updateUI();
@@ -3977,15 +4048,25 @@ if (btnToggleShowTime) {
 function syncAccountCardsActiveState() {
   document.querySelectorAll('.account-card').forEach(card => {
     const acc = card.dataset.account;
-    if (acc && acc === activeMethod) {
+    const isMatched = acc && (acc === dashboardFilterMethod || (dashboardFilterMethod === 'ALL' && acc === activeMethod && activeMethod !== 'ALL'));
+    if (isMatched) {
       card.classList.add('active-filter');
     } else {
       card.classList.remove('active-filter');
     }
   });
 
+  if (dashboardActiveFilterIndicator) {
+    if (dashboardFilterMethod !== 'ALL') {
+      dashboardActiveFilterIndicator.textContent = `Cuenta: ${dashboardFilterMethod}`;
+      dashboardActiveFilterIndicator.classList.remove('hidden');
+    } else {
+      dashboardActiveFilterIndicator.classList.add('hidden');
+    }
+  }
+
   if (btnClearMethodFilter) {
-    if (activeMethod !== 'ALL' || activeMedium !== 'ALL') {
+    if (activeMethod !== 'ALL' || dashboardFilterMethod !== 'ALL' || incomeFilterMethod !== 'ALL' || expenseFilterMethod !== 'ALL' || activeMedium !== 'ALL') {
       btnClearMethodFilter.classList.remove('hidden');
     } else {
       btnClearMethodFilter.classList.add('hidden');
@@ -3993,7 +4074,7 @@ function syncAccountCardsActiveState() {
   }
 }
 
-// CLICK EN TARJETAS DE CUENTAS EN EL DASHBOARD
+// CLICK EN TARJETAS DE CUENTAS EN EL DASHBOARD (FILTRA EL DASHBOARD DIRECTAMENTE)
 document.querySelectorAll('.account-card').forEach(card => {
   card.addEventListener('click', () => {
     const targetAcc = card.dataset.account;
@@ -4006,14 +4087,17 @@ document.querySelectorAll('.account-card').forEach(card => {
       return;
     }
 
-    if (activeMethod === targetAcc) {
+    if (dashboardFilterMethod === targetAcc) {
       // Toggle off
+      dashboardFilterMethod = 'ALL';
       activeMethod = 'ALL';
-      if (globalFilterMethod) globalFilterMethod.value = 'ALL';
     } else {
+      dashboardFilterMethod = targetAcc;
       activeMethod = targetAcc;
-      if (globalFilterMethod) globalFilterMethod.value = targetAcc;
     }
+
+    if (dashboardFilterMethodEl) dashboardFilterMethodEl.value = dashboardFilterMethod;
+    if (globalFilterMethod) globalFilterMethod.value = dashboardFilterMethod;
 
     syncAccountCardsActiveState();
     updateActivePeriodLabel();
@@ -5482,7 +5566,9 @@ function updateUI() {
   incomeList.innerHTML = '';
   expenseList.innerHTML = '';
   debtList.innerHTML = '';
-  dashboardSummaryList.innerHTML = '';
+  if (dashboardSummaryList) dashboardSummaryList.innerHTML = '';
+  if (dashboardCompIncomeList) dashboardCompIncomeList.innerHTML = '';
+  if (dashboardCompExpenseList) dashboardCompExpenseList.innerHTML = '';
   alertsContainer.innerHTML = '';
 
   const today = getTodayStr();
@@ -5496,7 +5582,14 @@ function updateUI() {
   let totalExpensePeriod = 0;
   let totalIncomeAll = 0;
   let totalExpenseAll = 0;
-  let periodItemCount = 0;
+  let incomeCount = 0;
+  let expenseCount = 0;
+
+  let totalDashboardIncome = 0;
+  let totalDashboardExpense = 0;
+  let countDashboardIncome = 0;
+  let countDashboardExpense = 0;
+  let dashboardItemsRendered = 0;
 
   // CALCULO DE SALDOS POR CUENTA / METODO DE PAGO
   let accNequi = 0;
@@ -5556,10 +5649,10 @@ function updateUI() {
 
   let lastIncomeMonthKey = null;
   let lastExpenseMonthKey = null;
-  let incomeCount = 0;
-  let expenseCount = 0;
 
-  sortedTransactions.forEach((t, idx) => {
+  const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
+
+  sortedTransactions.forEach((t) => {
     const tYear = (t.date || '').substring(0, 4);
     const tMonth = (t.date || '').substring(5, 7);
     const tMedium = getPaymentMedium(t.paymentMethod);
@@ -5571,38 +5664,32 @@ function updateUI() {
     const matchesYear = activeYear === 'ALL' || tYear === activeYear;
     const matchesMonth = activeMonth === 'ALL' || tMonth === activeMonth;
     const matchesMedium = activeMedium === 'ALL' || tMedium === activeMedium;
-    const matchesMethod = activeMethod === 'ALL' || tMethod === activeMethod;
-    const inPeriod = matchesYear && matchesMonth && matchesMedium && matchesMethod;
+    const inBasePeriod = matchesYear && matchesMonth && matchesMedium;
 
-    if (inPeriod) {
-      periodItemCount++;
-      if (t.type === 'income') {
-        totalIncomePeriod += t.amount;
-        incomeCount++;
-      } else {
-        totalExpensePeriod += t.amount;
-        expenseCount++;
-      }
+    if (!t.id) t.id = 'tx_' + Math.random().toString(36).substr(2, 9);
+    const deleteIdentifier = `'${t.id}'`;
+    const methodDisplay = t.paymentMethod || 'EFECTIVO';
+    const isTransfer = t.category === 'TRANSFERENCIA INTERNA';
+    const formattedDate = formatDateDisplay(t.date, t.time || t.createdAt);
+    const isIncome = t.type === 'income';
+    const amountColor = isIncome ? 'text-success' : 'text-danger';
+    const signPrefix = isIncome ? '+' : '-';
 
-      if (!t.id) t.id = 'tx_' + Math.random().toString(36).substr(2, 9);
-      const deleteIdentifier = `'${t.id}'`;
-      const methodDisplay = t.paymentMethod || 'EFECTIVO';
-      const isTransfer = t.category === 'TRANSFERENCIA INTERNA';
+    const mediumBadge = `<span class="medium-badge ${tMedium === 'FISICO' ? 'physical' : 'digital'}">${tMedium === 'FISICO' ? '💵 FÍSICO' : '📱 DIGITAL'}</span>`;
+    const methodBadge = isTransfer
+      ? `<span class="tag-badge" style="background: rgba(59, 130, 246, 0.15); color: var(--primary-color);">🔄 ${methodDisplay}</span>`
+      : `<span class="tag-badge">${methodDisplay}</span>`;
 
-      const mediumBadge = `<span class="medium-badge ${tMedium === 'FISICO' ? 'physical' : 'digital'}">${tMedium === 'FISICO' ? '💵 FÍSICO' : '📱 DIGITAL'}</span>`;
-      const methodBadge = isTransfer
-        ? `<span class="tag-badge" style="background: rgba(59, 130, 246, 0.15); color: var(--primary-color);">🔄 ${methodDisplay}</span>`
-        : `<span class="tag-badge">${methodDisplay}</span>`;
+    // 1. EVALUAR Y RENDERIZAR EN HISTORIAL DE MOVIMIENTOS (FILTROS 100% DESVINCULADOS)
+    const matchesIncomeMethod = incomeFilterMethod === 'ALL' || tMethod === incomeFilterMethod;
+    const matchesExpenseMethod = expenseFilterMethod === 'ALL' || tMethod === expenseFilterMethod;
 
-      // Fila para tabla de historial
+    if (isIncome && inBasePeriod && matchesIncomeMethod) {
+      totalIncomePeriod += t.amount;
+      incomeCount++;
+
       const row = document.createElement('tr');
       row.className = 'history-row';
-      const formattedDate = formatDateDisplay(t.date, t.time || t.createdAt);
-      const isIncome = t.type === 'income';
-      const amountColor = isIncome ? 'text-success' : 'text-danger';
-      const signPrefix = isIncome ? '+' : '-';
-      const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
-
       row.innerHTML = `
         <td class="col-date desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
         <td class="col-desc desktop-only"><strong>${t.description}</strong></td>
@@ -5614,7 +5701,6 @@ function updateUI() {
         </td>
         <td class="col-act desktop-only"><button class="btn-delete" title="Eliminar" onclick="removeTransaction(${deleteIdentifier})">${deleteIconSvg}</button></td>
 
-        <!-- Celda integrada para móvil (iOS Card Row: 100% visible, sin cortes, botón eliminar táctil) -->
         <td class="mobile-only-cell" colspan="7">
           <div class="mobile-tx-card">
             <div class="mobile-tx-left">
@@ -5638,47 +5724,35 @@ function updateUI() {
       `;
 
       const monthKey = `${tYear}-${tMonth}`;
-      if (t.type === 'income') {
-        if (activeMonth === 'ALL' && lastIncomeMonthKey !== monthKey) {
-          lastIncomeMonthKey = monthKey;
-          const divRow = document.createElement('tr');
-          divRow.className = 'month-divider-row';
-          divRow.innerHTML = `<td colspan="7">📅 ${monthNames[tMonth] || tMonth} ${tYear}</td>`;
-          incomeList.appendChild(divRow);
-        }
-        incomeList.appendChild(row);
-      } else {
-        if (activeMonth === 'ALL' && lastExpenseMonthKey !== monthKey) {
-          lastExpenseMonthKey = monthKey;
-          const divRow = document.createElement('tr');
-          divRow.className = 'month-divider-row';
-          divRow.innerHTML = `<td colspan="7">📅 ${monthNames[tMonth] || tMonth} ${tYear}</td>`;
-          expenseList.appendChild(divRow);
-        }
-        expenseList.appendChild(row);
+      if (activeMonth === 'ALL' && lastIncomeMonthKey !== monthKey) {
+        lastIncomeMonthKey = monthKey;
+        const divRow = document.createElement('tr');
+        divRow.className = 'month-divider-row';
+        divRow.innerHTML = `<td colspan="7">📅 ${monthNames[tMonth] || tMonth} ${tYear}</td>`;
+        incomeList.appendChild(divRow);
       }
+      incomeList.appendChild(row);
+    } else if (!isIncome && inBasePeriod && matchesExpenseMethod) {
+      totalExpensePeriod += t.amount;
+      expenseCount++;
 
-      // Fila para resumen del dashboard
-      const summaryRow = document.createElement('tr');
-      summaryRow.className = 'history-row';
-      summaryRow.innerHTML = `
-        <td class="desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
-        <td class="desktop-only"><span class="tag-badge ${amountColor}">${isIncome ? 'INGRESO' : 'GASTO'}</span></td>
-        <td class="desktop-only"><strong>${t.description}</strong></td>
-        <td class="desktop-only"><small style="color: var(--text-muted);">${t.category}</small></td>
-        <td class="desktop-only">${mediumBadge}</td>
-        <td class="desktop-only">${methodBadge}</td>
-        <td class="desktop-only ${amountColor}" style="font-weight: 700;">${formatCurrency(t.amount)}</td>
+      const row = document.createElement('tr');
+      row.className = 'history-row';
+      row.innerHTML = `
+        <td class="col-date desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
+        <td class="col-desc desktop-only"><strong>${t.description}</strong></td>
+        <td class="col-cat desktop-only"><small style="color: var(--text-muted);">${t.category}</small></td>
+        <td class="col-med desktop-only">${mediumBadge}</td>
+        <td class="col-acc desktop-only">${methodBadge}</td>
+        <td class="col-amt desktop-only ${amountColor}" style="font-weight: 700;">
+          ${formatCurrency(t.amount)}
+        </td>
         <td class="col-act desktop-only"><button class="btn-delete" title="Eliminar" onclick="removeTransaction(${deleteIdentifier})">${deleteIconSvg}</button></td>
 
-        <!-- Celda integrada para móvil en dashboard -->
-        <td class="mobile-only-cell" colspan="8">
+        <td class="mobile-only-cell" colspan="7">
           <div class="mobile-tx-card">
             <div class="mobile-tx-left">
-              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-                <span class="tag-badge ${amountColor}" style="font-size: 0.65rem; padding: 2px 6px;">${isIncome ? 'INGRESO' : 'GASTO'}</span>
-                <span class="mobile-tx-title">${t.description}</span>
-              </div>
+              <div class="mobile-tx-title">${t.description}</div>
               <div class="mobile-tx-meta">
                 <span class="mobile-tx-date">${formattedDate}</span>
                 <span class="tag-badge mobile-tag">${t.category}</span>
@@ -5696,18 +5770,129 @@ function updateUI() {
           </div>
         </td>
       `;
-      dashboardSummaryList.appendChild(summaryRow);
+
+      const monthKey = `${tYear}-${tMonth}`;
+      if (activeMonth === 'ALL' && lastExpenseMonthKey !== monthKey) {
+        lastExpenseMonthKey = monthKey;
+        const divRow = document.createElement('tr');
+        divRow.className = 'month-divider-row';
+        divRow.innerHTML = `<td colspan="7">📅 ${monthNames[tMonth] || tMonth} ${tYear}</td>`;
+        expenseList.appendChild(divRow);
+      }
+      expenseList.appendChild(row);
+    }
+
+    // 2. EVALUAR Y RENDERIZAR EN EL DASHBOARD (VISTA CONSOLIDADA / SOLO INGRESOS / SOLO GASTOS / COMPARATIVA)
+    const matchesDashboardMethod = dashboardFilterMethod === 'ALL' || tMethod === dashboardFilterMethod;
+    if (inBasePeriod && matchesDashboardMethod) {
+      if (isIncome) {
+        totalDashboardIncome += t.amount;
+        countDashboardIncome++;
+      } else {
+        totalDashboardExpense += t.amount;
+        countDashboardExpense++;
+      }
+
+      if (dashboardViewMode === 'comparative') {
+        // Renderizar en las columnas comparativas paralelas del dashboard
+        const compRow = document.createElement('tr');
+        compRow.className = 'history-row';
+        compRow.innerHTML = `
+          <td class="desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
+          <td class="desktop-only"><strong>${t.description}</strong></td>
+          <td class="desktop-only"><small style="color: var(--text-muted);">${t.category}</small></td>
+          <td class="desktop-only">${mediumBadge}</td>
+          <td class="desktop-only">${methodBadge}</td>
+          <td class="desktop-only ${amountColor}" style="font-weight: 700;">${formatCurrency(t.amount)}</td>
+          <td class="col-act desktop-only"><button class="btn-delete" title="Eliminar" onclick="removeTransaction(${deleteIdentifier})">${deleteIconSvg}</button></td>
+
+          <td class="mobile-only-cell" colspan="7">
+            <div class="mobile-tx-card">
+              <div class="mobile-tx-left">
+                <div class="mobile-tx-title">${t.description}</div>
+                <div class="mobile-tx-meta">
+                  <span class="mobile-tx-date">${formattedDate}</span>
+                  <span class="tag-badge mobile-tag">${t.category}</span>
+                  ${methodBadge}
+                </div>
+              </div>
+              <div class="mobile-tx-right">
+                <span class="mobile-tx-amount ${amountColor}">
+                  ${signPrefix}${formatCurrency(t.amount)}
+                </span>
+                <button class="btn-delete mobile-delete-btn" title="Eliminar movimiento" aria-label="Eliminar transacción" onclick="removeTransaction(${deleteIdentifier})">
+                  ${deleteIconSvg}
+                </button>
+              </div>
+            </div>
+          </td>
+        `;
+
+        if (isIncome && dashboardCompIncomeList) {
+          dashboardCompIncomeList.appendChild(compRow);
+        } else if (!isIncome && dashboardCompExpenseList) {
+          dashboardCompExpenseList.appendChild(compRow);
+        }
+      } else {
+        // Modos no comparativos: consolidated, incomes-only, expenses-only
+        const shouldRenderInSummary =
+          dashboardViewMode === 'consolidated' ||
+          (dashboardViewMode === 'incomes-only' && isIncome) ||
+          (dashboardViewMode === 'expenses-only' && !isIncome);
+
+        if (shouldRenderInSummary && dashboardSummaryList) {
+          dashboardItemsRendered++;
+          const summaryRow = document.createElement('tr');
+          summaryRow.className = 'history-row';
+          summaryRow.innerHTML = `
+            <td class="desktop-only"><small style="color: var(--text-muted);">${formattedDate}</small></td>
+            <td class="desktop-only"><span class="tag-badge ${amountColor}">${isIncome ? 'INGRESO' : 'GASTO'}</span></td>
+            <td class="desktop-only"><strong>${t.description}</strong></td>
+            <td class="desktop-only"><small style="color: var(--text-muted);">${t.category}</small></td>
+            <td class="desktop-only">${mediumBadge}</td>
+            <td class="desktop-only">${methodBadge}</td>
+            <td class="desktop-only ${amountColor}" style="font-weight: 700;">${formatCurrency(t.amount)}</td>
+            <td class="col-act desktop-only"><button class="btn-delete" title="Eliminar" onclick="removeTransaction(${deleteIdentifier})">${deleteIconSvg}</button></td>
+
+            <td class="mobile-only-cell" colspan="8">
+              <div class="mobile-tx-card">
+                <div class="mobile-tx-left">
+                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                    <span class="tag-badge ${amountColor}" style="font-size: 0.65rem; padding: 2px 6px;">${isIncome ? 'INGRESO' : 'GASTO'}</span>
+                    <span class="mobile-tx-title">${t.description}</span>
+                  </div>
+                  <div class="mobile-tx-meta">
+                    <span class="mobile-tx-date">${formattedDate}</span>
+                    <span class="tag-badge mobile-tag">${t.category}</span>
+                    ${methodBadge}
+                  </div>
+                </div>
+                <div class="mobile-tx-right">
+                  <span class="mobile-tx-amount ${amountColor}">
+                    ${signPrefix}${formatCurrency(t.amount)}
+                  </span>
+                  <button class="btn-delete mobile-delete-btn" title="Eliminar movimiento" aria-label="Eliminar transacción" onclick="removeTransaction(${deleteIdentifier})">
+                    ${deleteIconSvg}
+                  </button>
+                </div>
+              </div>
+            </td>
+          `;
+          dashboardSummaryList.appendChild(summaryRow);
+        }
+      }
     }
   });
 
-  // Mensajes de lista vacía según mes seleccionado
+  // Mensajes de lista vacía en Historial de Movimientos según mes y filtros independientes
   if (incomeCount === 0) {
     const emptyRow = document.createElement('tr');
+    const methodNote = incomeFilterMethod !== 'ALL' ? ` en ${incomeFilterMethod}` : '';
     emptyRow.innerHTML = `
       <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
         <div style="font-size: 1.3rem; margin-bottom: 4px;">📂</div>
-        <div style="font-weight: 600;">No hay ingresos registrados en ${activeMonth === 'ALL' ? 'este periodo' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
-        <small style="color: var(--text-muted); opacity: 0.8;">Registra una entrada de dinero con el formulario superior.</small>
+        <div style="font-weight: 600;">No hay ingresos registrados${methodNote} en ${activeMonth === 'ALL' ? 'este periodo' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
+        <small style="color: var(--text-muted); opacity: 0.8;">Registra una entrada de dinero con el formulario superior o cambia el filtro de cuenta.</small>
       </td>
     `;
     incomeList.appendChild(emptyRow);
@@ -5715,37 +5900,108 @@ function updateUI() {
 
   if (expenseCount === 0) {
     const emptyRow = document.createElement('tr');
+    const methodNote = expenseFilterMethod !== 'ALL' ? ` en ${expenseFilterMethod}` : '';
     emptyRow.innerHTML = `
       <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
         <div style="font-size: 1.3rem; margin-bottom: 4px;">📂</div>
-        <div style="font-weight: 600;">No hay gastos registrados en ${activeMonth === 'ALL' ? 'este periodo' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
-        <small style="color: var(--text-muted); opacity: 0.8;">Registra una salida de dinero con el formulario superior.</small>
+        <div style="font-weight: 600;">No hay gastos registrados${methodNote} en ${activeMonth === 'ALL' ? 'este periodo' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
+        <small style="color: var(--text-muted); opacity: 0.8;">Registra una salida de dinero con el formulario superior o cambia el filtro de método.</small>
       </td>
     `;
     expenseList.appendChild(emptyRow);
   }
 
-  if (periodItemCount === 0) {
-    const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = `
-      <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
-        <div style="font-size: 1.3rem; margin-bottom: 4px;">📊</div>
-        <div>No hay movimientos para ${activeMonth === 'ALL' ? 'Todos los meses' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
-      </td>
-    `;
-    dashboardSummaryList.appendChild(emptyRow);
+  // Manejo de Vistas y Estados Vacíos en el Dashboard
+  if (dashboardViewMode === 'comparative') {
+    if (dashboardSummaryView) dashboardSummaryView.classList.add('hidden');
+    if (dashboardComparativeView) dashboardComparativeView.classList.remove('hidden');
+
+    if (countDashboardIncome === 0 && dashboardCompIncomeList) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.innerHTML = `
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 22px 10px;">
+          <div style="font-size: 1.2rem; margin-bottom: 2px;">🟢</div>
+          <div style="font-weight: 600; font-size: 0.82rem;">Sin ingresos en este periodo</div>
+        </td>
+      `;
+      dashboardCompIncomeList.appendChild(emptyRow);
+    }
+
+    if (countDashboardExpense === 0 && dashboardCompExpenseList) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.innerHTML = `
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 22px 10px;">
+          <div style="font-size: 1.2rem; margin-bottom: 2px;">🔴</div>
+          <div style="font-weight: 600; font-size: 0.82rem;">Sin gastos en este periodo</div>
+        </td>
+      `;
+      dashboardCompExpenseList.appendChild(emptyRow);
+    }
+  } else {
+    if (dashboardSummaryView) dashboardSummaryView.classList.remove('hidden');
+    if (dashboardComparativeView) dashboardComparativeView.classList.add('hidden');
+
+    if (dashboardItemsRendered === 0 && dashboardSummaryList) {
+      const emptyRow = document.createElement('tr');
+      const filterMsg = dashboardFilterMethod !== 'ALL' ? ` para la cuenta ${dashboardFilterMethod}` : '';
+      emptyRow.innerHTML = `
+        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 26px 12px;">
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">📊</div>
+          <div>No hay movimientos${filterMsg} en ${activeMonth === 'ALL' ? 'Todos los meses' : (monthNames[activeMonth] || activeMonth)} ${activeYear === 'ALL' ? '' : activeYear}</div>
+          <small style="color: var(--text-muted); opacity: 0.8;">Cambia de cuenta o ajusta el periodo para ver más registros.</small>
+        </td>
+      `;
+      dashboardSummaryList.appendChild(emptyRow);
+    }
   }
 
-  // KPIs
-  totalIncomeEl.textContent = formatCurrency(totalIncomePeriod);
-  totalExpenseEl.textContent = formatCurrency(totalExpensePeriod);
-  const totalBalance = totalIncomeAll - totalExpenseAll;
+  // KPIs DEL DASHBOARD
+  totalIncomeEl.textContent = formatCurrency(totalDashboardIncome);
+  totalExpenseEl.textContent = formatCurrency(totalDashboardExpense);
+  const totalBalance = totalDashboardIncome - totalDashboardExpense;
   totalBalanceEl.textContent = formatCurrency(totalBalance);
   totalBalanceEl.className = `kpi-value ${totalBalance >= 0 ? 'text-primary' : 'text-danger'}`;
 
+  // SUB-TOTALES Y BADGES EN MOVIMIENTOS
   incomePeriodTotal.textContent = formatCurrency(totalIncomePeriod);
   expensePeriodTotal.textContent = formatCurrency(totalExpensePeriod);
-  summaryCountBadge.textContent = `${periodItemCount} MOVIMIENTOS`;
+
+  if (incomeCountTag) {
+    const accLabel = incomeFilterMethod !== 'ALL' ? ` (${incomeFilterMethod})` : '';
+    incomeCountTag.textContent = `${incomeCount} ${incomeCount === 1 ? 'Ingreso' : 'Ingresos'}${accLabel}`;
+  }
+
+  if (expenseCountTag) {
+    const accLabel = expenseFilterMethod !== 'ALL' ? ` (${expenseFilterMethod})` : '';
+    expenseCountTag.textContent = `${expenseCount} ${expenseCount === 1 ? 'Gasto' : 'Gastos'}${accLabel}`;
+  }
+
+  // BADGES EN VISTA COMPARATIVA DEL DASHBOARD
+  if (dashboardCompIncomeTotal) dashboardCompIncomeTotal.textContent = formatCurrency(totalDashboardIncome);
+  if (dashboardCompIncomeCount) dashboardCompIncomeCount.textContent = `${countDashboardIncome} ${countDashboardIncome === 1 ? 'Mov' : 'Movs'}`;
+  if (dashboardCompExpenseTotal) dashboardCompExpenseTotal.textContent = formatCurrency(totalDashboardExpense);
+  if (dashboardCompExpenseCount) dashboardCompExpenseCount.textContent = `${countDashboardExpense} ${countDashboardExpense === 1 ? 'Mov' : 'Movs'}`;
+
+  // CABECERA Y BADGES EN TABLA PRINCIPAL DEL DASHBOARD
+  if (dashboardTableTitle && dashboardPeriodSubtotal && summaryCountBadge) {
+    if (dashboardViewMode === 'consolidated') {
+      dashboardTableTitle.textContent = 'Resumen General de Cuentas (Orden Cronológico)';
+      dashboardPeriodSubtotal.classList.add('hidden');
+      summaryCountBadge.textContent = `${countDashboardIncome + countDashboardExpense} MOVIMIENTOS`;
+    } else if (dashboardViewMode === 'incomes-only') {
+      dashboardTableTitle.textContent = 'Ingresos Registrados (Orden Cronológico)';
+      dashboardPeriodSubtotal.textContent = `+ ${formatCurrency(totalDashboardIncome)}`;
+      dashboardPeriodSubtotal.className = 'tag-badge text-success';
+      dashboardPeriodSubtotal.classList.remove('hidden');
+      summaryCountBadge.textContent = `${countDashboardIncome} INGRESOS`;
+    } else if (dashboardViewMode === 'expenses-only') {
+      dashboardTableTitle.textContent = 'Gastos Registrados (Orden Cronológico)';
+      dashboardPeriodSubtotal.textContent = `- ${formatCurrency(totalDashboardExpense)}`;
+      dashboardPeriodSubtotal.className = 'tag-badge text-danger';
+      dashboardPeriodSubtotal.classList.remove('hidden');
+      summaryCountBadge.textContent = `${countDashboardExpense} GASTOS`;
+    }
+  }
 
   if (movementsMonthSelect && movementsMonthSelect.value !== activeMonth) movementsMonthSelect.value = activeMonth;
   if (movementsYearSelect && movementsYearSelect.value !== activeYear) movementsYearSelect.value = activeYear;
@@ -5763,7 +6019,6 @@ function updateUI() {
   if (debtList) debtList.innerHTML = '';
 
   const editIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
-  const deleteIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>`;
 
   debts.forEach((d, idx) => {
     const isReceivable = d.type === 'debt_receivable';

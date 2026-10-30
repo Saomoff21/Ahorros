@@ -938,6 +938,125 @@ body {
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
 }
 
+.filter-select-mini {
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--text-main);
+  border: 0.5px solid var(--border-color);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 550;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.filter-select-mini:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+
+/* TOOLBAR DE VISTAS Y FILTROS DEL DASHBOARD */
+.dashboard-views-toolbar {
+  background: var(--surface-color);
+  border: 0.5px solid var(--border-color);
+  border-radius: var(--card-radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard-views-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dashboard-method-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-mode-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: rgba(120, 120, 128, 0.08);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+@media (max-width: 860px) {
+  .view-mode-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .view-mode-selector {
+    grid-template-columns: 1fr;
+  }
+}
+
+.view-mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:hover {
+  color: var(--text-main);
+  background: rgba(120, 120, 128, 0.12);
+}
+
+.view-mode-btn.active {
+  background: var(--surface-color);
+  color: var(--text-main);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border: 0.5px solid var(--border-color);
+}
+
+.active-filter-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--primary-color);
+  margin-left: 6px;
+  display: inline-block;
+}
+
+/* GRID COMPARATIVO LADO A LADO */
+.dashboard-comparative-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-comparative-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* DASHBOARD & KPIS ESTILO APPLE WALLET / HEALTH */
 .dashboard-grid {
   display: grid;
@@ -2788,6 +2907,7 @@ body[data-device="mobile"] .recurring-kpi-bar {
 }
 
 body[data-device="mobile"] .movements-split-grid,
+body[data-device="mobile"] .dashboard-comparative-grid,
 body[data-device="mobile"] .debts-layout-grid,
 body[data-device="mobile"] .recurring-layout-grid,
 body[data-device="mobile"] .goals-layout-grid,
@@ -2870,7 +2990,8 @@ body[data-device="desktop"] .insights-grid {
   grid-template-columns: repeat(4, 1fr) !important;
 }
 
-body[data-device="desktop"] .movements-split-grid {
+body[data-device="desktop"] .movements-split-grid,
+body[data-device="desktop"] .dashboard-comparative-grid {
   grid-template-columns: 1fr 1fr !important;
 }
 
@@ -2891,6 +3012,7 @@ body[data-device="desktop"] .goals-layout-grid {
   .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
   .insights-grid { grid-template-columns: repeat(2, 1fr); }
   .movements-split-grid { grid-template-columns: 1fr; }
+  .dashboard-comparative-grid { grid-template-columns: 1fr; }
   .debts-layout-grid { grid-template-columns: 1fr; }
   .goals-layout-grid { grid-template-columns: 1fr; }
   .recurring-layout-grid { grid-template-columns: 1fr; }

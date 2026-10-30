@@ -341,15 +341,65 @@
 
       <div id="alerts-container" class="alerts-container"></div>
 
-      <div class="panel-card border-primary">
+      <!-- BARRA DE VISTAS Y FILTROS AVANZADOS DEL DASHBOARD -->
+      <div class="dashboard-views-toolbar">
+        <div class="dashboard-views-header">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </div>
+            <div>
+              <span style="font-size: 0.88rem; font-weight: 800; color: var(--text-color);">Explorador de Movimientos del Dashboard</span>
+              <span id="dashboard-active-filter-indicator" class="active-filter-pill hidden"></span>
+            </div>
+          </div>
+          
+          <!-- Filtro de Cuenta dedicado para Dashboard -->
+          <div class="dashboard-method-filter-wrap">
+            <label for="dashboard-filter-method" style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600;">Filtrar Cuenta:</label>
+            <select id="dashboard-filter-method" class="filter-select-mini" title="Filtrar movimientos del dashboard por cuenta">
+              <option value="ALL">Todas las Cuentas</option>
+              <option value="EFECTIVO">💵 Efectivo en Mano</option>
+              <option value="NEQUI">🟣 Nequi</option>
+              <option value="DAVIPLATA">🔴 Daviplata</option>
+              <option value="BANCO">🏦 Banco / PSE</option>
+              <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+              <option value="TARJETA_CREDITO">💳 Tarjeta Crédito</option>
+              <option value="OTRO">⚙️ Otros Canales</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Selector Segmentado de Modo de Visualización del Dashboard -->
+        <div class="view-mode-selector" id="dashboard-view-mode-selector" role="tablist" aria-label="Modo de visualización de movimientos">
+          <button type="button" class="view-mode-btn active" data-mode="consolidated" role="tab" aria-selected="true" title="Ver todos los movimientos cronológicamente">
+            <span>📋</span> Todos (Consolidado)
+          </button>
+          <button type="button" class="view-mode-btn" data-mode="incomes-only" role="tab" aria-selected="false" title="Ver únicamente ingresos">
+            <span class="text-success">🟢</span> Solo Ingresos
+          </button>
+          <button type="button" class="view-mode-btn" data-mode="expenses-only" role="tab" aria-selected="false" title="Ver únicamente gastos">
+            <span class="text-danger">🔴</span> Solo Gastos
+          </button>
+          <button type="button" class="view-mode-btn" data-mode="comparative" role="tab" aria-selected="false" title="Ver ingresos y gastos lado a lado en columnas paralelas">
+            <span>⚖️</span> Comparativa (Lado a Lado)
+          </button>
+        </div>
+      </div>
+
+      <!-- VISTA 1: TABLA GENERAL (CONSOLIDADA / SOLO INGRESOS / SOLO GASTOS) -->
+      <div id="dashboard-summary-view" class="panel-card border-primary">
         <div class="panel-header">
-          <h2>Resumen General de Cuentas (Orden Cronológico)</h2>
-          <span id="summary-count-badge" class="tag-badge">0 Movimientos</span>
+          <h2 id="dashboard-table-title">Resumen General de Cuentas (Orden Cronológico)</h2>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="dashboard-period-subtotal" class="tag-badge hidden" style="font-weight: 700;"></span>
+            <span id="summary-count-badge" class="tag-badge">0 Movimientos</span>
+          </div>
         </div>
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr>
+              <tr id="dashboard-table-head">
                 <th>Fecha</th>
                 <th>Tipo</th>
                 <th>Concepto / Obligación</th>
@@ -362,6 +412,69 @@
             </thead>
             <tbody id="dashboard-summary-list"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- VISTA 2: VISTA COMPARATIVA LADO A LADO (INGRESOS vs GASTOS SIMULTÁNEOS) -->
+      <div id="dashboard-comparative-view" class="dashboard-comparative-grid hidden">
+        <!-- Columna Izquierda: Ingresos -->
+        <div class="panel-card border-success">
+          <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1rem;">🟢</span>
+              <h2 style="font-size: 0.9rem;">Ingresos del Periodo</h2>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span id="dashboard-comp-income-count" class="tag-badge text-success">0 Mov</span>
+              <span id="dashboard-comp-income-total" class="tag-badge text-success" style="font-weight: 700;">$ 0</span>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Concepto</th>
+                  <th>Categoría</th>
+                  <th>Medio</th>
+                  <th>Cuenta</th>
+                  <th>Monto</th>
+                  <th style="width: 32px;"></th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-comp-income-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Gastos -->
+        <div class="panel-card border-danger">
+          <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1rem;">🔴</span>
+              <h2 style="font-size: 0.9rem;">Gastos del Periodo</h2>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span id="dashboard-comp-expense-count" class="tag-badge text-danger">0 Mov</span>
+              <span id="dashboard-comp-expense-total" class="tag-badge text-danger" style="font-weight: 700;">$ 0</span>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Concepto</th>
+                  <th>Categoría</th>
+                  <th>Medio</th>
+                  <th>Método</th>
+                  <th>Monto</th>
+                  <th style="width: 32px;"></th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-comp-expense-list"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -491,9 +604,26 @@
           </div>
 
           <div class="panel-card table-panel border-success">
-            <div class="panel-header">
-              <h2>Historial de Ingresos <span id="income-month-tag" class="history-period-label text-success"></span></h2>
-              <span id="income-period-total" class="tag-badge text-success">$ 0</span>
+            <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h2>Historial de Ingresos <span id="income-month-tag" class="history-period-label text-success"></span></h2>
+                <span id="income-count-tag" class="tag-badge text-success">0 Ingresos</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <label for="income-filter-method" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Cuenta:</label>
+                  <select id="income-filter-method" class="filter-select-mini" title="Filtrar historial de ingresos por cuenta">
+                    <option value="ALL">Todas las Cuentas</option>
+                    <option value="EFECTIVO">💵 Efectivo</option>
+                    <option value="NEQUI">🟣 Nequi</option>
+                    <option value="DAVIPLATA">🔴 Daviplata</option>
+                    <option value="BANCO">🏦 Banco / PSE</option>
+                    <option value="TARJETA_DEBITO">💳 Débito</option>
+                    <option value="OTRO">⚙️ Otro</option>
+                  </select>
+                </div>
+                <span id="income-period-total" class="tag-badge text-success" style="font-weight: 700;">$ 0</span>
+              </div>
             </div>
             <div class="table-wrapper">
               <table>
@@ -618,9 +748,27 @@
           </div>
 
           <div class="panel-card table-panel border-danger">
-            <div class="panel-header">
-              <h2>Historial de Gastos <span id="expense-month-tag" class="history-period-label text-danger"></span></h2>
-              <span id="expense-period-total" class="tag-badge text-danger">$ 0</span>
+            <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h2>Historial de Gastos <span id="expense-month-tag" class="history-period-label text-danger"></span></h2>
+                <span id="expense-count-tag" class="tag-badge text-danger">0 Gastos</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <label for="expense-filter-method" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Método:</label>
+                  <select id="expense-filter-method" class="filter-select-mini" title="Filtrar historial de gastos por método">
+                    <option value="ALL">Todos los Métodos</option>
+                    <option value="EFECTIVO">💵 Efectivo</option>
+                    <option value="NEQUI">🟣 Nequi</option>
+                    <option value="DAVIPLATA">🔴 Daviplata</option>
+                    <option value="BANCO">🏦 Banco / PSE</option>
+                    <option value="TARJETA_DEBITO">💳 Débito</option>
+                    <option value="TARJETA_CREDITO">💳 Crédito</option>
+                    <option value="OTRO">⚙️ Otro</option>
+                  </select>
+                </div>
+                <span id="expense-period-total" class="tag-badge text-danger" style="font-weight: 700;">$ 0</span>
+              </div>
             </div>
             <div class="table-wrapper">
               <table>

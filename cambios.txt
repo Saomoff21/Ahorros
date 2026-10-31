@@ -15,3 +15,22 @@ Mejoras de visualización y filtrado en Dashboard y Movimientos (Implementado):
    - Filtros 100% desvinculados e independientes: el filtro de cuenta seleccionado en Ingresos no afecta ni altera el filtro de método en Gastos, permitiendo cualquier combinación simultánea (ej. ver Ingresos en Nequi y Gastos en Efectivo).
    - Indicadores y badges en las cabeceras de cada tabla con el conteo de movimientos y total acumulado según el método seleccionado.
 
+3. Rediseño y Optimización del Módulo de Análisis Gráfico (Centro de Diagnóstico Financiero):
+   - Gráfico de Top 5 Fugas de Dinero / Gastos Hormiga:
+     * Sustituyó el gráfico pasivo de Efectivo vs Digital.
+     * Gráfico de barras horizontales que identifica y clasifica los 5 conceptos recurrentes o pequeños gastos donde más fuga de capital hay en el periodo, con conteo de recurrencias (ej. 4x) y total acumulado.
+     * Badge dinámico en cabecera con el total de fugas detectadas.
+   - Comparativa de Gasto Real vs. Promedio Histórico por Categoría:
+     * Sustituyó el gráfico redundante de gastos e ingresos por método de pago.
+     * Gráfico de barras agrupadas que contrasta el gasto real del mes frente al promedio mensual histórico de los meses registrados por categoría principal.
+     * Badge de diagnóstico de desviación que alerta automáticamente si alguna categoría presenta sobregasto superior al +15% vs su promedio histórico.
+   - Línea de Ritmo de Gasto Diario Acumulado:
+     * Al seleccionar un mes específico, el gráfico de comparativa mensual transforma su eje X en los días del mes (1 al 28/30/31) proyectando la curva de gasto acumulado real frente a la línea de ritmo presupuestado o meta diaria.
+     * Mantiene la comparativa de 12 meses cuando el filtro se encuentra en 'Todos los Meses'.
+   - KPIs Superiores Accionables:
+     * Tasa de Ahorro con semáforo visual (Verde >20%, Amarillo 5-19%, Rojo déficit o <5%).
+     * Promedio de Gasto Diario con comparativa directa frente a meta diaria configurable interactivamente mediante botón in-app '⚙️ Meta'.
+     * Mayor Categoría de Gasto con desglose del porcentaje que representa sobre el total.
+     * Balance Neto del periodo con estado de superávit o déficit operativo.
+   - Sincronización Global de Filtros:
+     * Todos los gráficos y diagnósticos responden fluidamente a Año, Mes, Medio de Pago (Físico vs Digital) y Método/Cuenta específica.

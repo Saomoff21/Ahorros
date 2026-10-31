@@ -12,6 +12,7 @@ import {
   getFirestore,
   doc,
   getDocFromServer,
+  getDocsFromServer,
   collection,
   addDoc,
   setDoc,
@@ -435,6 +436,95 @@ function appConfirm(message, options = {}) {
   });
 }
 
+// MODAL DE ENTRADA IN-APP (REEMPLAZO SEGURO Y UNIVERSAL DE WINDOW.PROMPT)
+function appPrompt(message, defaultValue = '', options = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('app-confirm-modal');
+    const msgEl = document.getElementById('confirm-modal-message');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const iconEl = document.getElementById('confirm-modal-icon');
+    const inputWrap = document.getElementById('confirm-modal-input-wrap');
+    const inputEl = document.getElementById('confirm-modal-input');
+    const btnOk = document.getElementById('btn-confirm-ok');
+    const btnCancel = document.getElementById('btn-confirm-cancel');
+
+    if (!modal || !btnOk || !btnCancel || !inputEl || !inputWrap) {
+      resolve(defaultValue);
+      return;
+    }
+
+    if (msgEl) msgEl.textContent = message;
+    if (titleEl) titleEl.textContent = options.title || 'Configurar Valor';
+    if (iconEl) iconEl.textContent = options.icon || '⚙️';
+    if (btnOk) {
+      btnOk.textContent = options.okText || 'Guardar';
+      btnOk.className = 'btn btn-primary';
+    }
+    inputWrap.classList.remove('hidden');
+    inputEl.value = defaultValue;
+    if (options.placeholder) inputEl.placeholder = options.placeholder;
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.style.zIndex = '200000';
+    setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+
+    let isDone = false;
+    const cleanup = () => {
+      if (isDone) return;
+      isDone = true;
+      modal.classList.add('hidden');
+      modal.style.display = '';
+      inputWrap.classList.add('hidden');
+      btnOk.onclick = null;
+      btnCancel.onclick = null;
+      modal.onclick = null;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup();
+        resolve(null);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = inputEl.value;
+        cleanup();
+        resolve(val);
+      }
+    };
+
+    const handleOk = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      const val = inputEl.value;
+      cleanup();
+      resolve(val);
+    };
+
+    const handleCancel = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      cleanup();
+      resolve(null);
+    };
+
+    btnOk.onclick = handleOk;
+    btnCancel.onclick = handleCancel;
+
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        e?.preventDefault?.();
+        cleanup();
+        resolve(null);
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+  });
+}
+
 const btnLogout = document.getElementById('btn-logout');
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
@@ -563,8 +653,8 @@ let calendarCurrentDate = new Date();
 let monthlyBarChart = null;
 let categoryPieChart = null;
 let balanceLineChart = null;
-let mediumDoughnutChart = null;
-let paymentMethodsBarChart = null;
+let topLeaksBarChart = null;
+let spendingComparisonBarChart = null;
 
 // SUBCRIPTORES DE FIRESTORE
 let unsubscribeTransactions = null;
@@ -3394,8 +3484,16 @@ async function loadVaultFromCloud(vaultId) {
     }
 
     const txColl = collection(db, 'vaults', vaultId, 'transactions');
-    const txSnap = await getDocs(txColl);
-    if (!txSnap.empty) {
+    let txSnap;
+    try {
+      txSnap = await getDocsFromServer(txColl);
+    } catch (e) {
+      console.warn('Fallback a cache para transacciones:', e);
+      txSnap = await getDocs(txColl);
+    }
+
+    if (txSnap && !txSnap.empty) {
+      transactions = [];
       const cloudTrans = [];
       const seenTxIds = new Set();
       txSnap.forEach(d => {
@@ -3406,7 +3504,6 @@ async function loadVaultFromCloud(vaultId) {
             return;
           }
           seenTxIds.add(d.id);
-          // Limpiar transacciones residuales de metas que antes distorsionaban ingresos/gastos
           if (tData.description && (
             tData.description.startsWith('AHORRO EN META:') ||
             tData.description.startsWith('AHORRO INICIAL EN META:') ||
@@ -3414,27 +3511,27 @@ async function loadVaultFromCloud(vaultId) {
           )) {
             return;
           }
-          // Evitar pintar registros idénticos si ingresaron duplicados en la base de datos dentro de 30s
-          const isDuplicatedDoc = cloudTrans.some(prev =>
-            prev.type === tData.type &&
-            Math.abs(prev.amount - tData.amount) < 0.01 &&
-            prev.description === tData.description &&
-            prev.date === tData.date &&
-            Math.abs(new Date(prev.createdAt || 0) - new Date(tData.createdAt || 0)) < 30000
-          );
-          if (!isDuplicatedDoc) {
-            cloudTrans.push({ ...tData, id: d.id, firestoreId: d.id, localId: tData.localId || d.id });
-          }
+          cloudTrans.push({ ...tData, id: d.id, firestoreId: d.id, localId: tData.localId || d.id });
         }
       });
       transactions = sortTransactionsByDate(cloudTrans);
       localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
       updateUI();
+    } else if (txSnap && txSnap.empty) {
+      transactions = [];
+      localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
+      updateUI();
     }
 
     const debtsColl = collection(db, 'vaults', vaultId, 'debts');
-    const debtsSnap = await getDocs(debtsColl);
-    if (!debtsSnap.empty) {
+    let debtsSnap;
+    try {
+      debtsSnap = await getDocsFromServer(debtsColl);
+    } catch (e) {
+      debtsSnap = await getDocs(debtsColl);
+    }
+    if (debtsSnap && !debtsSnap.empty) {
+      debts = [];
       const cloudDebts = [];
       debtsSnap.forEach(d => {
         if (!recentlyDeletedDebtIds.has(d.id)) {
@@ -3444,11 +3541,21 @@ async function loadVaultFromCloud(vaultId) {
       debts = deduplicateDebts(cloudDebts);
       localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
       updateUI();
+    } else if (debtsSnap && debtsSnap.empty) {
+      debts = [];
+      localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
+      updateUI();
     }
 
     const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
-    const gSnap = await getDocs(gColl);
-    if (!gSnap.empty) {
+    let gSnap;
+    try {
+      gSnap = await getDocsFromServer(gColl);
+    } catch (e) {
+      gSnap = await getDocs(gColl);
+    }
+    if (gSnap && !gSnap.empty) {
+      savingsGoals = [];
       const cloudGoals = [];
       gSnap.forEach(d => {
         if (!recentlyDeletedGoalIds.has(d.id)) {
@@ -3458,11 +3565,21 @@ async function loadVaultFromCloud(vaultId) {
       savingsGoals = deduplicateGoals(cloudGoals);
       localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
       renderSavingsGoals();
+    } else if (gSnap && gSnap.empty) {
+      savingsGoals = [];
+      localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
+      renderSavingsGoals();
     }
 
     const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
-    const rSnap = await getDocs(rColl);
-    if (!rSnap.empty) {
+    let rSnap;
+    try {
+      rSnap = await getDocsFromServer(rColl);
+    } catch (e) {
+      rSnap = await getDocs(rColl);
+    }
+    if (rSnap && !rSnap.empty) {
+      recurringPayments = [];
       const cloudRec = [];
       rSnap.forEach(d => {
         if (!recentlyDeletedRecurringIds.has(d.id)) {
@@ -3470,6 +3587,10 @@ async function loadVaultFromCloud(vaultId) {
         }
       });
       recurringPayments = deduplicateRecurring(cloudRec);
+      localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
+      renderRecurringPayments();
+    } else if (rSnap && rSnap.empty) {
+      recurringPayments = [];
       localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
       renderRecurringPayments();
     }
@@ -3484,9 +3605,20 @@ async function switchVault(newCode, isNew = false) {
   if (!cleanCode) return;
 
   // Si el usuario escribió sólo los 4 caracteres sin prefijo (ej: 8K3P -> AHO-8K3P)
-  if (!cleanCode.startsWith('AHO-') && !cleanCode.startsWith('AHORRO-') && cleanCode.length === 4) {
+  if (!cleanCode.startsWith('AHO-') && !cleanCode.startsWith('AHORRO-') && !cleanCode.startsWith('USR-') && cleanCode.length === 4) {
     cleanCode = `AHO-${cleanCode}`;
   }
+
+  // Vaciar explícitamente el estado local para evitar contaminación de datos entre bóvedas
+  transactions = [];
+  debts = [];
+  savingsGoals = [];
+  recurringPayments = [];
+  localStorage.removeItem('finances_v10_trans');
+  localStorage.removeItem('finances_v10_debts');
+  localStorage.removeItem('finances_v10_goals');
+  localStorage.removeItem('finances_v10_recurring');
+  updateUI();
 
   if (vaultLinkFeedback) {
     vaultLinkFeedback.style.display = 'block';
@@ -3516,11 +3648,11 @@ async function switchVault(newCode, isNew = false) {
   if (isNew) {
     await syncLocalDataToVault(cleanCode);
   } else {
-    // Descarga directa e inmediata de los datos existentes en la bóveda
+    // Descarga directa e inmediata de los datos autoritativos existentes en la bóveda
     await loadVaultFromCloud(cleanCode);
   }
 
-  setupVaultCloudListeners(cleanCode);
+  setupVaultCloudListeners(cleanCode, true);
 
   if (vaultLinkFeedback) {
     vaultLinkFeedback.style.color = 'var(--success-color)';
@@ -3617,25 +3749,35 @@ async function syncLocalDataToVault(vaultId) {
   } catch (err) { console.warn('Sync pagos fijos a bóveda:', err); }
 }
 
-// ESCUCHAS EN TIEMPO REAL CON ONSNAPSHOT POR BÓVEDA
-function setupVaultCloudListeners(vaultId) {
+// ESCUCHAS EN TIEMPO REAL CON ONSNAPSHOT POR BÓVEDA (SINGLETON Y AUTORITATIVO)
+let isVaultListenersActive = false;
+let activeListeningVaultId = null;
+
+function setupVaultCloudListeners(vaultId, force = false) {
   if (!vaultId) return;
-  if (unsubscribeTransactions) { unsubscribeTransactions(); unsubscribeTransactions = null; }
-  if (unsubscribeDebts) { unsubscribeDebts(); unsubscribeDebts = null; }
-  if (unsubscribeGoals) { unsubscribeGoals(); unsubscribeGoals = null; }
-  if (unsubscribeRecurring) { unsubscribeRecurring(); unsubscribeRecurring = null; }
-  if (unsubscribeVaultMeta) { unsubscribeVaultMeta(); unsubscribeVaultMeta = null; }
+  if (!force && isVaultListenersActive && activeListeningVaultId === vaultId) {
+    return;
+  }
+
+  // Cancelar limpiamente suscripciones previas para evitar listeners duplicados
+  if (unsubscribeTransactions) { try { unsubscribeTransactions(); } catch(e){} unsubscribeTransactions = null; }
+  if (unsubscribeDebts) { try { unsubscribeDebts(); } catch(e){} unsubscribeDebts = null; }
+  if (unsubscribeGoals) { try { unsubscribeGoals(); } catch(e){} unsubscribeGoals = null; }
+  if (unsubscribeRecurring) { try { unsubscribeRecurring(); } catch(e){} unsubscribeRecurring = null; }
+  if (unsubscribeVaultMeta) { try { unsubscribeVaultMeta(); } catch(e){} unsubscribeVaultMeta = null; }
+
+  isVaultListenersActive = true;
+  activeListeningVaultId = vaultId;
 
   updateSyncStatus(true, `🟢 BÓVEDA ${vaultId}`);
   if (vaultCodeText) vaultCodeText.textContent = vaultId;
 
-  // Escuchar metadatos de la bóveda (clave secreta de atajos en tiempo real entre celular y PC)
+  // Escuchar metadatos de la bóveda (clave secreta de atajos)
   const vDocRef = doc(db, 'vaults', vaultId);
   unsubscribeVaultMeta = onSnapshot(vDocRef, (snap) => {
     if (snap.exists()) {
       const vData = snap.data();
       if (vData.shortcutApiKey && vData.shortcutApiKey !== userApiKey) {
-        console.log('🔄 Clave de atajo sincronizada desde la nube:', vData.shortcutApiKey);
         userApiKey = vData.shortcutApiKey;
         localStorage.setItem('ahorros_shortcut_key_' + vaultId, userApiKey);
         localStorage.setItem('ahorros_shortcut_key', userApiKey);
@@ -3646,30 +3788,19 @@ function setupVaultCloudListeners(vaultId) {
     console.warn('Nota listener vault meta:', error);
   });
 
+  // 1. TRANSACCIONES: Vaciado completo del array global antes de procesar el snapshot
   const txColl = collection(db, 'vaults', vaultId, 'transactions');
   unsubscribeTransactions = onSnapshot(txColl, (snapshot) => {
-    const rawCloudTrans = [];
+    transactions = [];
     const seenTxDocIds = new Set();
-    snapshot.forEach(docSnap => {
-      const tData = docSnap.data();
+    const freshTransactions = [];
+
+    snapshot.docs.forEach(docSnap => {
       const docId = String(docSnap.id);
-      const locId = tData.id ? String(tData.id) : '';
-      const locField = tData.localId ? String(tData.localId) : '';
-      const tmpField = tData.tempId ? String(tData.tempId) : '';
-      const crAt = tData.createdAt ? String(tData.createdAt) : '';
+      if (seenTxDocIds.has(docId)) return;
+      seenTxDocIds.add(docId);
 
-      const sig = `${tData.type}_${tData.amount}_${tData.date}_${(tData.description || '').trim().toLowerCase()}`;
-      if (recentlyDeletedTxSignatures.has(sig)) {
-        return;
-      }
-
-      if (recentlyDeletedTxIds.has(docId) ||
-          (locId && recentlyDeletedTxIds.has(locId)) ||
-          (locField && recentlyDeletedTxIds.has(locField)) ||
-          (tmpField && recentlyDeletedTxIds.has(tmpField)) ||
-          (crAt && recentlyDeletedTxIds.has(crAt))) {
-        return;
-      }
+      const tData = docSnap.data();
       if (tData.description && (
         tData.description.startsWith('AHORRO EN META:') ||
         tData.description.startsWith('AHORRO INICIAL EN META:') ||
@@ -3678,195 +3809,87 @@ function setupVaultCloudListeners(vaultId) {
         return;
       }
 
-      if (!seenTxDocIds.has(docId)) {
-        seenTxDocIds.add(docId);
-        rawCloudTrans.push({
-          ...tData,
-          id: docSnap.id,
-          firestoreId: docSnap.id,
-          localId: tData.localId || tData.id || docSnap.id
-        });
-      }
+      freshTransactions.push({
+        ...tData,
+        id: docSnap.id,
+        firestoreId: docSnap.id,
+        localId: tData.localId || docSnap.id
+      });
     });
 
-    // Deduplicar cloudTrans en caso de que en la base de datos existan dos registros idénticos ingresados en ráfaga (<30s)
-    const cloudTrans = [];
-    rawCloudTrans.forEach(ct => {
-      const isDuplicate = cloudTrans.some(prev =>
-        prev.type === ct.type &&
-        Math.abs((prev.amount || 0) - (ct.amount || 0)) < 0.01 &&
-        prev.description === ct.description &&
-        prev.date === ct.date &&
-        Math.abs(new Date(prev.createdAt || 0) - new Date(ct.createdAt || 0)) < 30000
-      );
-      if (!isDuplicate) {
-        cloudTrans.push(ct);
-      }
-    });
-
-    // Preservar transacciones locales provisionales recién insertadas que aún no hayan llegado a Firestore
-    const localPending = transactions.filter(t => 
-      typeof t.id === 'string' && t.id.startsWith('tx_') &&
-      !recentlyDeletedTxIds.has(String(t.id)) &&
-      !recentlyDeletedTxIds.has(String(t.localId)) &&
-      !recentlyDeletedTxIds.has(String(t.firestoreId)) &&
-      !cloudTrans.some(c => 
-        (c.id && c.id === t.id) ||
-        (c.firestoreId && c.firestoreId === t.id) ||
-        (c.localId && (c.localId === t.id || c.localId === t.localId)) ||
-        (c.createdAt && c.createdAt === t.createdAt) ||
-        (c.type === t.type && Math.abs((c.amount || 0) - (t.amount || 0)) < 0.01 && c.description === t.description && c.date === t.date && Math.abs(new Date(c.createdAt || 0) - new Date(t.createdAt || 0)) < 60000)
-      )
-    );
-
-    // Actualizar estado siempre con los datos autoritativos del snapshot
-    transactions = sortTransactionsByDate([...cloudTrans, ...localPending]);
+    transactions = sortTransactionsByDate(freshTransactions);
     localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
     updateUI();
   }, (error) => {
-    console.warn('Nota listener transacciones:', error);
+    console.warn('Error en listener de transacciones Firestore:', error);
+    updateSyncStatus(false, 'MODO LOCAL (RECONECTANDO)');
     setTimeout(() => {
-      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
+      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId, true);
     }, 4000);
   });
 
+  // 2. DEUDAS: Vaciado completo y mapeo autoritativo desde Firestore
   const debtsColl = collection(db, 'vaults', vaultId, 'debts');
   unsubscribeDebts = onSnapshot(debtsColl, (snapshot) => {
-    const rawCloudDebts = [];
-    snapshot.forEach(docSnap => {
-      const dData = docSnap.data();
-      const docId = String(docSnap.id);
-      const locId = dData.id ? String(dData.id) : '';
-      const locField = dData.localId ? String(dData.localId) : '';
-      const tmpField = dData.tempId ? String(dData.tempId) : '';
-      const crAt = dData.createdAt ? String(dData.createdAt) : '';
-      const dSig = dData.name ? `sig_debt_${dData.name}` : '';
-
-      if (recentlyDeletedDebtIds.has(docId) ||
-          (locId && recentlyDeletedDebtIds.has(locId)) ||
-          (locField && recentlyDeletedDebtIds.has(locField)) ||
-          (tmpField && recentlyDeletedDebtIds.has(tmpField)) ||
-          (crAt && recentlyDeletedDebtIds.has(crAt)) ||
-          (dSig && recentlyDeletedDebtIds.has(dSig))) {
-        return;
-      }
-      rawCloudDebts.push({ ...dData, id: docSnap.id, firestoreId: docSnap.id, localId: dData.localId || dData.id });
+    debts = [];
+    const freshDebts = [];
+    snapshot.docs.forEach(docSnap => {
+      freshDebts.push({
+        ...docSnap.data(),
+        id: docSnap.id,
+        firestoreId: docSnap.id,
+        localId: docSnap.data().localId || docSnap.id
+      });
     });
-    const cloudDebts = deduplicateDebts(rawCloudDebts);
-    const localPending = debts.filter(d => 
-      typeof d.id === 'string' && d.id.startsWith('debt_') &&
-      !recentlyDeletedDebtIds.has(String(d.id)) &&
-      !recentlyDeletedDebtIds.has(String(d.localId)) &&
-      !recentlyDeletedDebtIds.has(String(d.firestoreId)) &&
-      !cloudDebts.some(c => 
-        (c.id && c.id === d.id) ||
-        (c.firestoreId && c.firestoreId === d.id) ||
-        (c.localId && (c.localId === d.id || c.localId === d.localId)) ||
-        ((c.name || '').trim().toLowerCase() === (d.name || '').trim().toLowerCase() && Math.abs((c.total || 0) - (d.total || 0)) < 0.01 && c.type === d.type)
-      )
-    );
-    debts = deduplicateDebts([...cloudDebts, ...localPending]);
+    debts = deduplicateDebts(freshDebts);
     localStorage.setItem('finances_v10_debts', JSON.stringify(debts));
     updateUI();
   }, (error) => {
-    console.warn('Nota listener deudas:', error);
-    setTimeout(() => {
-      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
-    }, 4000);
+    console.warn('Error en listener de deudas Firestore:', error);
   });
 
+  // 3. METAS DE AHORRO: Vaciado completo y mapeo autoritativo
   const gColl = collection(db, 'vaults', vaultId, 'savingsGoals');
   unsubscribeGoals = onSnapshot(gColl, (snapshot) => {
-    const rawCloudGoals = [];
-    snapshot.forEach(docSnap => {
-      const gData = docSnap.data();
-      const docId = String(docSnap.id);
-      const locId = gData.id ? String(gData.id) : '';
-      const locField = gData.localId ? String(gData.localId) : '';
-      const tmpField = gData.tempId ? String(gData.tempId) : '';
-      const gName = gData.name ? String(gData.name) : '';
-      const gSig = gName ? `sig_goal_${gName}` : '';
-
-      if (recentlyDeletedGoalIds.has(docId) ||
-          (locId && recentlyDeletedGoalIds.has(locId)) ||
-          (locField && recentlyDeletedGoalIds.has(locField)) ||
-          (tmpField && recentlyDeletedGoalIds.has(tmpField)) ||
-          (gName && recentlyDeletedGoalIds.has(gName)) ||
-          (gSig && recentlyDeletedGoalIds.has(gSig))) {
-        return;
-      }
-      rawCloudGoals.push({ ...gData, id: docSnap.id, firestoreId: docSnap.id, localId: gData.localId || gData.id });
+    savingsGoals = [];
+    const freshGoals = [];
+    snapshot.docs.forEach(docSnap => {
+      freshGoals.push({
+        ...docSnap.data(),
+        id: docSnap.id,
+        firestoreId: docSnap.id,
+        localId: docSnap.data().localId || docSnap.id
+      });
     });
-    const cloudGoals = deduplicateGoals(rawCloudGoals);
-    const localPending = savingsGoals.filter(g => 
-      typeof g.id === 'string' && g.id.startsWith('goal_') &&
-      !recentlyDeletedGoalIds.has(String(g.id)) &&
-      !recentlyDeletedGoalIds.has(String(g.localId)) &&
-      !recentlyDeletedGoalIds.has(String(g.firestoreId)) &&
-      !cloudGoals.some(c => 
-        (c.id && c.id === g.id) ||
-        (c.firestoreId && c.firestoreId === g.id) ||
-        (c.localId && (c.localId === g.id || c.localId === g.localId)) ||
-        ((c.name || '').trim().toLowerCase() === (g.name || '').trim().toLowerCase() && Math.abs((c.targetAmount || 0) - (g.targetAmount || 0)) < 0.01)
-      )
-    );
-    savingsGoals = deduplicateGoals([...cloudGoals, ...localPending]);
+    savingsGoals = deduplicateGoals(freshGoals);
     localStorage.setItem('finances_v10_goals', JSON.stringify(savingsGoals));
     renderSavingsGoals();
   }, (error) => {
-    console.warn('Nota listener metas:', error);
-    setTimeout(() => {
-      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
-    }, 4000);
+    console.warn('Error en listener de metas Firestore:', error);
   });
 
+  // 4. FINANZAS FIJAS / RECURRENTES: Vaciado completo y mapeo autoritativo
   const rColl = collection(db, 'vaults', vaultId, 'recurringPayments');
   unsubscribeRecurring = onSnapshot(rColl, (snapshot) => {
-    const rawCloudR = [];
-    snapshot.forEach(docSnap => {
-      const rData = docSnap.data();
-      const docId = String(docSnap.id);
-      const locId = rData.id ? String(rData.id) : '';
-      const locField = rData.localId ? String(rData.localId) : '';
-      const tmpField = rData.tempId ? String(rData.tempId) : '';
-      const rName = rData.name ? String(rData.name) : '';
-      const rSig = rName ? `sig_rec_${rName}` : '';
-
-      if (recentlyDeletedRecurringIds.has(docId) ||
-          (locId && recentlyDeletedRecurringIds.has(locId)) ||
-          (locField && recentlyDeletedRecurringIds.has(locField)) ||
-          (tmpField && recentlyDeletedRecurringIds.has(tmpField)) ||
-          (rName && recentlyDeletedRecurringIds.has(rName)) ||
-          (rSig && recentlyDeletedRecurringIds.has(rSig))) {
-        return;
-      }
-      rawCloudR.push({ ...rData, id: docSnap.id, firestoreId: docSnap.id, localId: rData.localId || rData.id });
+    recurringPayments = [];
+    const freshRecurring = [];
+    snapshot.docs.forEach(docSnap => {
+      freshRecurring.push({
+        ...docSnap.data(),
+        id: docSnap.id,
+        firestoreId: docSnap.id,
+        localId: docSnap.data().localId || docSnap.id
+      });
     });
-    const cloudR = deduplicateRecurring(rawCloudR);
-    const localPending = recurringPayments.filter(r => 
-      typeof r.id === 'string' && r.id.startsWith('rec_') &&
-      !recentlyDeletedRecurringIds.has(String(r.id)) &&
-      !recentlyDeletedRecurringIds.has(String(r.localId)) &&
-      !recentlyDeletedRecurringIds.has(String(r.firestoreId)) &&
-      !cloudR.some(c => 
-        (c.id && c.id === r.id) ||
-        (c.firestoreId && c.firestoreId === r.id) ||
-        (c.localId && (c.localId === r.id || c.localId === r.localId)) ||
-        ((c.name || '').trim().toLowerCase() === (r.name || '').trim().toLowerCase() && Math.abs((c.amount || 0) - (r.amount || 0)) < 0.01 && c.type === r.type)
-      )
-    );
-    recurringPayments = deduplicateRecurring([...cloudR, ...localPending]);
+    recurringPayments = deduplicateRecurring(freshRecurring);
     localStorage.setItem('finances_v10_recurring', JSON.stringify(recurringPayments));
     renderRecurringPayments();
   }, (error) => {
-    console.warn('Nota listener pagos fijos:', error);
-    setTimeout(() => {
-      if (activeVaultId === vaultId) setupVaultCloudListeners(vaultId);
-    }, 4000);
+    console.warn('Error en listener de compromisos fijos Firestore:', error);
   });
 }
 
-// INICIAR ESCUCHA INMEDIATA Y DESCARGA INICIAL DE LA NUBE
+// INICIAR DESCARGA DIRECTA Y ESCUCHA EN TIEMPO REAL
 loadVaultFromCloud(activeVaultId);
 setupVaultCloudListeners(activeVaultId);
 updateSyncStatus(true, `🟢 BÓVEDA ${activeVaultId}`);
@@ -3877,7 +3900,6 @@ onAuthStateChanged(auth, async (user) => {
     try {
       await signInAnonymously(auth);
     } catch (e) {
-      // Si el inicio anónimo no está activo en Firebase Console, la bóveda sigue 100% activa por código
       console.info('Operando con código de bóveda sin sesión de Firebase Auth');
     }
   }
@@ -3896,6 +3918,8 @@ onAuthStateChanged(auth, async (user) => {
           activeVaultId = uData.bovedaCode;
           localStorage.setItem('ahorros_active_vault', activeVaultId);
           localStorage.setItem('ahorros_boveda_code', activeVaultId);
+          await loadVaultFromCloud(activeVaultId);
+          setupVaultCloudListeners(activeVaultId, true);
         }
       } else {
         await setDoc(userRef, {
@@ -3924,8 +3948,9 @@ onAuthStateChanged(auth, async (user) => {
   authBtnText.textContent = `🔐 ${activeVaultId}`;
   updateSyncStatus(true, `🟢 BÓVEDA ${activeVaultId}`);
 
-  setupVaultCloudListeners(activeVaultId);
-  await syncLocalDataToVault(activeVaultId);
+  if (!isVaultListenersActive || activeListeningVaultId !== activeVaultId) {
+    setupVaultCloudListeners(activeVaultId);
+  }
 });
 
 // FILTRADO GLOBAL POR AÑO, MES, MEDIO Y MÉTODO
@@ -5559,6 +5584,105 @@ function renderAccelerationSuggestions(pending) {
   `;
 }
 
+// CALCULO COMPLETO DE TOTALES Y SALDOS CON REINICIO EXPLICITO A CERO
+function calculateTotals() {
+  const totals = {
+    // Acumuladores de cuentas bancarias y métodos de pago (reiniciados estrictamente a 0)
+    accEfectivo: 0,
+    accNequi: 0,
+    accDaviplata: 0,
+    accBanco: 0,
+    accDebito: 0,
+    accTarjeta: 0,
+    accGoalsTotal: 0,
+
+    // Acumuladores de ingresos y gastos del periodo activo
+    totalIncomePeriod: 0,
+    totalExpensePeriod: 0,
+    totalIncomeAll: 0,
+    totalExpenseAll: 0,
+    totalDashboardIncome: 0,
+    totalDashboardExpense: 0,
+    countDashboardIncome: 0,
+    countDashboardExpense: 0,
+    incomeCount: 0,
+    expenseCount: 0,
+    dashboardItemsRendered: 0
+  };
+
+  // 1. Recalcular saldos de cuentas desde cero sobre el conjunto total de transacciones autoritativas
+  transactions.forEach(t => {
+    const m = (t.paymentMethod || 'EFECTIVO').toUpperCase();
+    const amt = parseAmount(t.amount);
+    if (t.type === 'income') {
+      if (m === 'NEQUI') totals.accNequi += amt;
+      else if (m === 'DAVIPLATA') totals.accDaviplata += amt;
+      else if (m === 'EFECTIVO') totals.accEfectivo += amt;
+      else if (m === 'BANCO') totals.accBanco += amt;
+      else if (m === 'TARJETA_DEBITO') totals.accDebito += amt;
+      else if (m === 'TARJETA_CREDITO') totals.accTarjeta = Math.max(0, totals.accTarjeta - amt);
+      else totals.accBanco += amt;
+    } else {
+      if (m === 'NEQUI') totals.accNequi -= amt;
+      else if (m === 'DAVIPLATA') totals.accDaviplata -= amt;
+      else if (m === 'EFECTIVO') totals.accEfectivo -= amt;
+      else if (m === 'BANCO') totals.accBanco -= amt;
+      else if (m === 'TARJETA_DEBITO') totals.accDebito -= amt;
+      else if (m === 'TARJETA_CREDITO') totals.accTarjeta += amt;
+      else totals.accBanco -= amt;
+    }
+  });
+
+  savingsGoals.forEach(g => {
+    totals.accGoalsTotal += (g.currentAmount || 0);
+  });
+
+  return totals;
+}
+window.calculateTotals = calculateTotals;
+
+// RENDERIZADO DE KPIS Y SALDOS EN EL DASHBOARD (CON RESETEO A CERO)
+function renderDashboard(totals) {
+  if (!totals) totals = calculateTotals();
+
+  // Actualizar elementos de saldos por cuenta (con soporte para selectores estándar y alias)
+  const accEfectivoEl = document.getElementById('acc-efectivo') || document.getElementById('saldoEfectivo');
+  if (accEfectivoEl) accEfectivoEl.textContent = formatCurrency(totals.accEfectivo);
+
+  const accNequiEl = document.getElementById('acc-nequi') || document.getElementById('saldoNequi');
+  if (accNequiEl) accNequiEl.textContent = formatCurrency(totals.accNequi);
+
+  const accDaviplataEl = document.getElementById('acc-daviplata') || document.getElementById('saldoDaviplata');
+  if (accDaviplataEl) accDaviplataEl.textContent = formatCurrency(totals.accDaviplata);
+
+  const accBancoEl = document.getElementById('acc-banco') || document.getElementById('saldoBanco');
+  if (accBancoEl) accBancoEl.textContent = formatCurrency(totals.accBanco);
+
+  const accDebitoEl = document.getElementById('acc-debito') || document.getElementById('saldoDebito');
+  if (accDebitoEl) accDebitoEl.textContent = formatCurrency(totals.accDebito);
+
+  const accTarjetaEl = document.getElementById('acc-tarjeta') || document.getElementById('saldoTarjeta');
+  if (accTarjetaEl) accTarjetaEl.textContent = formatCurrency(totals.accTarjeta);
+
+  const accGoalsTotalEl = document.getElementById('acc-goals-total') || document.getElementById('saldoMetas');
+  if (accGoalsTotalEl) accGoalsTotalEl.textContent = formatCurrency(totals.accGoalsTotal);
+
+  // KPIs Superiores del Dashboard (Ingresos, Gastos y Balance)
+  const incEl = totalIncomeEl || document.getElementById('totalIngresos');
+  if (incEl) incEl.textContent = formatCurrency(totals.totalDashboardIncome);
+
+  const expEl = totalExpenseEl || document.getElementById('totalGastos');
+  if (expEl) expEl.textContent = formatCurrency(totals.totalDashboardExpense);
+
+  const netBalance = totals.totalDashboardIncome - totals.totalDashboardExpense;
+  const balEl = totalBalanceEl || document.getElementById('totalBalance') || document.getElementById('saldoTotal');
+  if (balEl) {
+    balEl.textContent = formatCurrency(netBalance);
+    balEl.className = `kpi-value ${netBalance >= 0 ? 'text-primary' : 'text-danger'}`;
+  }
+}
+window.renderDashboard = renderDashboard;
+
 // ACTUALIZACION GENERAL DE LA INTERFAZ
 function updateUI() {
   if (!incomeList || !expenseList || !debtList) return;
@@ -5572,74 +5696,25 @@ function updateUI() {
   alertsContainer.innerHTML = '';
 
   const today = getTodayStr();
+  const totals = calculateTotals();
 
-  // ORDENACION CRONOLOGICA ESTRICTA (POR FECHA DESCENDENTE)
-  const sortedTransactions = [...transactions].sort((a, b) => {
-    return (b.date || '').localeCompare(a.date || '');
-  });
-
+  // Acumuladores del periodo activo (reiniciados estrictamente a 0 en cada renderizado)
   let totalIncomePeriod = 0;
   let totalExpensePeriod = 0;
   let totalIncomeAll = 0;
   let totalExpenseAll = 0;
   let incomeCount = 0;
   let expenseCount = 0;
-
   let totalDashboardIncome = 0;
   let totalDashboardExpense = 0;
   let countDashboardIncome = 0;
   let countDashboardExpense = 0;
   let dashboardItemsRendered = 0;
 
-  // CALCULO DE SALDOS POR CUENTA / METODO DE PAGO
-  let accNequi = 0;
-  let accDaviplata = 0;
-  let accEfectivo = 0;
-  let accBanco = 0;
-  let accDebito = 0;
-  let accTarjeta = 0;
-
-  transactions.forEach(t => {
-    const m = (t.paymentMethod || 'EFECTIVO').toUpperCase();
-    const amt = t.amount || 0;
-    if (t.type === 'income') {
-      if (m === 'NEQUI') accNequi += amt;
-      else if (m === 'DAVIPLATA') accDaviplata += amt;
-      else if (m === 'EFECTIVO') accEfectivo += amt;
-      else if (m === 'BANCO') accBanco += amt;
-      else if (m === 'TARJETA_DEBITO') accDebito += amt;
-      else if (m === 'TARJETA_CREDITO') accTarjeta = Math.max(0, accTarjeta - amt); // liquidación/abono
-      else accBanco += amt;
-    } else {
-      if (m === 'NEQUI') accNequi -= amt;
-      else if (m === 'DAVIPLATA') accDaviplata -= amt;
-      else if (m === 'EFECTIVO') accEfectivo -= amt;
-      else if (m === 'BANCO') accBanco -= amt;
-      else if (m === 'TARJETA_DEBITO') accDebito -= amt;
-      else if (m === 'TARJETA_CREDITO') accTarjeta += amt; // gasto acumulado
-      else accBanco -= amt;
-    }
+  // ORDENACION CRONOLOGICA ESTRICTA (POR FECHA DESCENDENTE)
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    return (b.date || '').localeCompare(a.date || '');
   });
-
-  let accGoalsTotal = 0;
-  savingsGoals.forEach(g => {
-    accGoalsTotal += (g.currentAmount || 0);
-  });
-
-  const accNequiEl = document.getElementById('acc-nequi');
-  if (accNequiEl) accNequiEl.textContent = formatCurrency(accNequi);
-  const accDaviplataEl = document.getElementById('acc-daviplata');
-  if (accDaviplataEl) accDaviplataEl.textContent = formatCurrency(accDaviplata);
-  const accEfectivoEl = document.getElementById('acc-efectivo');
-  if (accEfectivoEl) accEfectivoEl.textContent = formatCurrency(accEfectivo);
-  const accBancoEl = document.getElementById('acc-banco');
-  if (accBancoEl) accBancoEl.textContent = formatCurrency(accBanco);
-  const accDebitoEl = document.getElementById('acc-debito');
-  if (accDebitoEl) accDebitoEl.textContent = formatCurrency(accDebito);
-  const accTarjetaEl = document.getElementById('acc-tarjeta');
-  if (accTarjetaEl) accTarjetaEl.textContent = formatCurrency(accTarjeta);
-  const accGoalsTotalEl = document.getElementById('acc-goals-total');
-  if (accGoalsTotalEl) accGoalsTotalEl.textContent = formatCurrency(accGoalsTotal);
 
   const monthNames = {
     '01': 'ENERO', '02': 'FEBRERO', '03': 'MARZO', '04': 'ABRIL',
@@ -5955,12 +6030,18 @@ function updateUI() {
     }
   }
 
-  // KPIs DEL DASHBOARD
-  totalIncomeEl.textContent = formatCurrency(totalDashboardIncome);
-  totalExpenseEl.textContent = formatCurrency(totalDashboardExpense);
-  const totalBalance = totalDashboardIncome - totalDashboardExpense;
-  totalBalanceEl.textContent = formatCurrency(totalBalance);
-  totalBalanceEl.className = `kpi-value ${totalBalance >= 0 ? 'text-primary' : 'text-danger'}`;
+  // KPIs DEL DASHBOARD Y RESINCRONIZACIÓN DE TOTALES
+  totals.totalDashboardIncome = totalDashboardIncome;
+  totals.totalDashboardExpense = totalDashboardExpense;
+  totals.countDashboardIncome = countDashboardIncome;
+  totals.countDashboardExpense = countDashboardExpense;
+  totals.totalIncomePeriod = totalIncomePeriod;
+  totals.totalExpensePeriod = totalExpensePeriod;
+  totals.incomeCount = incomeCount;
+  totals.expenseCount = expenseCount;
+  totals.dashboardItemsRendered = dashboardItemsRendered;
+
+  renderDashboard(totals);
 
   // SUB-TOTALES Y BADGES EN MOVIMIENTOS
   incomePeriodTotal.textContent = formatCurrency(totalIncomePeriod);
@@ -6278,25 +6359,84 @@ function updateUI() {
   renderRecurringPayments();
 }
 
-// VISUALIZACION DE GRAFICOS MENSUALES (CHART.JS)
+// CONFIGURACIÓN DE META DIARIA DE GASTO (IN-APP MODAL)
+const btnSetDailyTarget = document.getElementById('btn-set-daily-target');
+if (btnSetDailyTarget) {
+  btnSetDailyTarget.addEventListener('click', async () => {
+    const storedTarget = localStorage.getItem('finances_daily_target') || '50000';
+    const currentFormatted = new Intl.NumberFormat('es-CO').format(parseInt(storedTarget, 10) || 50000);
+    const inputVal = await appPrompt(
+      'Ingresa tu presupuesto o meta máxima de gasto diario en pesos ($ COP):',
+      currentFormatted,
+      {
+        title: 'Meta de Gasto Diario',
+        icon: '🎯',
+        okText: 'Guardar Meta',
+        placeholder: 'Ej: 40.000'
+      }
+    );
+    if (inputVal !== null) {
+      const parsed = parseAmount(inputVal);
+      if (!isNaN(parsed) && parsed > 0) {
+        localStorage.setItem('finances_daily_target', String(parsed));
+        showQuickToast(`🎯 Meta de gasto fijada en ${formatCurrency(parsed)}/día`);
+        renderCharts();
+      } else {
+        showQuickToast('Monto inválido para la meta diaria', 'warning');
+      }
+    }
+  });
+}
+
+// VISUALIZACION DE GRAFICOS Y ANALISIS FINANCIERO (CHART.JS)
 function renderCharts() {
   if (typeof Chart === 'undefined') return;
 
-  const targetYear = activeYear === 'ALL' ? '2026' : activeYear;
+  const targetYear = activeYear === 'ALL' ? String(new Date().getFullYear()) : activeYear;
   const monthLabels = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  const monthNamesFull = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const isAllMonths = activeMonth === 'ALL';
+  const targetMonthNum = isAllMonths ? null : parseInt(activeMonth, 10);
+  const targetYearNum = parseInt(targetYear, 10);
+  const daysInActiveMonth = isAllMonths ? 30 : new Date(targetYearNum, targetMonthNum, 0).getDate();
+
+  // Arrays para comparativa 12 meses
   const monthlyIncomes = new Array(12).fill(0);
   const monthlyExpenses = new Array(12).fill(0);
-  const categoryExpenses = {};
 
+  // Totales periodo actual (aplicando todos los filtros globales: Año, Mes, Medio y Método)
   let currentPeriodIncome = 0;
   let currentPeriodExpense = 0;
-  const daysInPeriod = 30;
+  const categoryExpenses = {};
+  const leaksMap = {};
+
+  // Para ritmo diario acumulado cuando se selecciona un mes específico
+  const dailySpendArray = new Array(daysInActiveMonth).fill(0);
+
+  // Para histórico por categoría y promedio
+  const distinctMonthsSet = new Set();
+  const historicalCategoryTotals = {};
 
   transactions.forEach(t => {
     const tYear = (t.date || '').substring(0, 4);
-    const tMonthIndex = parseInt((t.date || '').substring(5, 7), 10) - 1;
+    const tMonthStr = (t.date || '').substring(5, 7);
+    const tMonthIndex = parseInt(tMonthStr, 10) - 1;
+    const tDay = parseInt((t.date || '').substring(8, 10), 10);
+    const tMedium = getPaymentMedium(t.paymentMethod);
+    const tMethod = (t.paymentMethod || 'EFECTIVO').toUpperCase();
 
-    if (tYear === targetYear && tMonthIndex >= 0 && tMonthIndex < 12) {
+    // Filtros
+    const matchesYear = activeYear === 'ALL' || tYear === activeYear;
+    const matchesMonth = isAllMonths || tMonthStr === activeMonth;
+    const matchesMedium = activeMedium === 'ALL' || tMedium === activeMedium;
+    const matchesMethod = activeMethod === 'ALL' || tMethod === activeMethod;
+
+    // Acumulación anual (filtrada por Medio y Método para coherencia global)
+    if (tYear === targetYear && tMonthIndex >= 0 && tMonthIndex < 12 && matchesMedium && matchesMethod) {
       if (t.type === 'income') {
         monthlyIncomes[tMonthIndex] += t.amount;
       } else {
@@ -6304,24 +6444,62 @@ function renderCharts() {
       }
     }
 
-    const matchesYear = activeYear === 'ALL' || tYear === activeYear;
-    const matchesMonth = activeMonth === 'ALL' || (t.date || '').substring(5, 7) === activeMonth;
-    if (matchesYear && matchesMonth) {
+    // Datos del periodo activo seleccionado
+    if (matchesYear && matchesMonth && matchesMedium && matchesMethod) {
       if (t.type === 'income') {
         currentPeriodIncome += t.amount;
       } else {
         currentPeriodExpense += t.amount;
         const cat = t.category || 'OTROS';
         categoryExpenses[cat] = (categoryExpenses[cat] || 0) + t.amount;
+
+        // Ritmo diario
+        if (!isAllMonths && tDay >= 1 && tDay <= daysInActiveMonth) {
+          dailySpendArray[tDay - 1] += t.amount;
+        }
+
+        // Fugas / Gastos Hormiga por concepto
+        const descKey = (t.description || 'Gasto no clasificado').trim().toUpperCase();
+        if (!leaksMap[descKey]) {
+          leaksMap[descKey] = { name: (t.description || 'Gasto sin detalle').trim(), total: 0, count: 0, category: cat };
+        }
+        leaksMap[descKey].total += t.amount;
+        leaksMap[descKey].count += 1;
       }
+    }
+
+    // Histórico de gastos para la comparativa (filtrado por Medio y Método)
+    if (t.type === 'expense' && matchesMedium && matchesMethod) {
+      const ym = (t.date || '').substring(0, 7);
+      if (ym) distinctMonthsSet.add(ym);
+      const cat = t.category || 'OTROS';
+      historicalCategoryTotals[cat] = (historicalCategoryTotals[cat] || 0) + t.amount;
     }
   });
 
+  // KPI 1: TASA DE AHORRO CON INDICADOR VISUAL ACCIONABLE
   const savingsRate = currentPeriodIncome > 0
-    ? Math.max(0, Math.round(((currentPeriodIncome - currentPeriodExpense) / currentPeriodIncome) * 100))
-    : 0;
-  document.getElementById('chart-savings-rate').textContent = `${savingsRate} %`;
+    ? Math.round(((currentPeriodIncome - currentPeriodExpense) / currentPeriodIncome) * 100)
+    : (currentPeriodExpense > 0 ? -100 : 0);
 
+  const savingsRateEl = document.getElementById('chart-savings-rate');
+  const savingsIndicatorEl = document.getElementById('chart-savings-indicator');
+
+  if (savingsRateEl) {
+    savingsRateEl.textContent = `${savingsRate} %`;
+    savingsRateEl.className = `kpi-value ${savingsRate >= 20 ? 'text-success' : savingsRate >= 5 ? 'text-warning' : 'text-danger'}`;
+  }
+  if (savingsIndicatorEl) {
+    if (savingsRate >= 20) {
+      savingsIndicatorEl.innerHTML = '<span style="color: var(--success-color);">🟢 Saludable (&gt;20% de ahorro)</span>';
+    } else if (savingsRate >= 5) {
+      savingsIndicatorEl.innerHTML = '<span style="color: var(--warning-color);">🟡 Margen Ajustado (5% - 19%)</span>';
+    } else {
+      savingsIndicatorEl.innerHTML = '<span style="color: var(--danger-color);">🔴 Alerta: Déficit o Sin Margen</span>';
+    }
+  }
+
+  // KPI 2: MAYOR CATEGORÍA DE GASTO CON PORCENTAJE
   let topCat = 'NINGUNA';
   let topCatAmount = 0;
   for (const [cat, amt] of Object.entries(categoryExpenses)) {
@@ -6330,62 +6508,193 @@ function renderCharts() {
       topCat = cat;
     }
   }
-  document.getElementById('chart-top-category').textContent = topCat;
+  const topCatEl = document.getElementById('chart-top-category');
+  const topCatAmtEl = document.getElementById('chart-top-category-amount');
+  if (topCatEl) topCatEl.textContent = topCat;
+  if (topCatAmtEl) {
+    if (currentPeriodExpense > 0 && topCatAmount > 0) {
+      const pct = Math.round((topCatAmount / currentPeriodExpense) * 100);
+      topCatAmtEl.textContent = `${formatCurrency(topCatAmount)} (${pct}% del gasto total)`;
+    } else {
+      topCatAmtEl.textContent = '$ 0 acumulado en el periodo';
+    }
+  }
 
-  const dailyAvg = Math.round(currentPeriodExpense / daysInPeriod);
-  document.getElementById('chart-daily-avg').textContent = formatCurrency(dailyAvg);
+  // KPI 3: PROMEDIO DE GASTO DIARIO VS META CONFIGURABLE
+  const now = new Date();
+  const isCurrentMonthCalendar = (!isAllMonths && now.getFullYear() === targetYearNum && (now.getMonth() + 1) === targetMonthNum);
+  const effectiveDaysElapsed = isAllMonths ? 365 : (isCurrentMonthCalendar ? Math.max(1, now.getDate()) : daysInActiveMonth);
 
+  const dailyAvg = Math.round(currentPeriodExpense / Math.max(1, effectiveDaysElapsed));
+  const dailyAvgEl = document.getElementById('chart-daily-avg');
+  if (dailyAvgEl) dailyAvgEl.textContent = formatCurrency(dailyAvg);
+
+  const storedDailyTarget = localStorage.getItem('finances_daily_target');
+  const dailyTarget = storedDailyTarget ? parseInt(storedDailyTarget, 10) : 50000;
+  const targetDiff = dailyAvg - dailyTarget;
+  const targetPct = dailyTarget > 0 ? Math.round((Math.abs(targetDiff) / dailyTarget) * 100) : 0;
+  const dailyComparisonEl = document.getElementById('chart-daily-target-comparison');
+
+  if (dailyComparisonEl) {
+    if (targetDiff > 0) {
+      dailyComparisonEl.innerHTML = `<span style="color: var(--danger-color); font-weight: 700;">⚠️ Meta: ${formatCurrency(dailyTarget)}/día (+${targetPct}% exceso)</span>`;
+    } else {
+      dailyComparisonEl.innerHTML = `<span style="color: var(--success-color); font-weight: 700;">✅ Meta: ${formatCurrency(dailyTarget)}/día (-${targetPct}% bajo control)</span>`;
+    }
+  }
+
+  // KPI 4: BALANCE NETO DEL PERIODO
   const netSavings = currentPeriodIncome - currentPeriodExpense;
-  document.getElementById('chart-net-savings').textContent = formatCurrency(netSavings);
-  document.getElementById('chart-net-savings').className = `kpi-value ${netSavings >= 0 ? 'text-primary' : 'text-danger'}`;
+  const netSavingsEl = document.getElementById('chart-net-savings');
+  const netStatusEl = document.getElementById('chart-net-status');
 
-  // 1. COMPARATIVA MENSUAL
+  if (netSavingsEl) {
+    netSavingsEl.textContent = (netSavings >= 0 ? '+ ' : '') + formatCurrency(netSavings);
+    netSavingsEl.className = `kpi-value ${netSavings >= 0 ? 'text-primary' : 'text-danger'}`;
+  }
+  if (netStatusEl) {
+    netStatusEl.textContent = netSavings >= 0 ? 'Superávit disponible en el periodo' : 'Déficit operativo en el periodo';
+    netStatusEl.style.color = netSavings >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+  }
+
+  // ========================================================
+  // 1. COMPARATIVA MENSUAL O RITMO DE GASTO DIARIO ACUMULADO
+  // ========================================================
   const barCanvas = document.getElementById('monthlyBarChart');
+  const monthlyTitleEl = document.getElementById('chart-monthly-title');
+  const monthlyBadgeEl = document.getElementById('chart-monthly-badge');
+
   if (barCanvas) {
     if (monthlyBarChart) monthlyBarChart.destroy();
-    monthlyBarChart = new Chart(barCanvas, {
-      type: 'bar',
-      data: {
-        labels: monthLabels,
-        datasets: [
-          {
-            label: 'INGRESOS',
-            data: monthlyIncomes,
-            backgroundColor: '#10b981',
-            borderRadius: 6
-          },
-          {
-            label: 'GASTOS',
-            data: monthlyExpenses,
-            backgroundColor: '#f43f5e',
-            borderRadius: 6
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+
+    if (isAllMonths) {
+      // Vista Anual Consolidada: Barras Ingresos vs Gastos
+      if (monthlyTitleEl) monthlyTitleEl.textContent = 'Comparativa Mensual (Ingresos vs. Gastos)';
+      if (monthlyBadgeEl) monthlyBadgeEl.textContent = `Año ${targetYear}`;
+
+      monthlyBarChart = new Chart(barCanvas, {
+        type: 'bar',
+        data: {
+          labels: monthLabels,
+          datasets: [
+            {
+              label: 'INGRESOS ($ COP)',
+              data: monthlyIncomes,
+              backgroundColor: '#10b981',
+              borderRadius: 6
+            },
+            {
+              label: 'GASTOS ($ COP)',
+              data: monthlyExpenses,
+              backgroundColor: '#f43f5e',
+              borderRadius: 6
             }
-          }
+          ]
         },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (val) => '$ ' + new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(val)
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => '$ ' + new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(val)
+              }
             }
           }
         }
+      });
+    } else {
+      // Vista Mensual Específica: Línea de Ritmo de Gasto Diario Acumulado (Días 1 al 28/30/31)
+      const monthName = monthNamesFull[targetMonthNum - 1] || activeMonth;
+      if (monthlyTitleEl) monthlyTitleEl.textContent = `Ritmo de Gasto Diario Acumulado (${monthName})`;
+      if (monthlyBadgeEl) monthlyBadgeEl.textContent = `Días 1 al ${daysInActiveMonth}`;
+
+      const dayLabels = [];
+      const cumulativeRealSpend = [];
+      const idealPaceCurve = [];
+      let runningReal = 0;
+
+      const currentDayLimit = isCurrentMonthCalendar ? now.getDate() : daysInActiveMonth;
+
+      for (let d = 1; d <= daysInActiveMonth; d++) {
+        dayLabels.push(`${d}`);
+        if (d <= currentDayLimit) {
+          runningReal += dailySpendArray[d - 1];
+          cumulativeRealSpend.push(runningReal);
+        } else {
+          cumulativeRealSpend.push(null); // No proyectar días futuros en el mes en curso
+        }
+        // Curva de ritmo meta diaria
+        idealPaceCurve.push(dailyTarget * d);
       }
-    });
+
+      monthlyBarChart = new Chart(barCanvas, {
+        type: 'line',
+        data: {
+          labels: dayLabels,
+          datasets: [
+            {
+              label: 'Gasto Acumulado Real ($ COP)',
+              data: cumulativeRealSpend,
+              borderColor: '#f43f5e',
+              backgroundColor: 'rgba(244, 63, 94, 0.15)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              borderWidth: 2.5
+            },
+            {
+              label: 'Ritmo Meta Diaria ($ COP)',
+              data: idealPaceCurve,
+              borderColor: '#06b6d4',
+              backgroundColor: 'transparent',
+              borderDash: [5, 5],
+              pointRadius: 0,
+              borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                title: (items) => `Día ${items[0].label} de ${monthName}`,
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? formatCurrency(ctx.parsed.y) : 'Pendiente'}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: `Días del mes (${monthName})`, color: 'var(--text-muted)' }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => '$ ' + new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(val)
+              }
+            }
+          }
+        }
+      });
+    }
   }
 
-  // 2. DISTRIBUCION POR CATEGORIA
+  // ========================================================
+  // 2. DISTRIBUCION POR CATEGORIA (DOUGHNUT)
+  // ========================================================
   const pieCanvas = document.getElementById('categoryPieChart');
   if (pieCanvas) {
     if (categoryPieChart) categoryPieChart.destroy();
@@ -6419,29 +6728,57 @@ function renderCharts() {
     });
   }
 
-  // 3. TENDENCIA DEL BALANCE
+  // ========================================================
+  // 3. TENDENCIA DEL BALANCE ACUMULADO
+  // ========================================================
   const lineCanvas = document.getElementById('balanceLineChart');
   if (lineCanvas) {
     if (balanceLineChart) balanceLineChart.destroy();
-    const balanceTrend = [];
-    let runningBalance = 0;
-    for (let i = 0; i < 12; i++) {
-      runningBalance += (monthlyIncomes[i] - monthlyExpenses[i]);
-      balanceTrend.push(runningBalance);
+
+    let balanceLabels = monthLabels;
+    let balanceTrend = [];
+
+    if (isAllMonths) {
+      let runningBalance = 0;
+      for (let i = 0; i < 12; i++) {
+        runningBalance += (monthlyIncomes[i] - monthlyExpenses[i]);
+        balanceTrend.push(runningBalance);
+      }
+    } else {
+      balanceLabels = [];
+      let runningDailyNet = 0;
+      for (let d = 1; d <= daysInActiveMonth; d++) {
+        balanceLabels.push(`${d}`);
+        let dayInc = 0;
+        let dayExp = 0;
+        transactions.forEach(t => {
+          const tYear = (t.date || '').substring(0, 4);
+          const tMonthStr = (t.date || '').substring(5, 7);
+          const tDay = parseInt((t.date || '').substring(8, 10), 10);
+          const tMedium = getPaymentMedium(t.paymentMethod);
+          const tMethod = (t.paymentMethod || 'EFECTIVO').toUpperCase();
+          if (tYear === targetYear && tMonthStr === activeMonth && tDay === d && (activeMedium === 'ALL' || tMedium === activeMedium) && (activeMethod === 'ALL' || tMethod === activeMethod)) {
+            if (t.type === 'income') dayInc += t.amount;
+            else dayExp += t.amount;
+          }
+        });
+        runningDailyNet += (dayInc - dayExp);
+        balanceTrend.push(runningDailyNet);
+      }
     }
 
     balanceLineChart = new Chart(lineCanvas, {
       type: 'line',
       data: {
-        labels: monthLabels,
+        labels: balanceLabels,
         datasets: [{
-          label: 'BALANCE ACUMULADO ($ COP)',
+          label: isAllMonths ? 'BALANCE ACUMULADO ($ COP)' : 'BALANCE NETO DIARIO ACUMULADO ($ COP)',
           data: balanceTrend,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.12)',
+          borderColor: '#a855f7',
+          backgroundColor: 'rgba(168, 85, 247, 0.12)',
           fill: true,
           tension: 0.35,
-          pointRadius: 4
+          pointRadius: 3
         }]
       },
       options: {
@@ -6458,42 +6795,57 @@ function renderCharts() {
     });
   }
 
-  // 4. MEDIO DE PAGO: FÍSICO (EFECTIVO) VS DIGITAL (APPS / TARJETAS)
-  const mediumCanvas = document.getElementById('mediumDoughnutChart');
-  if (mediumCanvas) {
-    if (mediumDoughnutChart) mediumDoughnutChart.destroy();
-    let expensePhysical = 0;
-    let expenseDigital = 0;
+  // ========================================================
+  // 4. TOP 5 FUGAS DE DINERO / GASTOS HORMIGA (BARRAS HORIZONTALES)
+  // Reemplaza "Pagos Físicos vs Digitales"
+  // ========================================================
+  const leaksCanvas = document.getElementById('topLeaksBarChart');
+  const leaksTotalBadge = document.getElementById('leaks-total-badge');
 
-    transactions.forEach(t => {
-      const tYear = (t.date || '').substring(0, 4);
-      const matchesYear = activeYear === 'ALL' || tYear === activeYear;
-      const matchesMonth = activeMonth === 'ALL' || (t.date || '').substring(5, 7) === activeMonth;
-      if (matchesYear && matchesMonth && t.type === 'expense') {
-        const med = getPaymentMedium(t.paymentMethod);
-        if (med === 'FISICO') expensePhysical += t.amount;
-        else expenseDigital += t.amount;
-      }
-    });
+  if (leaksCanvas) {
+    if (topLeaksBarChart) topLeaksBarChart.destroy();
 
-    const hasData = (expensePhysical + expenseDigital) > 0;
-    mediumDoughnutChart = new Chart(mediumCanvas, {
-      type: 'doughnut',
+    const sortedLeaks = Object.values(leaksMap).sort((a, b) => b.total - a.total).slice(0, 5);
+    const hasLeaks = sortedLeaks.length > 0;
+
+    const leakLabels = hasLeaks
+      ? sortedLeaks.map(item => `${item.name.length > 20 ? item.name.substring(0, 18) + '...' : item.name} (${item.count}x)`)
+      : ['SIN GASTOS REGISTRADOS'];
+    const leakData = hasLeaks ? sortedLeaks.map(item => item.total) : [0];
+    const totalLeaksSum = sortedLeaks.reduce((sum, item) => sum + item.total, 0);
+
+    if (leaksTotalBadge) {
+      leaksTotalBadge.textContent = hasLeaks ? `${formatCurrency(totalLeaksSum)} (${sortedLeaks.length} fugas)` : '$ 0 Fugas';
+    }
+
+    topLeaksBarChart = new Chart(leaksCanvas, {
+      type: 'bar',
       data: {
-        labels: hasData ? ['💵 EFECTIVO (FÍSICO EN MANO)', '📱 DIGITAL (APPS / TARJETAS)'] : ['SIN GASTOS EN EL PERIODO'],
+        labels: leakLabels,
         datasets: [{
-          data: hasData ? [expensePhysical, expenseDigital] : [1],
-          backgroundColor: hasData ? ['#10b981', '#3b82f6'] : ['#374151']
+          label: 'Monto de la Fuga ($ COP)',
+          data: leakData,
+          backgroundColor: ['#f59e0b', '#fb923c', '#f43f5e', '#ec4899', '#a855f7'],
+          borderRadius: 6
         }]
       },
       options: {
+        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'bottom' },
+          legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => hasData ? `${ctx.label}: ${formatCurrency(ctx.parsed)}` : 'Sin gastos'
+              label: (ctx) => `Total gastado: ${formatCurrency(ctx.parsed.x)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: {
+              callback: (val) => '$ ' + new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(val)
             }
           }
         }
@@ -6501,44 +6853,72 @@ function renderCharts() {
     });
   }
 
-  // 5. GASTOS E INGRESOS POR MÉTODO DE PAGO
-  const methodsCanvas = document.getElementById('paymentMethodsBarChart');
-  if (methodsCanvas) {
-    if (paymentMethodsBarChart) paymentMethodsBarChart.destroy();
-    const methodNames = ['EFECTIVO', 'NEQUI', 'DAVIPLATA', 'BANCO', 'TARJETA_DEBITO', 'TARJETA_CREDITO'];
-    const displayLabels = ['💵 Efectivo', '📱 Nequi', '📱 Daviplata', '🏦 Banco', '💳 T. Débito', '💳 T. Crédito'];
-    const methodExpenses = [0, 0, 0, 0, 0, 0];
-    const methodIncomes = [0, 0, 0, 0, 0, 0];
+  // ========================================================
+  // 5. COMPARATIVA DE GASTO REAL VS PROMEDIO HISTÓRICO POR CATEGORÍA
+  // Reemplaza "Gastos e Ingresos por Método de Pago"
+  // ========================================================
+  const comparisonCanvas = document.getElementById('spendingComparisonBarChart');
+  const deviationBadge = document.getElementById('deviation-alert-badge');
 
-    transactions.forEach(t => {
-      const tYear = (t.date || '').substring(0, 4);
-      const matchesYear = activeYear === 'ALL' || tYear === activeYear;
-      const matchesMonth = activeMonth === 'ALL' || (t.date || '').substring(5, 7) === activeMonth;
-      if (matchesYear && matchesMonth) {
-        const m = (t.paymentMethod || 'EFECTIVO').toUpperCase();
-        const mIndex = methodNames.indexOf(m);
-        if (mIndex !== -1) {
-          if (t.type === 'expense') methodExpenses[mIndex] += t.amount;
-          else methodIncomes[mIndex] += t.amount;
+  if (comparisonCanvas) {
+    if (spendingComparisonBarChart) spendingComparisonBarChart.destroy();
+
+    const monthsCount = Math.max(1, distinctMonthsSet.size);
+    const historicalCategoryAvg = {};
+    for (const [cat, sum] of Object.entries(historicalCategoryTotals)) {
+      historicalCategoryAvg[cat] = Math.round(sum / monthsCount);
+    }
+
+    // Unir categorías principales ordenadas por gasto real
+    const allUniqueCats = Array.from(new Set([...Object.keys(categoryExpenses), ...Object.keys(historicalCategoryAvg)]));
+    allUniqueCats.sort((a, b) => (categoryExpenses[b] || 0) - (categoryExpenses[a] || 0));
+    const topCatsToCompare = allUniqueCats.slice(0, 6);
+
+    const compLabels = topCatsToCompare.length > 0 ? topCatsToCompare : ['SIN REGISTROS'];
+    const realSpendData = topCatsToCompare.map(cat => categoryExpenses[cat] || 0);
+    const histAvgData = topCatsToCompare.map(cat => historicalCategoryAvg[cat] || 0);
+
+    // Calcular categoría con mayor desviación de sobregasto
+    let maxOverrunCategory = null;
+    let maxOverrunPct = 0;
+
+    topCatsToCompare.forEach(cat => {
+      const real = categoryExpenses[cat] || 0;
+      const avg = historicalCategoryAvg[cat] || 0;
+      if (avg > 0 && real > avg * 1.15 && real > 30000) {
+        const pct = Math.round(((real - avg) / avg) * 100);
+        if (pct > maxOverrunPct) {
+          maxOverrunPct = pct;
+          maxOverrunCategory = cat;
         }
       }
     });
 
-    paymentMethodsBarChart = new Chart(methodsCanvas, {
+    if (deviationBadge) {
+      if (maxOverrunCategory) {
+        deviationBadge.textContent = `⚠️ Sobregasto en ${maxOverrunCategory} (+${maxOverrunPct}%)`;
+        deviationBadge.className = 'tag-badge text-warning';
+      } else {
+        deviationBadge.textContent = '✅ Gasto en rango vs promedio histórico';
+        deviationBadge.className = 'tag-badge text-success';
+      }
+    }
+
+    spendingComparisonBarChart = new Chart(comparisonCanvas, {
       type: 'bar',
       data: {
-        labels: displayLabels,
+        labels: compLabels,
         datasets: [
           {
-            label: 'Ingresos por Cuenta ($ COP)',
-            data: methodIncomes,
-            backgroundColor: '#10b981',
+            label: 'Gasto Real Periodo Actual ($ COP)',
+            data: realSpendData,
+            backgroundColor: '#f43f5e',
             borderRadius: 6
           },
           {
-            label: 'Gastos por Método ($ COP)',
-            data: methodExpenses,
-            backgroundColor: '#f43f5e',
+            label: `Promedio Mensual Histórico (${monthsCount} ${monthsCount === 1 ? 'mes' : 'meses'})`,
+            data: histAvgData,
+            backgroundColor: '#3b82f6',
             borderRadius: 6
           }
         ]

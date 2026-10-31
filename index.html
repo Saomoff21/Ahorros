@@ -1075,30 +1075,37 @@
     <!-- PESTAÑA 5: GRAFICOS Y ANALISIS -->
     <section id="tab-charts" class="tab-content">
       <div class="insights-grid">
-        <div class="kpi-card">
+        <div class="kpi-card border-success">
           <span class="kpi-label">TASA DE AHORRO DEL PERIODO</span>
           <div id="chart-savings-rate" class="kpi-value text-success">0 %</div>
+          <small id="chart-savings-indicator" style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; display: block;"></small>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card border-primary">
           <span class="kpi-label">MAYOR CATEGORIA DE GASTO</span>
           <div id="chart-top-category" class="kpi-value text-primary" style="font-size: 1.15rem;">NINGUNA</div>
+          <small id="chart-top-category-amount" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; display: block;">$ 0 acumulado</small>
         </div>
-        <div class="kpi-card">
-          <span class="kpi-label">PROMEDIO DE GASTO DIARIO</span>
+        <div class="kpi-card border-danger">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="kpi-label">PROMEDIO DE GASTO DIARIO</span>
+            <button type="button" id="btn-set-daily-target" style="background: none; border: none; color: var(--primary-color); font-size: 0.7rem; font-weight: 600; cursor: pointer; text-decoration: underline;" title="Configurar meta diaria de gasto">⚙️ Meta</button>
+          </div>
           <div id="chart-daily-avg" class="kpi-value text-danger">$ 0</div>
+          <div id="chart-daily-target-comparison" style="font-size: 0.71rem; margin-top: 4px; font-weight: 600; color: var(--text-muted);"></div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card border-purple">
           <span class="kpi-label">BALANCE NETO DEL PERIODO</span>
           <div id="chart-net-savings" class="kpi-value text-primary">$ 0</div>
+          <small id="chart-net-status" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; display: block;"></small>
         </div>
       </div>
 
       <div class="charts-grid">
-        <!-- GRAFICO 1: COMPARATIVA MENSUAL INGRESOS VS GASTOS -->
+        <!-- GRAFICO 1: COMPARATIVA MENSUAL O RITMO DE GASTO DIARIO -->
         <div class="panel-card border-primary">
           <div class="panel-header">
-            <h2>Comparativa Mensual (Ingresos vs. Gastos)</h2>
-            <span class="tag-badge">12 Meses</span>
+            <h2 id="chart-monthly-title">Comparativa Mensual (Ingresos vs. Gastos)</h2>
+            <span id="chart-monthly-badge" class="tag-badge">12 Meses</span>
           </div>
           <div class="chart-container">
             <canvas id="monthlyBarChart"></canvas>
@@ -1109,7 +1116,7 @@
         <div class="panel-card border-danger">
           <div class="panel-header">
             <h2>Gastos por Categoría</h2>
-            <span class="tag-badge">Distribución %</span>
+            <span id="chart-category-badge" class="tag-badge">Distribución %</span>
           </div>
           <div class="chart-container">
             <canvas id="categoryPieChart"></canvas>
@@ -1129,26 +1136,32 @@
           </div>
         </div>
 
-        <!-- GRAFICO 4: FÍSICO VS DIGITAL -->
-        <div class="panel-card border-success">
+        <!-- GRAFICO 4: TOP FUGAS DE DINERO / GASTOS HORMIGA (REEMPLAZA FÍSICO VS DIGITAL) -->
+        <div class="panel-card border-warning">
           <div class="panel-header">
-            <h2>Pagos Físicos (Efectivo) vs. Digitales (Apps/Tarjetas)</h2>
-            <span class="tag-badge">Medio de Pago</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">🐜</span>
+              <h2>Top 5 Fugas de Dinero / Gastos Hormiga</h2>
+            </div>
+            <span id="leaks-total-badge" class="tag-badge text-warning">$ 0 Fugas</span>
           </div>
           <div class="chart-container">
-            <canvas id="mediumDoughnutChart"></canvas>
+            <canvas id="topLeaksBarChart"></canvas>
           </div>
         </div>
       </div>
 
-      <!-- GRAFICO 5: DISTRIBUCIÓN POR MÉTODO DE PAGO ESPECÍFICO -->
+      <!-- GRAFICO 5: COMPARATIVA DE GASTO REAL VS PROMEDIO HISTÓRICO (REEMPLAZA MÉTODO DE PAGO) -->
       <div class="panel-card border-primary" style="margin-top: 22px;">
         <div class="panel-header">
-          <h2>Gastos e Ingresos por Método de Pago (Nequi, Efectivo, Banco, Tarjetas)</h2>
-          <span class="tag-badge">Desglose de Cuentas</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.1rem;">📊</span>
+            <h2>Comparativa: Gasto Real vs. Promedio Histórico por Categoría</h2>
+          </div>
+          <span id="deviation-alert-badge" class="tag-badge">Diagnóstico de Desviación</span>
         </div>
-        <div class="chart-container">
-          <canvas id="paymentMethodsBarChart"></canvas>
+        <div class="chart-container" style="min-height: 290px;">
+          <canvas id="spendingComparisonBarChart"></canvas>
         </div>
       </div>
     </section>
@@ -2278,6 +2291,9 @@
       </div>
       <h3 id="confirm-modal-title" style="font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main);">Confirmar Eliminación</h3>
       <p id="confirm-modal-message" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; white-space: pre-line;">¿Estás seguro de eliminar este registro permanentemente?</p>
+      <div id="confirm-modal-input-wrap" class="hidden" style="margin-bottom: 16px;">
+        <input type="text" id="confirm-modal-input" class="currency-input" style="width: 100%; padding: 10px 14px; font-size: 0.95rem; text-align: center; border-radius: 8px;" placeholder="Ingresa el valor...">
+      </div>
       <div style="display: flex; gap: 10px; justify-content: center;">
         <button type="button" id="btn-confirm-cancel" class="btn btn-outline" style="flex: 1; padding: 10px; font-weight: 600; font-size: 0.82rem; justify-content: center;">
           Cancelar

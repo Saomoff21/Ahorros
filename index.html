@@ -354,19 +354,59 @@
             </div>
           </div>
           
-          <!-- Filtro de Cuenta dedicado para Dashboard -->
-          <div class="dashboard-method-filter-wrap">
-            <label for="dashboard-filter-method" style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600;">Filtrar Cuenta:</label>
-            <select id="dashboard-filter-method" class="filter-select-mini" title="Filtrar movimientos del dashboard por cuenta">
-              <option value="ALL">Todas las Cuentas</option>
-              <option value="EFECTIVO">💵 Efectivo en Mano</option>
-              <option value="NEQUI">🟣 Nequi</option>
-              <option value="DAVIPLATA">🔴 Daviplata</option>
-              <option value="BANCO">🏦 Banco / PSE</option>
-              <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
-              <option value="TARJETA_CREDITO">💳 Tarjeta Crédito</option>
-              <option value="OTRO">⚙️ Otros Canales</option>
-            </select>
+          <!-- Controles de Filtro de Mes, Periodo y Cuenta dedicados para el Explorador del Dashboard -->
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- Selector de Periodo y Meses Dedicado para el Dashboard -->
+            <div class="dashboard-period-filter-wrap" style="display: flex; align-items: center; gap: 4px; background: var(--surface-secondary); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <button type="button" id="btn-dashboard-prev-month" class="btn-nav-mini" title="Mes anterior" aria-label="Mes anterior" style="background: none; border: none; color: var(--text-main); cursor: pointer; padding: 2px 6px; font-weight: 800; font-size: 0.85rem;">◀</button>
+              
+              <label for="dashboard-filter-month" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Mes:</label>
+              <select id="dashboard-filter-month" class="filter-select-mini" title="Filtrar mes en el explorador del dashboard" style="font-weight: 700;">
+                <option value="ALL">Todos los Meses</option>
+                <option value="01">Enero</option>
+                <option value="02">Febrero</option>
+                <option value="03">Marzo</option>
+                <option value="04">Abril</option>
+                <option value="05">Mayo</option>
+                <option value="06">Junio</option>
+                <option value="07">Julio</option>
+                <option value="08">Agosto</option>
+                <option value="09">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+
+              <select id="dashboard-filter-year" class="filter-select-mini" title="Filtrar año en el explorador del dashboard" style="font-weight: 700;">
+                <option value="ALL">Todos</option>
+                <option value="2027">2027</option>
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+              </select>
+
+              <button type="button" id="btn-dashboard-next-month" class="btn-nav-mini" title="Mes siguiente" aria-label="Mes siguiente" style="background: none; border: none; color: var(--text-main); cursor: pointer; padding: 2px 6px; font-weight: 800; font-size: 0.85rem;">▶</button>
+            </div>
+
+            <!-- Botón directo de Mes Actual -->
+            <button type="button" id="btn-dashboard-current-month" class="btn-nav-mini" title="Restablecer al mes actual en curso" style="font-size: 0.72rem; padding: 6px 10px; border-radius: 6px; background: rgba(59, 130, 246, 0.15); color: var(--primary-color); border: 1px solid var(--border-color); cursor: pointer; font-weight: 600;">
+              Mes Actual
+            </button>
+            
+            <!-- Filtro de Cuenta dedicado para Dashboard -->
+            <div class="dashboard-method-filter-wrap">
+              <label for="dashboard-filter-method" style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600;">Cuenta:</label>
+              <select id="dashboard-filter-method" class="filter-select-mini" title="Filtrar movimientos del dashboard por cuenta">
+                <option value="ALL">Todas las Cuentas</option>
+                <option value="EFECTIVO">💵 Efectivo en Mano</option>
+                <option value="NEQUI">🟣 Nequi</option>
+                <option value="DAVIPLATA">🔴 Daviplata</option>
+                <option value="BANCO">🏦 Banco / PSE</option>
+                <option value="TARJETA_DEBITO">💳 Tarjeta Débito</option>
+                <option value="TARJETA_CREDITO">💳 Tarjeta Crédito</option>
+                <option value="OTRO">⚙️ Otros Canales</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -2120,19 +2160,19 @@
           <div id="vault-code-text" class="vault-code-value" style="font-size: 1.5rem; font-weight: 900; letter-spacing: 0.08em; color: var(--primary-color); font-family: monospace; margin-bottom: 12px;">CARGANDO...</div>
           
           <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-            <button id="btn-copy-vault-code" class="btn btn-primary" style="font-size: 0.78rem; padding: 8px 14px;">
+            <button type="button" id="btn-copy-vault-code" class="btn btn-primary" style="font-size: 0.78rem; padding: 8px 14px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>Copiar Código</span>
             </button>
-            <button id="btn-share-vault-link" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px;">
+            <button type="button" id="btn-share-vault-link" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
               <span>Copiar Enlace Directo</span>
             </button>
-            <button id="btn-test-cloud-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; border-color: var(--success-color); color: var(--success-color);" title="Verificar lectura y escritura directa en Firebase Firestore">
+            <button type="button" id="btn-test-cloud-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; border-color: var(--success-color); color: var(--success-color);" title="Verificar lectura y escritura directa en Firebase Firestore">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
               <span>Probar Nube</span>
             </button>
-            <button id="btn-new-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; color: var(--text-muted);" title="Iniciar una nueva bóveda en blanco con código nuevo">
+            <button type="button" id="btn-new-vault" class="btn btn-outline" style="font-size: 0.78rem; padding: 8px 14px; color: var(--text-muted);" title="Iniciar una nueva bóveda en blanco con código nuevo">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               <span>Nueva Bóveda</span>
             </button>
@@ -2169,7 +2209,7 @@
           </p>
           <div style="display: flex; gap: 8px;">
             <input type="text" id="vault-link-code-input" placeholder="Ej: AHORRO-XXXXXX" style="flex: 1; font-family: monospace; text-transform: uppercase; font-weight: 700; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-main); font-size: 0.9rem;">
-            <button id="btn-link-vault" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.8rem; font-weight: 800; white-space: nowrap;">
+            <button type="button" id="btn-link-vault" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.8rem; font-weight: 800; white-space: nowrap;">
               Cargar Bóveda
             </button>
           </div>

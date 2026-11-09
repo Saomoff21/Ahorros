@@ -96,41 +96,31 @@ function generateVaultCode() {
   return `AHO-${rand}`;
 }
 
-// ORDENACION CRONOLOGICA ESTRICTA POR FECHA (MÁS RECIENTES PRIMERO) Y DEDUPLICACION DEFENSIVA
+// ORDENACION CRONOLOGICA ESTRICTA POR FECHA (MÁS RECIENTES PRIMERO)
 function sortTransactionsByDate(list) {
   if (!Array.isArray(list)) return [];
   const seenIds = new Set();
-  const seenSignatures = new Map();
+  const seenLocalIds = new Set();
   const unique = [];
 
   for (const item of list) {
     if (!item) continue;
-    const uid = String(item.id || item.firestoreId || item.localId || item.tempId || '');
-    if (uid && seenIds.has(uid)) continue;
+    const docId = String(item.firestoreId || item.id || '').trim();
+    const locId = String(item.localId || item.tempId || '').trim();
 
-    // Firma para detectar registros idénticos ingresados en ráfaga (<45 segundos)
-    const cleanType = String(item.type || '').trim().toLowerCase();
-    const cleanAmt = Math.round((parseFloat(item.amount) || 0) * 100);
-    const cleanDate = String(item.date || '').trim();
-    const cleanDesc = String(item.description || '').trim().toLowerCase();
-    const sig = `${cleanType}_${cleanAmt}_${cleanDate}_${cleanDesc}`;
-    const itemTime = new Date(item.createdAt || 0).getTime();
+    // Si ya vimos este docId o este localId, es definitivamente el mismo registro
+    if (docId && seenIds.has(docId)) continue;
+    if (locId && seenLocalIds.has(locId)) continue;
 
-    if (sig && cleanAmt > 0) {
-      if (seenSignatures.has(sig)) {
-        const prevTime = seenSignatures.get(sig);
-        // Si no tienen createdAt o la diferencia es menor a 45 segundos, es un duplicado inequívoco
-        if (!itemTime || !prevTime || Math.abs(itemTime - prevTime) < 45000) {
-          continue;
-        }
-      }
-      seenSignatures.set(sig, itemTime || Date.now());
+    if (docId) {
+      seenIds.add(docId);
+      if (docId.startsWith('tx_')) seenLocalIds.add(docId);
+    }
+    if (locId) {
+      seenLocalIds.add(locId);
+      seenIds.add(locId);
     }
 
-    if (uid) seenIds.add(uid);
-    if (item.firestoreId) seenIds.add(String(item.firestoreId));
-    if (item.localId) seenIds.add(String(item.localId));
-    if (item.tempId) seenIds.add(String(item.tempId));
     unique.push(item);
   }
 
@@ -332,19 +322,30 @@ if (btnCloseGuestBanner && guestBanner) {
 const urlSearch = new URLSearchParams(window.location.search);
 const paramCode = urlSearch.get('boveda') || urlSearch.get('code') || urlSearch.get('vault');
 if (paramCode && paramCode.trim().length >= 3) {
-  localStorage.setItem('ahorros_active_vault', paramCode.trim().toUpperCase());
+  const cleanParam = paramCode.trim().toUpperCase();
+  localStorage.setItem('ahorros_active_vault', cleanParam);
+  localStorage.setItem('ahorros_boveda_code', cleanParam);
+  if (savedUserSession) {
+    savedUserSession.userCode = cleanParam;
+    localStorage.setItem('ahorros_current_user', JSON.stringify(savedUserSession));
+  }
   if (window.history && window.history.replaceState) {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
-let activeVaultId = (savedUserSession && savedUserSession.userCode) ||
-                    localStorage.getItem('ahorros_active_vault') ||
+// Prioridad autoritativa de Bóveda: 1. Elección explícita activa en dispositivo, 2. Bóveda de sesión de usuario, 3. Nueva
+let activeVaultId = localStorage.getItem('ahorros_active_vault') ||
                     localStorage.getItem('ahorros_boveda_code') ||
+                    (savedUserSession && savedUserSession.userCode) ||
                     generateVaultCode();
 activeVaultId = activeVaultId.trim().toUpperCase();
 localStorage.setItem('ahorros_active_vault', activeVaultId);
 localStorage.setItem('ahorros_boveda_code', activeVaultId);
+if (savedUserSession) {
+  savedUserSession.userCode = activeVaultId;
+  localStorage.setItem('ahorros_current_user', JSON.stringify(savedUserSession));
+}
 
 // Inicializar datos visuales del perfil en la cabecera
 const userBadgeName = document.getElementById('user-badge-name');
@@ -352,8 +353,8 @@ const userBadgeCode = document.getElementById('user-badge-code');
 if (userBadgeName && savedUserSession) {
   userBadgeName.textContent = savedUserSession.username || savedUserSession.email || 'Mi Usuario';
 }
-if (userBadgeCode && savedUserSession) {
-  userBadgeCode.textContent = savedUserSession.userCode;
+if (userBadgeCode) {
+  userBadgeCode.textContent = activeVaultId;
 }
 
 // MODAL DE CONFIRMACIÓN IN-APP (REEMPLAZO SEGURO Y UNIVERSAL DE WINDOW.CONFIRM)
@@ -598,9 +599,8 @@ recurringPayments.forEach((r, i) => {
 // Estado de filtro de deudas (Todas, Por Pagar, Por Cobrar)
 let activeDebtFilter = 'all';
 
-// Sets de IDs y Firmas eliminadas recientemente para evitar resurrección por snapshot en tiempo real
+// Sets de IDs eliminados recientemente para evitar resurrección por snapshot en tiempo real
 const recentlyDeletedTxIds = new Set();
-const recentlyDeletedTxSignatures = new Set();
 const recentlyDeletedDebtIds = new Set();
 const recentlyDeletedGoalIds = new Set();
 const recentlyDeletedRecurringIds = new Set();
@@ -612,7 +612,6 @@ function loadRecentlyDeletedIds() {
     if (raw) {
       const data = JSON.parse(raw);
       (data.tx || []).forEach(id => recentlyDeletedTxIds.add(String(id)));
-      (data.txSig || []).forEach(sig => recentlyDeletedTxSignatures.add(String(sig)));
       (data.debt || []).forEach(id => recentlyDeletedDebtIds.add(String(id)));
       (data.goal || []).forEach(id => recentlyDeletedGoalIds.add(String(id)));
       (data.recurring || []).forEach(id => recentlyDeletedRecurringIds.add(String(id)));
@@ -625,7 +624,7 @@ function saveRecentlyDeletedId(type, id) {
   if (!id) return;
   try {
     const raw = localStorage.getItem('ahorros_tombstones') || sessionStorage.getItem('ahorros_tombstones');
-    const data = raw ? JSON.parse(raw) : { tx: [], txSig: [], debt: [], goal: [], recurring: [] };
+    const data = raw ? JSON.parse(raw) : { tx: [], debt: [], goal: [], recurring: [] };
     if (!data[type]) data[type] = [];
     const strId = String(id);
     if (!data[type].includes(strId)) {
@@ -638,8 +637,8 @@ function saveRecentlyDeletedId(type, id) {
 }
 
 const initDateObj = new Date();
-let activeYear = String(initDateObj.getFullYear());
-let activeMonth = String(initDateObj.getMonth() + 1).padStart(2, '0');
+let activeYear = localStorage.getItem('ahorros_filter_year') || String(initDateObj.getFullYear());
+let activeMonth = localStorage.getItem('ahorros_filter_month') || String(initDateObj.getMonth() + 1).padStart(2, '0');
 let activeMedium = 'ALL'; // 'ALL', 'FISICO', 'DIGITAL'
 let activeMethod = 'ALL'; // 'ALL', 'EFECTIVO', 'NEQUI', 'DAVIPLATA', 'BANCO', 'TARJETA_DEBITO', 'TARJETA_CREDITO', 'OTRO'
 let dashboardViewMode = 'consolidated'; // 'consolidated', 'incomes-only', 'expenses-only', 'comparative'
@@ -751,6 +750,9 @@ const globalFilterMethod = document.getElementById('global-filter-method');
 const activePeriodSummary = document.getElementById('active-period-summary');
 const btnClearMethodFilter = document.getElementById('btn-clear-method-filter');
 const btnToggleShowTime = document.getElementById('btn-toggle-show-time');
+
+if (globalFilterYear) globalFilterYear.value = activeYear;
+if (globalFilterMonth) globalFilterMonth.value = activeMonth;
 
 const totalIncomeEl = document.getElementById('total-income');
 const totalExpenseEl = document.getElementById('total-expense');
@@ -891,73 +893,14 @@ function activateTab(tabId, isInitial = false) {
   const outgoingTab = currentActiveTabId ? document.getElementById(currentActiveTabId) : null;
   const stage = document.getElementById('tabs-stage');
 
-  // Limpiar cualquier pestaña que haya quedado en proceso de salida anterior (soporte clics rápidos)
-  document.querySelectorAll('.tab-content.tab-exiting').forEach(el => {
-    el.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade');
-    el.style.display = 'none';
-    el.style.willChange = 'auto';
-  });
-
-  // Limpiar clases de preparación previas
+  // Ocultar de inmediato todas las pestañas inactivas para garantizar CERO superposición visual
   tabContents.forEach(c => {
-    c.classList.remove('tab-prepare-right', 'tab-prepare-left', 'tab-prepare-fade');
+    if (c !== target) {
+      c.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter', 'tab-exiting', 'exit-left', 'exit-right', 'exit-fade', 'tab-prepare-right', 'tab-prepare-left', 'tab-prepare-fade');
+      c.style.display = 'none';
+      c.style.willChange = 'auto';
+    }
   });
-
-  // 1. Fijar y transicionar elásticamente la altura de .tabs-stage para evitar colapso vertical
-  if (stage && outgoingTab && outgoingTab !== target && !isInitial) {
-    const fromHeight = outgoingTab.offsetHeight;
-    if (fromHeight > 0) {
-      stage.style.height = `${fromHeight}px`;
-    }
-
-    // Medir la altura natural del destino sin provocar parpadeo
-    target.style.visibility = 'hidden';
-    target.style.display = 'block';
-    target.style.position = 'relative';
-    const toHeight = target.offsetHeight;
-    target.style.display = 'none';
-    target.style.visibility = '';
-    target.style.position = '';
-
-    if (toHeight > 0 && fromHeight > 0) {
-      requestAnimationFrame(() => {
-        stage.style.height = `${toHeight}px`;
-      });
-    }
-  }
-
-  // 2. Gestionar la salida suave en paralelo de la pestaña anterior (~200ms)
-  if (outgoingTab && outgoingTab !== target && !isInitial) {
-    outgoingTab.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter');
-    outgoingTab.classList.add('tab-exiting');
-
-    if (direction === 'forward') {
-      outgoingTab.classList.add('exit-left');
-    } else if (direction === 'backward') {
-      outgoingTab.classList.add('exit-right');
-    } else {
-      outgoingTab.classList.add('exit-fade');
-    }
-
-    const onExitEnd = () => {
-      outgoingTab.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade');
-      outgoingTab.style.display = 'none';
-      outgoingTab.style.willChange = 'auto';
-      outgoingTab.removeEventListener('animationend', onExitEnd);
-    };
-
-    outgoingTab.addEventListener('animationend', onExitEnd, { once: true });
-    setTimeout(onExitEnd, 220); // Respaldo seguro
-  } else {
-    // Si es carga inicial o no hay pestaña previa, ocultar los demás contenidos
-    tabContents.forEach(c => {
-      if (c !== target) {
-        c.classList.remove('active', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter', 'tab-exiting', 'exit-left', 'exit-right', 'exit-fade');
-        c.style.display = 'none';
-        c.style.willChange = 'auto';
-      }
-    });
-  }
 
   // Actualizar estados visuales de los botones de navegación
   tabButtons.forEach(b => b.classList.remove('active'));
@@ -965,41 +908,11 @@ function activateTab(tabId, isInitial = false) {
   if (targetBtn) targetBtn.classList.add('active');
   if (targetMobileBtn) targetMobileBtn.classList.add('active');
 
-  // 4. Garantizar Estado Inicial Cero (FOUC Fix)
-  let prepareClass = 'tab-prepare-fade';
-  let animationClass = 'tab-fade-enter';
-  if (direction === 'forward') {
-    prepareClass = 'tab-prepare-right';
-    animationClass = 'tab-slide-right';
-  } else if (direction === 'backward') {
-    prepareClass = 'tab-prepare-left';
-    animationClass = 'tab-slide-left';
-  }
-
+  // Activar y mostrar limpiamente la pestaña seleccionada
   target.style.display = 'block';
-  target.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade', 'tab-slide-right', 'tab-slide-left', 'tab-fade-enter');
-
-  if (!isInitial && outgoingTab) {
-    target.classList.add(prepareClass);
-    // Iniciar animación en el siguiente cuadro para garantizar que arranca desde opacidad cero absoluta
-    requestAnimationFrame(() => {
-      target.classList.remove(prepareClass);
-      target.classList.add('active', animationClass);
-    });
-  } else {
-    target.classList.add('active', animationClass);
-  }
-
-  // Liberar recursos de composición GPU y restaurar altura automática al terminar
-  const onEnterEnd = () => {
-    target.style.willChange = 'auto';
-    if (stage) stage.style.height = '';
-    target.removeEventListener('animationend', onEnterEnd);
-  };
-  target.addEventListener('animationend', onEnterEnd, { once: true });
-  setTimeout(() => {
-    if (stage) stage.style.height = '';
-  }, 360);
+  target.classList.remove('tab-exiting', 'exit-left', 'exit-right', 'exit-fade', 'tab-slide-right', 'tab-slide-left', 'tab-prepare-right', 'tab-prepare-left', 'tab-prepare-fade');
+  target.classList.add('active', 'tab-fade-enter');
+  if (stage) stage.style.height = '';
 
   currentActiveTabId = tabId;
   localStorage.setItem('ahorros_active_tab', tabId);
@@ -1283,7 +1196,7 @@ if (btnTestCloudVault) {
     vaultTestResult.style.background = 'rgba(6, 182, 212, 0.15)';
     vaultTestResult.style.border = '1px solid var(--primary-color)';
     vaultTestResult.style.color = 'var(--text-main)';
-    vaultTestResult.innerHTML = '⏳ Realizando prueba de lectura y escritura en Firebase Firestore...';
+    vaultTestResult.innerHTML = '⏳ Verificando conexión en vivo con Firebase Firestore...';
 
     const t0 = performance.now();
     try {
@@ -1296,15 +1209,31 @@ if (btnTestCloudVault) {
       const snap = await getDoc(pingRef);
       const latency = Math.round(performance.now() - t0);
 
+      // Verificación directa de registros existentes en la nube
+      let txCount = 0;
+      let debtCount = 0;
+      let goalCount = 0;
+      try {
+        const snapTx = await getDocs(collection(db, 'vaults', activeVaultId, 'transactions'));
+        txCount = snapTx.size;
+        const snapDebts = await getDocs(collection(db, 'vaults', activeVaultId, 'debts'));
+        debtCount = snapDebts.size;
+        const snapGoals = await getDocs(collection(db, 'vaults', activeVaultId, 'savingsGoals'));
+        goalCount = snapGoals.size;
+      } catch (cErr) {
+        console.warn('Nota contando registros en test:', cErr);
+      }
+
       if (snap.exists()) {
         vaultTestResult.style.background = 'rgba(16, 185, 129, 0.15)';
         vaultTestResult.style.border = '1px solid var(--success-color)';
         vaultTestResult.style.color = 'var(--success-color)';
         vaultTestResult.innerHTML = `
-          <strong>✅ ¡BASE DE DATOS Y BÓVEDA OPERATIVAS!</strong><br>
-          • <strong>Servidor Nube:</strong> Conexión Firestore verificada (${latency} ms).<br>
+          <strong>✅ ¡BASE DE DATOS Y BÓVEDA 100% OPERATIVAS!</strong><br>
+          • <strong>Conexión Firestore:</strong> Verificada en vivo (${latency} ms).<br>
           • <strong>Código de Bóveda:</strong> <code>${activeVaultId}</code><br>
-          • <strong>Sincronización Celular:</strong> Todo lo que agregues aquí se reflejará en tiempo real en tu teléfono con este código.
+          • <strong>Datos en la Nube:</strong> ${txCount} transacciones, ${debtCount} obligaciones y ${goalCount} metas.<br>
+          • <strong>Sincronización Celular ↔ PC:</strong> Al ingresar el código <code>${activeVaultId}</code> en tu celular u otro PC, verás estos mismos registros en tiempo real.
         `;
       } else {
         throw new Error('No se pudo verificar el documento de prueba en Firestore.');
@@ -1324,7 +1253,8 @@ if (btnTestCloudVault) {
 }
 
 if (btnNewVault) {
-  btnNewVault.addEventListener('click', async () => {
+  btnNewVault.addEventListener('click', async (e) => {
+    e?.preventDefault?.();
     const confirmed = await appConfirm('¿Deseas crear una nueva Bóveda en blanco con código independiente? Tu bóveda actual no se borrará y podrás volver a ella en cualquier momento con su código.', {
       title: 'Crear Nueva Bóveda',
       icon: '➕',
@@ -1339,9 +1269,13 @@ if (btnNewVault) {
 }
 
 if (btnLinkVault && vaultLinkCodeInput) {
-  btnLinkVault.addEventListener('click', async () => {
+  btnLinkVault.addEventListener('click', async (e) => {
+    e?.preventDefault?.();
     const code = vaultLinkCodeInput.value.trim().toUpperCase();
-    if (!code || code.length < 3) return alert('Por favor ingresa un código de Bóveda válido.');
+    if (!code || code.length < 3) {
+      showQuickToast('Por favor ingresa un código de Bóveda válido.', 'warning');
+      return;
+    }
     await switchVault(code, false);
   });
 
@@ -3239,13 +3173,19 @@ function syncGlobalAndMovementsFilters() {
   if (gm) gm.value = activeMonth;
   const gy = document.getElementById('global-filter-year');
   if (gy) gy.value = activeYear;
+  const dm = document.getElementById('dashboard-filter-month');
+  if (dm) dm.value = activeMonth;
+  const dy = document.getElementById('dashboard-filter-year');
+  if (dy) dy.value = activeYear;
 }
 
 if (movementsMonthSelect) {
   movementsMonthSelect.value = activeMonth;
   movementsMonthSelect.addEventListener('change', (e) => {
     activeMonth = e.target.value;
+    localStorage.setItem('ahorros_filter_month', activeMonth);
     syncGlobalAndMovementsFilters();
+    updateActivePeriodLabel();
     updateUI();
   });
 }
@@ -3254,8 +3194,59 @@ if (movementsYearSelect) {
   movementsYearSelect.value = activeYear;
   movementsYearSelect.addEventListener('change', (e) => {
     activeYear = e.target.value;
+    localStorage.setItem('ahorros_filter_year', activeYear);
     syncGlobalAndMovementsFilters();
+    updateActivePeriodLabel();
     updateUI();
+  });
+}
+
+// Filtros directos de Mes y Año en el Explorador de Movimientos del Dashboard
+const dashboardFilterMonth = document.getElementById('dashboard-filter-month');
+const dashboardFilterYear = document.getElementById('dashboard-filter-year');
+const btnDashboardPrevMonth = document.getElementById('btn-dashboard-prev-month');
+const btnDashboardNextMonth = document.getElementById('btn-dashboard-next-month');
+const btnDashboardCurrentMonth = document.getElementById('btn-dashboard-current-month');
+
+if (dashboardFilterMonth) {
+  dashboardFilterMonth.value = activeMonth;
+  dashboardFilterMonth.addEventListener('change', (e) => {
+    activeMonth = e.target.value;
+    localStorage.setItem('ahorros_filter_month', activeMonth);
+    syncGlobalAndMovementsFilters();
+    updateActivePeriodLabel();
+    updateUI();
+  });
+}
+
+if (dashboardFilterYear) {
+  dashboardFilterYear.value = activeYear;
+  dashboardFilterYear.addEventListener('change', (e) => {
+    activeYear = e.target.value;
+    localStorage.setItem('ahorros_filter_year', activeYear);
+    syncGlobalAndMovementsFilters();
+    updateActivePeriodLabel();
+    updateUI();
+  });
+}
+
+if (btnDashboardPrevMonth) {
+  btnDashboardPrevMonth.addEventListener('click', () => navigateMovementsMonth(-1));
+}
+if (btnDashboardNextMonth) {
+  btnDashboardNextMonth.addEventListener('click', () => navigateMovementsMonth(1));
+}
+if (btnDashboardCurrentMonth) {
+  btnDashboardCurrentMonth.addEventListener('click', () => {
+    const now = new Date();
+    activeYear = String(now.getFullYear());
+    activeMonth = String(now.getMonth() + 1).padStart(2, '0');
+    localStorage.setItem('ahorros_filter_year', activeYear);
+    localStorage.setItem('ahorros_filter_month', activeMonth);
+    syncGlobalAndMovementsFilters();
+    updateActivePeriodLabel();
+    updateUI();
+    showQuickToast(`📅 Mostrando mes actual: ${activeMonth}/${activeYear}`);
   });
 }
 
@@ -3272,7 +3263,10 @@ function navigateMovementsMonth(dir) {
   }
   activeMonth = String(curM).padStart(2, '0');
   activeYear = String(curY);
+  localStorage.setItem('ahorros_filter_month', activeMonth);
+  localStorage.setItem('ahorros_filter_year', activeYear);
   syncGlobalAndMovementsFilters();
+  updateActivePeriodLabel();
   updateUI();
 }
 
@@ -3371,10 +3365,8 @@ async function pollPendingShortcuts() {
           (t.createdAt && existing.createdAt === t.createdAt) ||
           (existing.date === t.date && existing.type === t.type && Math.abs(existing.amount - t.amount) < 0.01 && existing.description === t.description && Math.abs(new Date(existing.createdAt || 0) - new Date(t.createdAt || 0)) < 60000)
         );
-        const sig = `${t.type}_${t.amount}_${t.date}_${(t.description || '').trim().toLowerCase()}`;
         const isDeleted = (t.id && recentlyDeletedTxIds.has(String(t.id))) ||
-                          (t.localId && recentlyDeletedTxIds.has(String(t.localId))) ||
-                          recentlyDeletedTxSignatures.has(sig);
+                          (t.localId && recentlyDeletedTxIds.has(String(t.localId)));
         if (!alreadyExists && !isDeleted) {
           shortcutEvents.unshift(t);
           await addTransactionLocallyOrCloud(t);
@@ -3497,13 +3489,9 @@ async function loadVaultFromCloud(vaultId) {
       const cloudTrans = [];
       const seenTxIds = new Set();
       txSnap.forEach(d => {
-        if (!recentlyDeletedTxIds.has(d.id) && !seenTxIds.has(d.id)) {
-          const tData = d.data();
-          const sig = `${tData.type}_${tData.amount}_${tData.date}_${(tData.description || '').trim().toLowerCase()}`;
-          if (recentlyDeletedTxSignatures.has(sig)) {
-            return;
-          }
+        if (!seenTxIds.has(d.id)) {
           seenTxIds.add(d.id);
+          const tData = d.data();
           if (tData.description && (
             tData.description.startsWith('AHORRO EN META:') ||
             tData.description.startsWith('AHORRO INICIAL EN META:') ||
@@ -3614,10 +3602,10 @@ async function switchVault(newCode, isNew = false) {
   debts = [];
   savingsGoals = [];
   recurringPayments = [];
-  localStorage.removeItem('finances_v10_trans');
-  localStorage.removeItem('finances_v10_debts');
-  localStorage.removeItem('finances_v10_goals');
-  localStorage.removeItem('finances_v10_recurring');
+  localStorage.setItem('finances_v10_trans', '[]');
+  localStorage.setItem('finances_v10_debts', '[]');
+  localStorage.setItem('finances_v10_goals', '[]');
+  localStorage.setItem('finances_v10_recurring', '[]');
   updateUI();
 
   if (vaultLinkFeedback) {
@@ -3630,23 +3618,56 @@ async function switchVault(newCode, isNew = false) {
   localStorage.setItem('ahorros_active_vault', cleanCode);
   localStorage.setItem('ahorros_boveda_code', cleanCode);
 
+  // Sincronizar sesión de usuario activa para que persista en recargas
+  if (savedUserSession) {
+    savedUserSession.userCode = cleanCode;
+    localStorage.setItem('ahorros_current_user', JSON.stringify(savedUserSession));
+  }
+
+  // Sincronizar credenciales de atajo para esta bóveda
+  userApiKey = getVaultApiKey(cleanCode);
+  updateShortcutCredentialsUI();
+
+  // Actualizar indicadores visuales de bóveda en la interfaz
   if (vaultCodeText) vaultCodeText.textContent = cleanCode;
   if (vaultLinkCodeInput) vaultLinkCodeInput.value = '';
-  authBtnText.textContent = `🔐 ${cleanCode}`;
+  if (authBtnText) authBtnText.textContent = `🔐 ${cleanCode}`;
+  if (userBadgeCode) userBadgeCode.textContent = cleanCode;
+  updateSyncStatus(true, `🟢 BÓVEDA ${cleanCode}`);
   updateVaultModalDirectUrl();
 
+  // Persistir metadatos de bóveda en Firestore
   try {
     const vaultRef = doc(db, 'vaults', cleanCode);
     await setDoc(vaultRef, {
       code: cleanCode,
+      shortcutApiKey: userApiKey,
       lastAccessed: new Date().toISOString()
     }, { merge: true });
   } catch (err) {
     console.warn('Nota de metadatos de bóveda:', err);
   }
 
+  // Actualizar el perfil del usuario autenticado para que onAuthStateChanged no revierta la bóveda
+  if (currentUser && currentUser.uid) {
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        bovedaCode: cleanCode,
+        userCode: cleanCode,
+        lastVaultSwitch: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Nota perfil de usuario en switchVault:', e);
+    }
+  }
+
   if (isNew) {
-    await syncLocalDataToVault(cleanCode);
+    // Si es una nueva bóveda en blanco, arranca en cero absoluto
+    transactions = [];
+    debts = [];
+    savingsGoals = [];
+    recurringPayments = [];
+    updateUI();
   } else {
     // Descarga directa e inmediata de los datos autoritativos existentes en la bóveda
     await loadVaultFromCloud(cleanCode);
@@ -3907,25 +3928,34 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = auth.currentUser;
   const isAnon = !currentUser || currentUser.isAnonymous;
 
-  // Si inició sesión con Google, sincronizar con su bóveda guardada si existía
+  // Si inició sesión con Google o tiene perfil en la nube
   if (currentUser && !isAnon && currentUser.email) {
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const uData = userDoc.data();
-        if (uData.bovedaCode && uData.bovedaCode !== activeVaultId) {
+        // Si no había bóveda elegida en el dispositivo pero sí en el perfil de la nube, adoptarla
+        if (!localStorage.getItem('ahorros_active_vault') && uData.bovedaCode) {
           activeVaultId = uData.bovedaCode;
           localStorage.setItem('ahorros_active_vault', activeVaultId);
           localStorage.setItem('ahorros_boveda_code', activeVaultId);
+          if (savedUserSession) {
+            savedUserSession.userCode = activeVaultId;
+            localStorage.setItem('ahorros_current_user', JSON.stringify(savedUserSession));
+          }
           await loadVaultFromCloud(activeVaultId);
           setupVaultCloudListeners(activeVaultId, true);
+        } else if (activeVaultId && uData.bovedaCode !== activeVaultId) {
+          // Si el usuario seleccionó o cambió de bóveda activamente, actualizar su perfil en la nube
+          await setDoc(userRef, { bovedaCode: activeVaultId, userCode: activeVaultId }, { merge: true });
         }
       } else {
         await setDoc(userRef, {
           uid: currentUser.uid,
           email: currentUser.email,
           bovedaCode: activeVaultId,
+          userCode: activeVaultId,
           createdAt: new Date().toISOString()
         }, { merge: true });
       }
@@ -3935,6 +3965,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   if (vaultCodeText) vaultCodeText.textContent = activeVaultId;
+  if (userBadgeCode) userBadgeCode.textContent = activeVaultId;
   if (vaultGoogleEmail) {
     vaultGoogleEmail.textContent = (currentUser && !isAnon) ? (currentUser.email || 'Vinculado') : 'No vinculado (Bóveda sin correo)';
   }
@@ -3956,6 +3987,7 @@ onAuthStateChanged(auth, async (user) => {
 // FILTRADO GLOBAL POR AÑO, MES, MEDIO Y MÉTODO
 globalFilterYear.addEventListener('change', () => {
   activeYear = globalFilterYear.value;
+  localStorage.setItem('ahorros_filter_year', activeYear);
   syncGlobalAndMovementsFilters();
   updateActivePeriodLabel();
   updateUI();
@@ -3963,6 +3995,7 @@ globalFilterYear.addEventListener('change', () => {
 
 globalFilterMonth.addEventListener('change', () => {
   activeMonth = globalFilterMonth.value;
+  localStorage.setItem('ahorros_filter_month', activeMonth);
   syncGlobalAndMovementsFilters();
   updateActivePeriodLabel();
   updateUI();
@@ -4175,36 +4208,46 @@ async function addTransactionLocallyOrCloud(txData) {
     ...(txData.recurringFrequency ? { recurringFrequency: txData.recurringFrequency } : {})
   };
 
-  // Evitar duplicar en memoria si ya existe en transactions (mismo id o misma transacción recibida dentro de 45s)
+  // Evitar duplicar en memoria si ya existe en transactions con el mismo ID
   const isAlreadyInState = transactions.some(t => 
     (cleanTx.id && (t.id === cleanTx.id || t.localId === cleanTx.id || t.firestoreId === cleanTx.id)) ||
-    (cleanTx.firestoreId && (t.id === cleanTx.firestoreId || t.firestoreId === cleanTx.firestoreId)) ||
-    (t.type === cleanTx.type && Math.abs((t.amount || 0) - (cleanTx.amount || 0)) < 0.01 && t.description === cleanTx.description && t.date === cleanTx.date && Math.abs(new Date(t.createdAt || 0) - new Date(cleanTx.createdAt || 0)) < 45000)
+    (cleanTx.localId && (t.id === cleanTx.localId || t.localId === cleanTx.localId || t.firestoreId === cleanTx.localId))
   );
   if (isAlreadyInState) {
     return;
   }
 
+  // Sincronizar el filtro activo si la transacción pertenece a otro mes/año para que aparezca visible de inmediato
+  if (cleanTx.date && cleanTx.date.length >= 7) {
+    const txYear = cleanTx.date.substring(0, 4);
+    const txMonth = cleanTx.date.substring(5, 7);
+    if (activeMonth !== 'ALL' && activeMonth !== txMonth) {
+      activeMonth = txMonth;
+      localStorage.setItem('ahorros_filter_month', activeMonth);
+    }
+    if (activeYear !== 'ALL' && activeYear !== txYear) {
+      activeYear = txYear;
+      localStorage.setItem('ahorros_filter_year', activeYear);
+    }
+    syncGlobalAndMovementsFilters();
+    updateActivePeriodLabel();
+  }
+
   // 1. Guardar localmente y actualizar interfaz INMEDIATAMENTE
+  transactions = transactions.filter(t => t.id !== localId && t.localId !== localId && t.firestoreId !== localId);
   transactions.push(cleanTx);
-  sortTransactionsByDate(transactions);
+  transactions = sortTransactionsByDate(transactions);
   localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
   updateUI();
   showQuickToast(`✅ ${cleanTx.type === 'income' ? 'Ingreso' : 'Gasto'} registrado: ${formatCurrency(cleanTx.amount)}`);
 
-  // 2. Persistir en Firebase Firestore para sincronización multi-dispositivo (PC <-> Celular)
+  // 2. Persistir en Firebase Firestore con setDoc usando localId como identificador determinista
   try {
-    const txColl = collection(db, 'vaults', activeVaultId, 'transactions');
-    const docRef = await addDoc(txColl, {
+    const docRef = doc(db, 'vaults', activeVaultId, 'transactions', localId);
+    await setDoc(docRef, {
       vaultId: activeVaultId,
       ...cleanTx
     });
-    // Actualizar el ID provisional con el de Firestore preservando localId
-    cleanTx.firestoreId = docRef.id;
-    cleanTx.id = docRef.id;
-    localStorage.setItem('finances_v10_trans', JSON.stringify(transactions));
-    // Refrescar para que los botones de eliminar en la tabla tengan el ID definitivo
-    updateUI();
   } catch (e) {
     console.warn('Transacción guardada localmente (pendiente de sync en la nube):', e);
   }
@@ -4245,11 +4288,6 @@ window.removeTransaction = async function(idOrIndex) {
     if (targetTx.localId) idsToDelete.add(String(targetTx.localId));
     if (targetTx.tempId) idsToDelete.add(String(targetTx.tempId));
     if (targetTx.createdAt) idsToDelete.add(String(targetTx.createdAt));
-
-    // Generar firma única para evitar resurrección en snapshots o reintentos
-    const txSig = `${targetTx.type}_${targetTx.amount}_${targetTx.date}_${(targetTx.description || '').trim().toLowerCase()}`;
-    recentlyDeletedTxSignatures.add(txSig);
-    saveRecentlyDeletedId('txSig', txSig);
   }
 
   // Marcar como eliminado en memoria y localStorage
@@ -4356,7 +4394,8 @@ window.removeTransaction = async function(idOrIndex) {
           const isTargetDoc = docSnap.id === strId ||
                               docSnap.id === targetTx.firestoreId ||
                               docSnap.id === targetTx.id ||
-                              (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId || docSnap.id === targetTx.localId));
+                              (targetTx.localId && (d.localId === targetTx.localId || d.id === targetTx.localId || docSnap.id === targetTx.localId)) ||
+                              (d.date === targetTx.date && d.type === targetTx.type && Math.abs(Number(d.amount) - Number(targetTx.amount)) < 0.01 && (d.description || '').trim().toLowerCase() === (targetTx.description || '').trim().toLowerCase());
           if (isTargetDoc) {
             recentlyDeletedTxIds.add(docSnap.id);
             saveRecentlyDeletedId('tx', docSnap.id);
